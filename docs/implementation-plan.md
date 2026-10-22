@@ -15,7 +15,7 @@
 
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
-| M0 | 기반 | 진행 중 | 16/16 | - | - | - |
+| M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
 | M1 | 글 대화 | 대기 | - | - | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
@@ -24,7 +24,7 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 D(M0-12~14) 병합 승인·M0 종료 확인 대기
+현재 작업: 없음(M0 종료)
 다음 작업: M1 착수(사용자 확인 뒤)
 
 ## 3. M0 기반
@@ -33,30 +33,11 @@
 
 **범위 밖**: 상태 머신 전이 표와 `sessionMachine`(M3), CSRF 검사(M6), `persona`·`user_profile` 외 테이블(필요한 마일스톤에서 리비전으로 추가), 음성·PWA 의존성(M3), CLI·음성·검색 설정 항목.
 
-### 3.1 작업 표
+### 3.1 작업 요약
 
-| ID | 작업 | 산출물 | 상태 |
-|---|---|---|---|
-| M0-00 | `client-contract.md` 이식(v2 계약 변경 반영) | `docs/client-contract.md`(커밋 c310f96) | 완료 |
-| M0-01 | 저장소 뼈대 | `server/`, `web/`, `shared/`, `README.md`, `server/.python-version`, `.env.example`(키 이름만), `.gitignore` 점검 | 완료 |
-| M0-02 | 서버 환경 | `server/pyproject.toml`(uv). 의존성은 M0에 필요한 것만: fastapi, uvicorn, pydantic-settings, sqlalchemy[asyncio], aiosqlite, alembic, pyyaml / 개발: pytest, pytest-asyncio, ruff. ruff는 line-length 100·규칙 E,F,I,UP,B, pytest는 `asyncio_mode=auto`. 테스트가 0개면 pytest가 실패하므로 `create_app`·health 스모크 테스트 1개를 함께 둔다 | 완료 |
-| M0-03 | 설정 | `app/config.py`: DB, 로그, 자동 마이그레이션, 페르소나 폴더·기본, 시간대, 웹 dist, 클라이언트 설정 경로(`CLIENT_DEFAULTS_PATH`), 검증 서버용 임시 경로 키(첨부·오디오·CLI 작업 폴더 디렉터리 설정 키 이름만 먼저 정하고 쓰는 기능은 해당 마일스톤: 첨부 `purge_orphans` 안전장치는 M5). 테스트는 `Settings(_env_file=None)`로 만든다 | 완료 |
-| M0-04 | 오류·요청 ID·로깅 | `errors.py`(`AppError`와 핸들러 4종: `AppError`, HTTP 예외(`not_found`·`method_not_allowed`·그 밖은 HTTP 상태 이름 코드), 검증 오류(`validation_error`, `details`에 `loc`·`msg`·`type`), 미처리 예외(`internal_error`, 내부 정보 비노출). 응답 `{"error":{code,message,request_id,details}}`), `request_context.py`(X-Request-ID, 정규식 `[A-Za-z0-9._-]{1,64}` 전체 일치), 로깅 설정, 오류 형식 테스트. `csrf_rejected` 코드는 문서에만 두고 검사는 M6 | 완료 |
-| M0-05 | DB와 Alembic | `db/{base,types,session,migrate}.py`(명명 규칙, `UTCDateTime`, `new_id()`, SQLite FK pragma, `get_db`), `migrations/`(비동기 env, `render_as_batch`, 마이그레이션 중 FK 끄고 `foreign_key_check`, ruff 후처리), 초기 리비전 `0001`: `persona`, `user_profile`만. 모델↔마이그레이션 일치 테스트와 열거 CHECK 일치 테스트(`user_profile.chat_model`)를 처음부터 둔다 | 완료 |
-| M0-06 | 앱 팩토리와 health | `main.py`의 `create_app(settings)`. 순서: 로깅 → lifespan(자동 마이그레이션) → 요청 컨텍스트 → 오류 핸들러 → `/api` 라우터(health 먼저) → 정적 마운트(마지막). `GET /api/health`: 200 `{"status":"ok","db":"ok"}`, DB 불가 시 503 `db_unavailable` | 완료 |
-| M0-07 | 클라이언트 설정값 | `shared/client-defaults.json`(client-contract 7절 기준: `turn.*`, `turn.ack_*`, `merge_min_speech_ms` 포함), 서버 검증 모듈 `app/client_config.py`, 시작 때 로드(M0-06 lifespan에 연결). `session.idle_timeout_minutes`의 `IDLE_TIMEOUT_S` 덮어쓰기(0 이하이면 시작 거부)도 검증한다. `offline_notice`·`attachments`는 이 파일 값이 아니므로 M0에서 검증하지 않는다. 잘못된 파일이면 서버가 시작하지 않는다 | 완료 |
-| M0-08 | 페르소나 | `persona/{schema,loader,prompt,rules}.py`, `personas/jenny.yaml`(이름·성격·말투, `voice`, `examples`, `closing`, `search_notice`, `ack` 목록, `offline_notice`, `{호칭}`은 인사말 예시에만). 조립기는 호칭을 받지 않고 `greeting_request(nickname)`만 호칭을 인사말 요청에 붙인다. 다시 열기용 '이어서 하는 대화' 블록은 M2. 로더는 sha256 버전을 만들고 오류는 `persona_not_found` 404, `persona_invalid` 500. 조립기는 persona·situation·memory·role rules 블록으로 만들며 호칭을 넣지 않는다(Spec 5.7). `rules.py`에 "인사말 이후에는 사용자를 호칭으로 부르지 않는다"를 넣고 테스트한다. 인사말 요청에 호칭을 붙이는 앱 안내는 M1. 기억 블록은 빈 `MemoryContext` 자리만. 테스트: 스냅샷(`UPDATE_SNAPSHOTS=1`로 갱신), `server/app/**/*.py`에 캐릭터 이름 하드코딩 금지, YAML만 바꿔 이름·말투 반영 | 완료 |
-| M0-09 | 웹 환경 | `web/`: Vite, React 19, TypeScript, vitest, oxlint. 빈 앱(하단 탭 3개 자리와 서버 연결 상태 표시), `/api` 프록시(대상 주소는 환경변수로 받아 격리 서버 포트와 겹치지 않게 한다), vitest 테스트 1개 이상, `typecheck`(앱 전체 `tsc --noEmit`) 스크립트, 시안 토큰(색·글꼴·크기) 상수 | 완료 |
-| M0-10 | OpenAPI→TS 타입 생성 | `app/openapi.py`, `web/scripts/gen-api.mjs`(openapi-typescript), `npm run gen:api`와 `npm run gen:api -- --check`, 생성물 `web/src/api/schema.d.ts` 커밋 | 완료 |
-| M0-11 | core 비의존 린트 | `web/src/core/`를 두 겹으로 강제한다. (1) oxlint 오버라이드: `src/core/**`에서 브라우저 전역(`window`, `document`, `navigator`, `localStorage`, `indexedDB`, `fetch` 등)과 `react`, `../platform` import 금지. (2) `tsconfig.core.json`(lib에서 DOM 제외)으로 `npm run typecheck:core`. 타이머·`TextDecoder`·`AbortController`처럼 DOM 밖에서도 필요한 전역은 허용 목록이나 주입 규칙을 정한다. 착수 첫 단계에서 oxlint `overrides`가 `src/core/**`에만 걸리는지 확인하고, 안 되면 대안을 정해 사용자에게 알린다. 위반 샘플 파일로 둘 다 실패함을 확인하는 테스트 | 완료 |
-| M0-12 | 실행 스크립트 | `run.sh`(서버 8000 + 웹 5173, `--tmp` 임시 데이터, `--no-open`, `API_PORT`·`WEB_PORT`), `stop.sh`(PID 파일 `.run/run.pid`로 이 저장소의 run.sh만 종료, 사용자 8000 서버와 구별). `--fake`·`--phone`은 해당 마일스톤에서 추가 | 완료 |
-| M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 기준 이미지는 OS별 폴더(`e2e/__screenshots__/<OS>/`)에 둔다. 지금은 맥(darwin) 기준만 있어 **Linux CI에서는 시각 비교가 건너뛰어지고 스모크 5개만 돈다**(Playwright 7개 통과는 맥 기준). Linux 기준은 화면이 생기는 M2~M3에서 CI 산출물을 받아 승인하는 방식으로 더한다. CI에는 Playwright 브라우저 설치 단계가 이미 조건부로 들어 있다. 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 완료 |
-| M0-14 | 문서 정합 | `CLAUDE.md`(폴더 구조·명령·개발 규칙·`verify.sh` 사용), 이 문서의 대시보드, client-contract 7절과 설정값 파일의 일치 확인 | 완료 |
-| M0-15 | 검증 자동화 | `scripts/verify.sh`(`--quick`), `.claude/settings.json`(deny·ask 규칙과 PreToolUse 훅 2개), `.claude/hooks/{guard-protected,gate-git}.py`, `.githooks/pre-push`, `.github/workflows/verify.yml`, CLAUDE.md 개발 규칙. 스크린샷 비교는 M0-13에서 틀만, 핵심 화면 기준 이미지는 M2~M3 | 완료 |
+M0-00~M0-15 16개 작업을 모두 완료했다(2026-10-23 종료, 종료 커밋 `5d5c9f9`). 문서 이식, 서버 뼈대(설정·오류·DB·health·클라이언트 설정값·페르소나), 웹 뼈대·타입 생성·core 비의존 린트, 실행 스크립트, Playwright E2E, 검증 자동화다. 작업별 산출물 상세는 `git log -- docs/implementation-plan.md`의 이전 판에 남아 있다. 디자인 시안 사본은 이미 저장소에 있다(커밋 fd642e8).
 
-디자인 시안 사본은 이미 저장소에 있다(커밋 fd642e8).
-
-**작업 순서**: ID 순서가 기본이다. 선행 관계는 M0-05가 M0-03·04 뒤, M0-06이 M0-04·05 뒤, M0-07은 M0-06의 lifespan에 "시작 때 로드"를 연결하므로 M0-06 뒤, M0-08이 M0-03·05 뒤, M0-10이 M0-06(서버 스키마)과 M0-09(웹 폴더) 뒤, M0-11·12가 M0-09 뒤, M0-13이 전부 뒤다. M0-11은 실현 가능성을 먼저 확인하는 스파이크로 시작한다(해당 행 참고).
+**작업 순서**: ID 순서가 기본이다. 선행 관계는 M0-05가 M0-03·04 뒤, M0-06이 M0-04·05 뒤, M0-07은 M0-06의 lifespan에 "시작 때 로드"를 연결하므로 M0-06 뒤, M0-08이 M0-03·05 뒤, M0-10이 M0-06(서버 스키마)과 M0-09(웹 폴더) 뒤, M0-11·12가 M0-09 뒤, M0-13이 전부 뒤다. M0-11은 실현 가능성을 먼저 확인하는 스파이크로 시작했다.
 
 ### 3.2 작업별 점검
 
@@ -98,10 +79,10 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 
 - [x] 단위 테스트와 Playwright 실구동 통과, 완료 기준 표 채움
 - [x] `CLAUDE.md`와 client-contract가 코드와 일치
-- [ ] 독립 서브에이전트가 diff를 리뷰하고 지적을 반영
-- [ ] 커밋·푸시
-- [ ] 사용자 확인
-- [ ] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
+- [x] 독립 서브에이전트가 diff를 리뷰하고 지적을 반영
+- [x] 커밋·푸시
+- [x] 사용자 확인
+- [x] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
 
 ## 4. M1~M6 요약
 
@@ -154,3 +135,4 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - D7 (WebFetch 사설망 차단): M5 초반에 CLI 권한 규칙으로 가능한지 확인하고, 안 되면 자체 MCP `web_fetch`로 간다.
 - 화면 시안은 렌더링을 검증하지 않았다. M2·M3에서 화면을 구현할 때 아티팩트와 대조하며 어긋남을 기록한다.
 - 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.
+- M0에서 넘어온 약속: Linux CI 시각 비교 기준 이미지는 화면이 생기는 M2~M3에서 CI 산출물을 받아 승인해 더한다(그 전에는 Linux CI가 시각 비교를 건너뛰고 스모크 5개만 돈다). 첨부 `purge_orphans` 안전장치는 M5. `run.sh`의 `--fake`·`--phone`은 필요한 마일스톤(M3~M4)에서 추가한다.
