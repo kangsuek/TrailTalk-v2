@@ -16,7 +16,7 @@
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
-| M1 | 글 대화 | 진행 중 | 0/14 | 2026-10-23 | - | - |
+| M1 | 글 대화 | 진행 중 | 1/14 | 2026-10-23 | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: M1 계획서 상세화 완료, 묶음 A(M1-01~03) 착수 전
-다음 작업: 묶음 A `m1-a-data-profile`
+현재 작업: 묶음 A `m1-a-data-profile`(M1-02 설정 키 진행 중)
+다음 작업: M1-03 프로필 API
 
 ## 3. M0 기반
 
@@ -94,7 +94,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 
 | ID | 묶음 | 작업 | 산출물 | 상태 |
 |---|---|---|---|---|
-| M1-01 | A | 모델·리비전 0002 | `db/models.py`에 `conversation_session`·`turn`·`note`(열거 CHECK), `migrations/versions/0002_*.py`, `test_migrations.py`의 `TABLES`·열거 CHECK 시험 갱신 | 대기 |
+| M1-01 | A | 모델·리비전 0002 | `db/models.py`에 `conversation_session`·`turn`·`note`(열거 CHECK), `migrations/versions/0002_*.py`, `test_migrations.py`의 `TABLES`·열거 CHECK 시험 갱신, `test_conversation_models.py` | 완료 |
 | M1-02 | A | 설정 키 | `config.py`: `claude_cli_path`, `claude_code_oauth_token`, `cli_turn_timeout_s`, `llm_chat_model`, `internal_base_url`, `cli_env_passthrough`. 테스트는 `Settings(_env_file=None)` | 대기 |
 | M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`), 오류 코드·문서 9절 갱신 | 대기 |
 | M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만) | 대기 |
@@ -113,7 +113,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 
 ### 4.2 작업별 점검
 
-- [ ] **M1-01** 빈 DB에서 `upgrade head`가 성공하고 모델과 마이그레이션이 일치한다. 열거 CHECK가 모델과 같다.
+- [x] **M1-01** 빈 DB에서 `upgrade head`가 성공하고 모델과 마이그레이션이 일치한다. 열거 CHECK가 모델과 같다.
 - [ ] **M1-02** 새 설정 키 기본값·환경 변수 시험이 있고 실제 `.env`를 읽지 않는다.
 - [ ] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다.
 - [ ] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
