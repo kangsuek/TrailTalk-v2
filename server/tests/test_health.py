@@ -1,6 +1,4 @@
-from sqlalchemy.exc import OperationalError
-
-from app.db.session import get_db
+from app.db.session import create_engine_for, create_session_factory
 
 
 def test_health_returns_ok_with_db(client):
@@ -9,18 +7,10 @@ def test_health_returns_ok_with_db(client):
     assert response.json() == {"status": "ok", "db": "ok"}
 
 
-def test_health_returns_503_when_db_is_down(app, client):
-    class BrokenSession:
-        async def execute(self, *_args, **_kwargs):
-            raise OperationalError("SELECT 1", {}, Exception("연결 불가"))
-
-        async def rollback(self):
-            pass
-
-    async def broken_db():
-        yield BrokenSession()
-
-    app.dependency_overrides[get_db] = broken_db
+def test_health_returns_503_when_db_is_down(app, client, tmp_path):
+    # 실제 get_db·세션 팩토리·엔진 경로: 디렉터리를 DB 파일로 가리키면 연결이 실패한다
+    broken = create_engine_for(f"sqlite+aiosqlite:///{tmp_path}")
+    app.state.session_factory = create_session_factory(broken)
     response = client.get("/api/health")
     assert response.status_code == 503
     body = response.json()["error"]

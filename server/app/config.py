@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     # 클라이언트 설정값 기본값(app/client_config.py, 규약 7절)
     client_defaults_path: Path = REPO_DIR / "shared" / "client-defaults.json"
 
+    @field_validator("log_level")
+    @classmethod
+    def _valid_log_level(cls, value: str) -> str:
+        level = value.upper()
+        if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+            raise ValueError(f"알 수 없는 로그 수준: {value}")
+        return level
+
     @field_validator("timezone")
     @classmethod
     def _valid_timezone(cls, value: str) -> str:

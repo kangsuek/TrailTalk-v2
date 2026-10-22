@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    true,
 )
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column
@@ -63,6 +64,7 @@ class UserProfile(Base):
     persona_id: Mapped[str | None] = mapped_column(ForeignKey("persona.id", ondelete="SET NULL"))
     voice: Mapped[str | None] = mapped_column(String(100))  # null이면 페르소나 기본
     speaking_rate: Mapped[float | None] = mapped_column(Float)  # null이면 페르소나 기본
+    ack_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
     chat_model: Mapped[ChatModel | None] = mapped_column(_enum(ChatModel, "chat_model"))
     keep_audio: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)

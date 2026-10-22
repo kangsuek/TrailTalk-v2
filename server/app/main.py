@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette._utils import get_route_path
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
@@ -19,7 +18,10 @@ class WebMount(Mount):
     """빌드된 웹 앱 마운트. /api 경로는 맡지 않아 라우터의 404·405가 그대로 나간다."""
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
-        path = get_route_path(scope)  # 프록시 root_path를 뺀 경로
+        path = scope["path"]
+        root_path = scope.get("root_path", "")  # 프록시 접두사는 뺀 경로로 판단한다
+        if root_path and path.startswith(root_path):
+            path = path[len(root_path) :]
         if path == "/api" or path.startswith("/api/"):
             return Match.NONE, {}
         return super().matches(scope)

@@ -72,6 +72,7 @@ async def test_enum_check_constraints_match_models(database_url):
     finally:
         await engine.dispose()
     schema = {name: sql for name, sql in rows if sql}
+    checked = set()
     for table in Base.metadata.tables.values():
         for column in table.columns:
             if isinstance(column.type, Enum):
@@ -79,6 +80,8 @@ async def test_enum_check_constraints_match_models(database_url):
                 assert match, f"{table.name}.{column.name} CHECK 제약 없음"
                 in_db = set(re.findall(r"'([^']*)'", match.group(1)))
                 assert in_db == set(column.type.enums), f"{table.name}.{column.name}"
+                checked.add(f"{table.name}.{column.name}")
+    assert "user_profile.chat_model" in checked
 
 
 async def test_batch_recreate_keeps_child_rows(database_url, tmp_path):
@@ -154,20 +157,33 @@ def downgrade():
     assert persona_id == "jenny"
 
 
-async def test_user_profile_is_single_row_and_rejects_unknown_chat_model(db_session):
+async def _insert_profile(session, profile_id: int, chat_model: str | None = None) -> None:
     from sqlalchemy import text
+
+    await session.execute(
+        text(
+            "INSERT INTO user_profile (id, interests, keep_audio, chat_model, updated_at) "
+            "VALUES (:id, '[]', 0, :m, '2026-10-22 00:00:00.000000')"
+        ),
+        {"id": profile_id, "m": chat_model},
+    )
+
+
+async def test_user_profile_allows_only_one_row(db_session):
     from sqlalchemy.exc import IntegrityError
 
-    insert = (
-        "INSERT INTO user_profile (id, interests, keep_audio, updated_at{col}) "
-        "VALUES ({id}, '[]', 0, '2026-10-22 00:00:00.000000'{val})"
-    )
-    await db_session.execute(text(insert.format(col="", id=1, val="")))
-    await db_session.commit()
-    for sql in (
-        insert.format(col="", id=2, val=""),  # 단일 행 제약
-        insert.format(col=", chat_model", id=1, val=", 'gpt'"),
-    ):
-        with pytest.raises(IntegrityError):
-            await db_session.execute(text(sql))
-        await db_session.rollback()
+    await _insert_profile(db_session, 1)
+    with pytest.raises(IntegrityError, match="ck_user_profile_single_row"):
+        await _insert_profile(db_session, 2)
+
+
+@pytest.mark.parametrize("chat_model", ["haiku", "sonnet", "opus", None])
+async def test_chat_model_accepts_enum_values_and_null(db_session, chat_model):
+    await _insert_profile(db_session, 1, chat_model)
+
+
+async def test_chat_model_rejects_unknown_value(db_session):
+    from sqlalchemy.exc import IntegrityError
+
+    with pytest.raises(IntegrityError, match="ck_user_profile_chat_model"):
+        await _insert_profile(db_session, 1, "gpt")

@@ -142,6 +142,8 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - D6 (주간 브리핑 관심사): P2로 미룸.
 - FR-21 이메일은 우선순위 P2지만 Spec 12절에 따라 M5에 둔다.
 - `GET /api/health` 응답 본문(`status`·`db`)은 이 계획서가 정한 값이다. M0-06에서 client-contract에 한 줄 반영한다.
+- 정적 마운트(`StaticFiles(html=True)`)는 클라이언트 라우트 새로고침에 `index.html` 폴백을 주지 않는다. 화면 라우팅을 정하는 M2에서 처리한다.
+- 프로필의 `default_chat_model`(`LLM_CHAT_MODEL` 설정)은 프로필 API를 만드는 M1에서 추가한다.
 - D7 (WebFetch 사설망 차단): M5 초반에 CLI 권한 규칙으로 가능한지 확인하고, 안 되면 자체 MCP `web_fetch`로 간다.
 - 화면 시안은 렌더링을 검증하지 않았다. M2·M3에서 화면을 구현할 때 아티팩트와 대조하며 어긋남을 기록한다.
 - 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.

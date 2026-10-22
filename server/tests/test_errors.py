@@ -57,8 +57,10 @@ def test_unknown_api_path_returns_json_not_found(client):
     assert_error(client.post("/api/health/nope"), 404, "not_found")
 
 
-def test_method_not_allowed(client):
-    assert_error(client.post("/api/health"), 405, "method_not_allowed")
+def test_method_not_allowed_keeps_allow_header(client):
+    response = client.post("/api/health")
+    assert_error(response, 405, "method_not_allowed")
+    assert "GET" in response.headers["allow"]
 
 
 def test_app_error_keeps_code_and_details(error_client):
