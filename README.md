@@ -21,10 +21,12 @@ docs/     문서
 
 [uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
 
-## 검증 명령
+## 검증
 
 ```bash
-(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)
+scripts/verify.sh           # 전체 게이트(서버, 웹이 생긴 뒤에는 웹·빌드·E2E 포함)
+scripts/verify.sh --quick   # 타입·린트·단위 테스트
+git config core.hooksPath .githooks   # 직접 푸시할 때도 전체 검증이 걸리게 한다(clone마다 한 번)
 ```
 
-웹 명령(`web/`)은 M0-09 이후에 추가한다.
+서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`. 웹 명령(`web/`)은 M0-09 이후에 추가한다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).
