@@ -15,7 +15,7 @@
 
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
-| M0 | 기반 | 진행 중 | 14/16 | - | - | - |
+| M0 | 기반 | 진행 중 | 15/16 | - | - | - |
 | M1 | 글 대화 | 대기 | - | - | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 C(M0-09~11) 병합 승인 대기, 묶음 D 진행 중(M0-12 완료)
-다음 작업: M0-13
+현재 작업: 묶음 D(M0-12~14) 진행 중(M0-12·13 완료)
+다음 작업: M0-14
 
 ## 3. M0 기반
 
@@ -50,7 +50,7 @@
 | M0-10 | OpenAPI→TS 타입 생성 | `app/openapi.py`, `web/scripts/gen-api.mjs`(openapi-typescript), `npm run gen:api`와 `npm run gen:api -- --check`, 생성물 `web/src/api/schema.d.ts` 커밋 | 완료 |
 | M0-11 | core 비의존 린트 | `web/src/core/`를 두 겹으로 강제한다. (1) oxlint 오버라이드: `src/core/**`에서 브라우저 전역(`window`, `document`, `navigator`, `localStorage`, `indexedDB`, `fetch` 등)과 `react`, `../platform` import 금지. (2) `tsconfig.core.json`(lib에서 DOM 제외)으로 `npm run typecheck:core`. 타이머·`TextDecoder`·`AbortController`처럼 DOM 밖에서도 필요한 전역은 허용 목록이나 주입 규칙을 정한다. 착수 첫 단계에서 oxlint `overrides`가 `src/core/**`에만 걸리는지 확인하고, 안 되면 대안을 정해 사용자에게 알린다. 위반 샘플 파일로 둘 다 실패함을 확인하는 테스트 | 완료 |
 | M0-12 | 실행 스크립트 | `run.sh`(서버 8000 + 웹 5173, `--tmp` 임시 데이터, `--no-open`, `API_PORT`·`WEB_PORT`), `stop.sh`(PID 파일 `.run/run.pid`로 이 저장소의 run.sh만 종료, 사용자 8000 서버와 구별). `--fake`·`--phone`은 해당 마일스톤에서 추가 | 완료 |
-| M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 기준 이미지는 CI와 같은 Linux 환경에서 만든다(맥에서 만들면 글꼴 렌더링이 달라 CI에서 실패하므로 CI 산출물을 받아 승인하거나 Docker로 만든다). CI에는 Playwright 브라우저 설치 단계가 이미 조건부로 들어 있다. 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 대기 |
+| M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 기준 이미지는 CI와 같은 Linux 환경에서 만든다(맥에서 만들면 글꼴 렌더링이 달라 CI에서 실패하므로 CI 산출물을 받아 승인하거나 Docker로 만든다). CI에는 Playwright 브라우저 설치 단계가 이미 조건부로 들어 있다. 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 완료 |
 | M0-14 | 문서 정합 | `CLAUDE.md`(폴더 구조·명령·개발 규칙·`verify.sh` 사용), 이 문서의 대시보드, client-contract 7절과 설정값 파일의 일치 확인 | 대기 |
 | M0-15 | 검증 자동화 | `scripts/verify.sh`(`--quick`), `.claude/settings.json`(deny·ask 규칙과 PreToolUse 훅 2개), `.claude/hooks/{guard-protected,gate-git}.py`, `.githooks/pre-push`, `.github/workflows/verify.yml`, CLAUDE.md 개발 규칙. 스크린샷 비교는 M0-13에서 틀만, 핵심 화면 기준 이미지는 M2~M3 | 완료 |
 
@@ -72,7 +72,7 @@
 - [x] **M0-10** 서버 스키마를 바꾸고 생성물을 갱신하지 않으면 `--check`가 실패한다.
 - [x] **M0-11** `src/core`에 `window`나 `react` import를 넣으면 린트와 `typecheck:core`가 실패한다. 샘플은 정상 코드에 남지 않는다.
 - [x] **M0-12** `run.sh` 실행 뒤 두 포트가 열리고 `stop.sh`가 이 저장소의 프로세스만 끝낸다.
-- [ ] **M0-13** 격리 서버와 웹으로 스모크가 통과한다. 사용한 DB·디렉터리가 임시 경로이고 종료 때 지워진다.
+- [x] **M0-13** 격리 서버와 웹으로 스모크가 통과한다. 사용한 DB·디렉터리가 임시 경로이고 종료 때 지워진다.
 - [ ] **M0-14** 문서의 명령과 폴더 구조가 실제와 같다.
 - [x] **M0-15** `verify.sh`가 통과·실패·건너뜀을 구분한다. 훅이 기존 테스트·보호 파일 수정에 확인을 요청하고, `git commit`·`push`·`merge` 전에 verify를 실행해 실패하면 막는다. force push는 거부, main push·의존성 변경은 확인을 요청한다. pre-push와 Actions가 같은 게이트를 쓴다.
 
