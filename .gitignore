@@ -28,3 +28,4 @@ test-results/
 server/data/
 .e2e/
 .run-fake/
+.run/

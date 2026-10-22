@@ -9,6 +9,22 @@
 
 위 문서는 자동으로 불러오지 않는다(`@` import 금지). 필요한 절만 `grep -n "^#"`으로 위치를 찾아 범위를 지정해 읽는다.
 
+## 구조와 명령
+
+```
+server/   FastAPI 서버(Python 3.12, uv). app/ 코드, migrations/ Alembic, personas/ 캐릭터 YAML, tests/
+web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, e2e/ Playwright
+shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
+scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
+```
+
+- 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`
+- 검증: `scripts/verify.sh [--quick]`
+- 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
+- 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
+- 화면을 바꿔 스크린샷 기준이 달라지면 `cd web && npm run e2e:update`로 갱신하고 이미지를 눈으로 확인한 뒤 커밋한다.
+- 모델을 바꾸면 Alembic 리비전을 같은 커밋에 넣는다(`cd server && uv run alembic revision --autogenerate -m "..."`).
+
 ## 작업 규칙
 
 - 브랜치와 병합(2026-10-22 사용자 확정): 코드 작업은 작업(`M0-03` 같은 ID) 하나당, 또는 계획서가 묶은 작업 묶음 하나당 브랜치 하나(`m0-a-server-base` 형식)에서 한다. 브랜치 안에서는 묻지 않고 커밋하고, 원격 브랜치에 푸시해 백업한다. 브랜치 커밋마다 리뷰하지 않고 병합 승인을 요청하기 전에 한 번 리뷰한다. `main`에는 사용자 승인 뒤에만 병합(`--no-ff`)·푸시한다. 승인을 요청하기 전에 다음 세 가지를 모두 통과시키고 결과를 보고한다: 검증 명령 전부, Playwright 실구동 검증, 독립 general-purpose 서브에이전트 diff 리뷰(지적 반영). 문서만 바꾸는 변경(`docs/` 아래 전부(시안 `docs/design/*.dc.html` 포함), `CLAUDE.md`, `README.md`)은 예외로, 사용자 승인 없이 서브에이전트 리뷰만 거쳐 `main`에 바로 커밋·푸시한다. 설정·데이터 파일(`server/personas/*.yaml`, `shared/client-defaults.json` 등)과 코드가 섞인 변경은 코드 규칙을 따른다. 마일스톤 종료 확인은 그 마일스톤 마지막 작업의 `main` 병합 승인과 겸한다.

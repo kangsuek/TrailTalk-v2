@@ -21,6 +21,17 @@ docs/     문서
 
 [uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
 
+## 실행
+
+```bash
+./run.sh            # 서버(8000)와 웹(5173)을 띄우고 브라우저를 연다. DB는 server/data/trailtalk.db
+./run.sh --tmp      # 임시 데이터(.run/tmp)로 실행(실제 DB를 건드리지 않는 확인용)
+./run.sh --no-open  # 브라우저를 열지 않는다
+./stop.sh           # 다른 터미널에서 끄기(이 저장소의 run.sh만 종료). Ctrl+C로도 끌 수 있다
+```
+
+포트는 `API_PORT`, `WEB_PORT` 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
+
 ## 검증
 
 ```bash
@@ -30,4 +41,4 @@ git config core.hooksPath .githooks   # 직접 푸시할 때도 전체 검증이
 ```
 
 서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`.
-웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`. 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).
+웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`, `e2e`(Playwright. 처음에는 `npx playwright install chromium`. 임시 폴더 `web/.e2e/`의 격리 서버 8100과 웹 5174를 자동으로 띄운다. 스크린샷 기준 이미지는 OS별(`e2e/__screenshots__/<OS>/`)이라 기준이 없는 OS에서는 시각 비교를 건너뛴다. 갱신은 `npm run e2e:update`로 하고 눈으로 확인한 뒤 커밋). 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).
