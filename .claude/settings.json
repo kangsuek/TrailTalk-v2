@@ -1,0 +1,59 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)"
+    ],
+    "ask": [
+      "Bash(git push origin main*)",
+      "Bash(git push * main)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git merge *)",
+      "Bash(git reset --hard*)",
+      "Bash(git config core.hooksPath*)",
+      "Bash(uv add*)",
+      "Bash(uv remove*)",
+      "Bash(uv lock --upgrade*)",
+      "Bash(uv sync --upgrade*)",
+      "Bash(npm install)",
+      "Bash(npm install *)",
+      "Bash(npm i *)",
+      "Bash(npm update*)",
+      "Bash(npm uninstall*)",
+      "Bash(npx npm-check-updates*)",
+      "Bash(npx ncu*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-protected.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/gate-git.py\"",
+            "timeout": 960
+          }
+        ]
+      }
+    ]
+  }
+}

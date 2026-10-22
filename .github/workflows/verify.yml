@@ -1,0 +1,38 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+        if: ${{ hashFiles('web/package-lock.json') != '' }}
+      - name: 웹 의존성 설치(web/이 있을 때)
+        if: ${{ hashFiles('web/package-lock.json') != '' }}
+        run: npm ci
+        working-directory: web
+      - name: Playwright 브라우저 설치(E2E가 있을 때)
+        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: 서버 의존성 설치
+        run: uv sync
+        working-directory: server
+      - name: 검증 게이트
+        run: scripts/verify.sh

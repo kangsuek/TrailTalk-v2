@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# 푸시 전 전체 검증. Claude 밖에서 직접 푸시해도 같은 게이트가 걸린다.
+# 켜는 법: git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/scripts/verify.sh"
