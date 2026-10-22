@@ -1,0 +1,87 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "oxc"
+  ],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/core/**"
+      ],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          "window",
+          "document",
+          "navigator",
+          "localStorage",
+          "sessionStorage",
+          "indexedDB",
+          "fetch",
+          "location",
+          "history",
+          "screen",
+          "Audio",
+          "AudioContext",
+          "MediaRecorder",
+          "globalThis",
+          "self",
+          "XMLHttpRequest",
+          "WebSocket",
+          "EventSource",
+          "requestAnimationFrame",
+          "crypto",
+          "caches",
+          "Notification",
+          "setTimeout",
+          "setInterval",
+          "clearTimeout",
+          "clearInterval",
+          "queueMicrotask",
+          "structuredClone"
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react"
+              },
+              {
+                "name": "react-dom"
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "react/*",
+                  "react-dom/*",
+                  "**/platform/**",
+                  "**/screens/**",
+                  "**/api/**",
+                  "**/design/**",
+                  "**/App",
+                  "**/App.tsx",
+                  "**/main",
+                  "**/main.tsx"
+                ]
+              }
+            ]
+          }
+        ],
+        "typescript/no-require-imports": "error"
+      }
+    }
+  ]
+}

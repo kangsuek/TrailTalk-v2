@@ -29,4 +29,5 @@ scripts/verify.sh --quick   # 타입·린트·단위 테스트
 git config core.hooksPath .githooks   # 직접 푸시할 때도 전체 검증이 걸리게 한다(clone마다 한 번, `--no-verify`로 건너뛸 수 있음)
 ```
 
-서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`. 웹 명령(`web/`)은 M0-09 이후에 추가한다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).
+서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`.
+웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`. 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).

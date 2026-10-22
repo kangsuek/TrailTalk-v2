@@ -15,7 +15,7 @@
 
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
-| M0 | 기반 | 진행 중 | 10/16 | - | - | - |
+| M0 | 기반 | 진행 중 | 13/16 | - | - | - |
 | M1 | 글 대화 | 대기 | - | - | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 B(M0-08 페르소나) 병합 승인 대기
-다음 작업: M0-09
+현재 작업: 묶음 C(M0-09~11 웹 뼈대·타입 생성·core 린트) 병합 승인 대기
+다음 작업: M0-12
 
 ## 3. M0 기반
 
@@ -46,9 +46,9 @@
 | M0-06 | 앱 팩토리와 health | `main.py`의 `create_app(settings)`. 순서: 로깅 → lifespan(자동 마이그레이션) → 요청 컨텍스트 → 오류 핸들러 → `/api` 라우터(health 먼저) → 정적 마운트(마지막). `GET /api/health`: 200 `{"status":"ok","db":"ok"}`, DB 불가 시 503 `db_unavailable` | 완료 |
 | M0-07 | 클라이언트 설정값 | `shared/client-defaults.json`(client-contract 7절 기준: `turn.*`, `turn.ack_*`, `merge_min_speech_ms` 포함), 서버 검증 모듈 `app/client_config.py`, 시작 때 로드(M0-06 lifespan에 연결). `session.idle_timeout_minutes`의 `IDLE_TIMEOUT_S` 덮어쓰기(0 이하이면 시작 거부)도 검증한다. `offline_notice`·`attachments`는 이 파일 값이 아니므로 M0에서 검증하지 않는다. 잘못된 파일이면 서버가 시작하지 않는다 | 완료 |
 | M0-08 | 페르소나 | `persona/{schema,loader,prompt,rules}.py`, `personas/jenny.yaml`(이름·성격·말투, `voice`, `examples`, `closing`, `search_notice`, `ack` 목록, `offline_notice`, `{호칭}`은 인사말 예시에만). 조립기는 호칭을 받지 않고 `greeting_request(nickname)`만 호칭을 인사말 요청에 붙인다. 다시 열기용 '이어서 하는 대화' 블록은 M2. 로더는 sha256 버전을 만들고 오류는 `persona_not_found` 404, `persona_invalid` 500. 조립기는 persona·situation·memory·role rules 블록으로 만들며 호칭을 넣지 않는다(Spec 5.7). `rules.py`에 "인사말 이후에는 사용자를 호칭으로 부르지 않는다"를 넣고 테스트한다. 인사말 요청에 호칭을 붙이는 앱 안내는 M1. 기억 블록은 빈 `MemoryContext` 자리만. 테스트: 스냅샷(`UPDATE_SNAPSHOTS=1`로 갱신), `server/app/**/*.py`에 캐릭터 이름 하드코딩 금지, YAML만 바꿔 이름·말투 반영 | 완료 |
-| M0-09 | 웹 환경 | `web/`: Vite, React 19, TypeScript, vitest, oxlint. 빈 앱(하단 탭 3개 자리와 서버 연결 상태 표시), `/api` 프록시(대상 주소는 환경변수로 받아 격리 서버 포트와 겹치지 않게 한다), vitest 테스트 1개 이상, `typecheck`(앱 전체 `tsc --noEmit`) 스크립트, 시안 토큰(색·글꼴·크기) 상수 | 대기 |
-| M0-10 | OpenAPI→TS 타입 생성 | `app/openapi.py`, `web/scripts/gen-api.mjs`(openapi-typescript), `npm run gen:api`와 `npm run gen:api -- --check`, 생성물 `web/src/api/schema.d.ts` 커밋 | 대기 |
-| M0-11 | core 비의존 린트 | `web/src/core/`를 두 겹으로 강제한다. (1) oxlint 오버라이드: `src/core/**`에서 브라우저 전역(`window`, `document`, `navigator`, `localStorage`, `indexedDB`, `fetch` 등)과 `react`, `../platform` import 금지. (2) `tsconfig.core.json`(lib에서 DOM 제외)으로 `npm run typecheck:core`. 타이머·`TextDecoder`·`AbortController`처럼 DOM 밖에서도 필요한 전역은 허용 목록이나 주입 규칙을 정한다. 착수 첫 단계에서 oxlint `overrides`가 `src/core/**`에만 걸리는지 확인하고, 안 되면 대안을 정해 사용자에게 알린다. 위반 샘플 파일로 둘 다 실패함을 확인하는 테스트 | 대기 |
+| M0-09 | 웹 환경 | `web/`: Vite, React 19, TypeScript, vitest, oxlint. 빈 앱(하단 탭 3개 자리와 서버 연결 상태 표시), `/api` 프록시(대상 주소는 환경변수로 받아 격리 서버 포트와 겹치지 않게 한다), vitest 테스트 1개 이상, `typecheck`(앱 전체 `tsc --noEmit`) 스크립트, 시안 토큰(색·글꼴·크기) 상수 | 완료 |
+| M0-10 | OpenAPI→TS 타입 생성 | `app/openapi.py`, `web/scripts/gen-api.mjs`(openapi-typescript), `npm run gen:api`와 `npm run gen:api -- --check`, 생성물 `web/src/api/schema.d.ts` 커밋 | 완료 |
+| M0-11 | core 비의존 린트 | `web/src/core/`를 두 겹으로 강제한다. (1) oxlint 오버라이드: `src/core/**`에서 브라우저 전역(`window`, `document`, `navigator`, `localStorage`, `indexedDB`, `fetch` 등)과 `react`, `../platform` import 금지. (2) `tsconfig.core.json`(lib에서 DOM 제외)으로 `npm run typecheck:core`. 타이머·`TextDecoder`·`AbortController`처럼 DOM 밖에서도 필요한 전역은 허용 목록이나 주입 규칙을 정한다. 착수 첫 단계에서 oxlint `overrides`가 `src/core/**`에만 걸리는지 확인하고, 안 되면 대안을 정해 사용자에게 알린다. 위반 샘플 파일로 둘 다 실패함을 확인하는 테스트 | 완료 |
 | M0-12 | 실행 스크립트 | `run.sh`(서버 8000 + 웹 5173), `stop.sh`(PID 파일로 이 저장소가 띄운 프로세스만 종료, 사용자 8000 서버와 구별). `--fake`·`--phone`은 해당 마일스톤에서 추가 | 대기 |
 | M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 기준 이미지는 CI와 같은 Linux 환경에서 만든다(맥에서 만들면 글꼴 렌더링이 달라 CI에서 실패하므로 CI 산출물을 받아 승인하거나 Docker로 만든다). CI에는 Playwright 브라우저 설치 단계가 이미 조건부로 들어 있다. 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 대기 |
 | M0-14 | 문서 정합 | `CLAUDE.md`(폴더 구조·명령·개발 규칙·`verify.sh` 사용), 이 문서의 대시보드, client-contract 7절과 설정값 파일의 일치 확인 | 대기 |
@@ -68,9 +68,9 @@
 - [x] **M0-06** 시작 때 자동 마이그레이션이 적용된다. health가 200과 503을 모두 테스트한다. 라우터가 정적 마운트보다 먼저다.
 - [x] **M0-07** 정상 파일, 필드 누락, 범위 밖 값 테스트가 있다. 값이 client-contract 7절과 같다.
 - [x] **M0-08** 스냅샷, 이름 하드코딩 금지, YAML 변경 반영, 파일 없음·형식 오류 테스트가 있다. 프롬프트에 호칭이 없다.
-- [ ] **M0-09** `npm run build`와 `npm run test`가 통과한다. `npm run dev`로 빈 앱이 뜬다. `/api` 프록시로 health를 호출한다. 시안 토큰이 `light`와 `dark` 두 벌이다.
-- [ ] **M0-10** 서버 스키마를 바꾸고 생성물을 갱신하지 않으면 `--check`가 실패한다.
-- [ ] **M0-11** `src/core`에 `window`나 `react` import를 넣으면 린트와 `typecheck:core`가 실패한다. 샘플은 정상 코드에 남지 않는다.
+- [x] **M0-09** `npm run build`와 `npm run test`가 통과한다. `npm run dev`로 빈 앱이 뜬다. `/api` 프록시로 health를 호출한다. 시안 토큰이 `light`와 `dark` 두 벌이다.
+- [x] **M0-10** 서버 스키마를 바꾸고 생성물을 갱신하지 않으면 `--check`가 실패한다.
+- [x] **M0-11** `src/core`에 `window`나 `react` import를 넣으면 린트와 `typecheck:core`가 실패한다. 샘플은 정상 코드에 남지 않는다.
 - [ ] **M0-12** `run.sh` 실행 뒤 두 포트가 열리고 `stop.sh`가 이 저장소의 프로세스만 끝낸다.
 - [ ] **M0-13** 격리 서버와 웹으로 스모크가 통과한다. 사용한 DB·디렉터리가 임시 경로이고 종료 때 지워진다.
 - [ ] **M0-14** 문서의 명령과 폴더 구조가 실제와 같다.
@@ -149,6 +149,8 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - 프로필의 `default_chat_model`(`LLM_CHAT_MODEL` 설정)은 프로필 API를 만드는 M1에서 추가한다.
 - 페르소나 역할 규칙(`rules.py`)은 v1에서 검증한 전문을 옮겼다. 검색·메일·모델 변경 같은 도구 절은 도구 서버가 생기는 M1(검색 규칙은 M5)에서 실제 도구 목록에 맞춰 다듬고, 그때 프롬프트 스냅샷을 다시 만든다.
 - 시스템 프롬프트의 말투 예시는 `{호칭}`을 `(호칭)`으로 보여 준다. 모델이 이를 글자 그대로 말하는지는 M1 톤 평가에서 확인한다.
+- `src/core`는 ES2023 내장만 쓴다(`tsconfig.core.json`은 DOM·Node 타입을 뺀다). 타이머·`TextDecoder`·`AbortController` 같은 전역이 필요하면 `Clock` 같은 인터페이스로 주입받는다. oxlint는 `src/core/**`에서만 브라우저 전역·`react`·`platform`·`screens` import를 막는다(`tests/core-isolation.test.ts`가 위반 샘플로 확인).
+- 웹 글꼴(Noto Sans KR)은 M0에서 불러오지 않고 시스템 글꼴로 대체한다. 오프라인 PWA에 맞는 방식(자체 호스팅)은 M6에서 정한다.
 - D7 (WebFetch 사설망 차단): M5 초반에 CLI 권한 규칙으로 가능한지 확인하고, 안 되면 자체 MCP `web_fetch`로 간다.
 - 화면 시안은 렌더링을 검증하지 않았다. M2·M3에서 화면을 구현할 때 아티팩트와 대조하며 어긋남을 기록한다.
 - 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.

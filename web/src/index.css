@@ -1,0 +1,130 @@
+:root {
+  --bg: #f3f0e8;
+  --card: #ffffff;
+  --text: #16241d;
+  --text-sub: #4a5a52;
+  --primary: #1d5b43;
+  --amber: #9c5c00;
+  --brick: #8a2615;
+  /* 시안 문서에 없는 구분선 색(카드 테두리와 같은 계열) */
+  --line: #ddd8cb;
+  --header-h: 60px;
+  --tabbar-h: 64px;
+  font-family: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0d1612;
+    --card: #17241d;
+    --text: #edeae0;
+    --text-sub: #a9b7ae;
+    --primary: #4fb58d;
+    --amber: #e3a23b;
+    --brick: #e8806b;
+    --line: #26382e;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0d1612;
+  --card: #17241d;
+  --text: #edeae0;
+  --text-sub: #a9b7ae;
+  --primary: #4fb58d;
+  --amber: #e3a23b;
+  --brick: #e8806b;
+  --line: #26382e;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.conn[data-state='connected'] {
+  color: var(--primary);
+}
+
+.conn[data-state='offline'] {
+  color: var(--brick);
+}
+
+.conn[data-state='checking'] {
+  color: var(--amber);
+}
+
+.app-main {
+  flex: 1;
+  padding: 16px;
+}
+
+.tabs {
+  display: flex;
+  height: var(--tabbar-h);
+  background: var(--card);
+  border-top: 1px solid var(--line);
+}
+
+.tab {
+  flex: 1;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -4px;
+}
+
+.tab[aria-current='page'] {
+  color: var(--primary);
+  font-weight: 700;
+}
