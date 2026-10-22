@@ -10,9 +10,11 @@ if [ ! -f "$PID_FILE" ]; then
   echo "실행 중인 run.sh가 없습니다."
   exit 0
 fi
-PID="$(cat "$PID_FILE")"
-# PID가 재사용됐을 수 있으므로 이 저장소의 run.sh인지 확인한다
-if ! kill -0 "$PID" 2>/dev/null || ! ps -p "$PID" -o command= | grep -q "run.sh"; then
+PID="$(head -n 1 "$PID_FILE")"
+STARTED="$(sed -n 2p "$PID_FILE")"
+# PID가 재사용됐을 수 있으므로 같은 프로세스인지 시작 시각으로 확인한다(PID 파일의 2행)
+if ! [[ "$PID" =~ ^[0-9]+$ ]] || ! kill -0 "$PID" 2>/dev/null ||
+  [ "$(ps -p "$PID" -o lstart= 2>/dev/null)" != "$STARTED" ]; then
   echo "run.sh(PID $PID)가 이미 끝났습니다. PID 파일을 지웁니다."
   rm -f "$PID_FILE"
   exit 0

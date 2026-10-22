@@ -36,6 +36,12 @@ for cmd in uv npm curl lsof; do
   command -v "$cmd" >/dev/null || { echo "$cmd 명령이 필요합니다." >&2; exit 1; }
 done
 
+# 이 저장소의 run.sh가 이미 떠 있으면 중복 실행하지 않는다
+if [ -f "$PID_FILE" ] && kill -0 "$(head -n 1 "$PID_FILE")" 2>/dev/null; then
+  echo "이미 실행 중입니다(PID $(head -n 1 "$PID_FILE")). 먼저 ./stop.sh 로 끄세요." >&2
+  exit 1
+fi
+
 port_in_use() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 for port in "$API_PORT" "$WEB_PORT"; do
   if port_in_use "$port"; then
@@ -43,12 +49,6 @@ for port in "$API_PORT" "$WEB_PORT"; do
     exit 1
   fi
 done
-
-# 이 저장소의 run.sh가 이미 떠 있으면 중복 실행하지 않는다
-if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-  echo "이미 실행 중입니다(PID $(cat "$PID_FILE")). 먼저 ./stop.sh 로 끄세요." >&2
-  exit 1
-fi
 
 # 의존성(처음 한 번). 웹은 package-lock.json이 마지막 설치보다 새로우면 다시 설치한다
 (cd "$ROOT/server" && uv sync --quiet)
@@ -69,7 +69,8 @@ fi
 export VITE_API_TARGET="http://127.0.0.1:$API_PORT"  # 셸에 남은 다른 값을 쓰지 않게
 
 mkdir -p "$RUN_DIR"
-echo "$$" >"$PID_FILE"
+# PID 파일: 1행 PID, 2행 시작 시각(stop.sh가 PID 재사용을 가려내는 데 쓴다)
+{ echo "$$"; ps -p "$$" -o lstart=; } >"$PID_FILE"
 
 PIDS=()
 # bash 3.2(macOS)는 set -u에서 빈 배열을 "${PIDS[@]}"로 펼치면 오류가 나므로 ${PIDS[@]+...}로 쓴다

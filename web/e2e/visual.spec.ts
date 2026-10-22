@@ -8,7 +8,11 @@ import { expect, test } from '@playwright/test'
 for (const scheme of ['light', 'dark'] as const) {
   test(`빈 앱 화면(${scheme})`, async ({ browser }, testInfo) => {
     const baseline = testInfo.snapshotPath(`app-${scheme}.png`)
-    test.skip(!existsSync(baseline) && !testInfo.config.updateSnapshots.match(/all|changed|missing/), '이 OS의 기준 이미지가 없습니다')
+    // 기준이 없는 OS에서는 건너뛴다(`npm run e2e:update`로 만들 때는 건너뛰지 않는다)
+    test.skip(
+      !existsSync(baseline) && testInfo.config.updateSnapshots !== 'all',
+      '이 OS의 기준 이미지가 없습니다',
+    )
     const context = await browser.newContext({ colorScheme: scheme })
     const page = await context.newPage()
     await page.goto('/')

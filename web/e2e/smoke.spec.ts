@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 
@@ -37,10 +37,15 @@ test.describe('스모크', () => {
     await context.close()
   })
 
-  test('E2E 서버는 임시 폴더만 쓴다', async ({ request }) => {
+  test('E2E 서버는 임시 폴더만 쓰고 실제 server/data를 건드리지 않는다', async ({ request }) => {
+    const realDb = resolve(import.meta.dirname, '../../server/data/trailtalk.db')
+    const before = existsSync(realDb) ? statSync(realDb).mtimeMs : null
     const response = await request.get('http://127.0.0.1:8100/api/health')
     expect(response.status()).toBe(200)
-    // 격리 서버는 web/.e2e/data 아래에 DB를 만든다(실제 server/data와 다른 곳)
+    // 격리 서버는 web/.e2e/data 아래에 DB를 만든다
     expect(existsSync(resolve(import.meta.dirname, '../.e2e/data/trailtalk.db'))).toBe(true)
+    // 실제 DB는 만들어지지도 바뀌지도 않는다(E2E 시작 전에 없었다면 지금도 없어야 한다)
+    const after = existsSync(realDb) ? statSync(realDb).mtimeMs : null
+    expect(after).toBe(before)
   })
 })

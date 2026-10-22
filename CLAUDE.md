@@ -15,7 +15,7 @@
 server/   FastAPI 서버(Python 3.12, uv). app/ 코드, migrations/ Alembic, personas/ 캐릭터 YAML, tests/
 web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, e2e/ Playwright
 shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
-scripts/  verify.sh 검증 게이트
+scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
 ```
 
 - 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`
