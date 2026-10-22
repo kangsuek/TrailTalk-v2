@@ -30,18 +30,12 @@ jobs:
         working-directory: web
       - name: Playwright 브라우저 캐시(E2E가 있을 때)
         if: ${{ hashFiles('web/playwright.config.ts') != '' }}
-        uses: actions/cache@v4.2.0
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-      # apt 미러가 느려 이 단계가 수십 분 매달린 적이 있어(취소된 실행 2건), 재시도·제한 시간을 둔다.
-      - name: Playwright 시스템 의존성 설치(E2E가 있을 때)
-        if: ${{ hashFiles('web/playwright.config.ts') != '' }}
-        timeout-minutes: 10
-        run: |
-          echo 'Acquire::Retries "5"; Acquire::http::Timeout "20"; Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/80-ci-retries
-          npx playwright install-deps chromium
-        working-directory: web
+      # install-deps(apt)는 느린 미러로 10분 제한에 걸린 적이 있다(런너 이미지에 Chromium 구동 라이브러리가 이미 있고
+      # 헤드리스 E2E에는 폰트·xvfb가 필요 없다). 라이브러리가 모자라 브라우저가 안 뜨면 이 단계를 되살린다.
       - name: Playwright 브라우저 설치(E2E가 있을 때)
         if: ${{ hashFiles('web/playwright.config.ts') != '' }}
         timeout-minutes: 10
