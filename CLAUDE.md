@@ -39,7 +39,7 @@ scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/
 
 - 코드 수정 전에 Spec.md·client-contract.md의 해당 절과 영향받는 기존 기능·테스트를 먼저 확인한다.
 - 기존 테스트를 삭제·skip하거나 기대값·허용 오차를 완화하려면 사용자 승인을 받는다(훅이 기존 테스트·보호 파일 수정 때 확인을 요청한다). 계약이 바뀌어 고쳐야 하면 문서 변경과 함께 하고 이유를 커밋 메시지에 적는다. 새 테스트 추가는 자유다.
-- 작업 범위는 `docs/implementation-plan.md` 작업 표의 산출물이다. 범위 밖 파일을 고쳐야 하면 멈추고 보고한다.
+- 작업 범위는 `docs/implementation-plan.md`에서 진행 중인 마일스톤의 작업 표 산출물이다. 범위 밖 파일을 고쳐야 하면 멈추고 보고한다.
 - 버그를 고칠 때는 실패하는 회귀 테스트를 먼저 추가하고 고친다. 커밋은 한 목적씩 작게 나눈다.
 - force push는 `.claude/settings.json`이 거부(deny)하고, `main` push·`git merge`·`reset --hard`·의존성 추가·업그레이드는 확인(ask)을 요청한다. 문서만 바꾸는 직접 `main` 푸시도 이 확인이 뜨며, 이는 위 예외 규칙에 따라 승인하는 자리다(코드 변경은 사용자 승인 없이 승인하지 않는다). 규칙을 우회하지 않는다. 훅은 Edit·Write·MultiEdit만 가로채고 `sed -i` 같은 Bash 수정은 막지 못하므로, 테스트·보호 파일은 도구로 고친다. 게이트 자체(`.claude/`, `scripts/verify.sh`, `.githooks/`, 워크플로)도 보호 파일이다.
 - 변경 후 `scripts/verify.sh`를 실행한다(`--quick`은 타입·린트·단위 테스트, 인자 없이는 빌드·E2E까지). `git commit` 전에는 `--quick`, `git push`·`git merge` 전에는 전체가 훅(`.claude/hooks/gate-git.py`)과 `.githooks/pre-push`로 자동 실행되고 실패하면 막힌다. 개별 명령은 다음과 같다(해당 폴더와 스크립트가 생긴 뒤부터). 서버(`server/`): `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. 웹(`web/`): `npm run typecheck`, `npm run typecheck:core`, `npm run lint`, `npm run test`, `npm run build`, `npm run gen:api -- --check`, `npm run e2e`(Playwright, 전체 모드).
