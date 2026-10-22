@@ -101,7 +101,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 대기 |
 | M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 대기 |
 | M1-07 | C | 세션 API와 SSE | `api/events.py`, `api/sessions.py`(`POST /sessions`·`/sessions/{id}/turns`·`/sessions/{id}/end`), 라우터 등록 | 대기 |
-| M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태(외부 stdio·http 항목 생성은 M5에서 새로 만든다, v1에는 http 형식만 있음). 의존성 `mcp` 추가(사용자 확인) | 대기 |
+| M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태. 의존성 `mcp` 추가(사용자 확인) | 대기 |
 | M1-09 | C | 프롬프트·기억 | `MemoryContext` 채우기(열린 아이디어·할 일·관심사), `rules.py` 도구 절을 실제 도구 목록에 맞춤, 스냅샷 갱신·차이 검토 | 대기 |
 | M1-10 | C | 계약·타입 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 반영(2.9에 `journal_status`는 M2 전까지 `null` 명시) | 대기 |
 | M1-11 | D | 웹 대화 화면 | `core/sse.ts`, `api/conversation.ts`, `screens/` 대화 화면(시작 버튼·말풍선·입력창·도구 알림·대화종료·`session_ended` 처리) | 대기 |
@@ -159,7 +159,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | M2 | 종료·추출·재시도·제목 수정·삭제, 일지 화면, 이어서 하기, 시작 화면, 마크다운 렌더링, 화면 스크린샷 기준 이미지(대화 시작·일지·설정, 라이트·다크) | 글 대화 3개의 일지가 맞게 추출, 수락하지 않은 제안 미추출 |
 | M3 | VAD·녹음·STT·문장 TTS·재생, 상태 머신, 지연 계측 | PC·폰 음성 대화, TTS 100문장 무손실, 지연 30턴 측정 |
 | M4 | 끼어들기, 오프라인 큐, 발화 병합(D2), 맞장구·첫 문장 분할, 쉬기·무발화 종료 | 비행기 모드 유실 0, 병합 15회, 60턴 지연 판정 |
-| M5 | 검색·출처, 첨부, 설정 화면, 이메일, 사용량 막대, WebFetch 차단(D7), 외부 MCP 연결(FR-25) | 도구·첨부·설정 E2E, 폰 첨부 확인, 검색 턴 지연 판정, 허용 밖 도구 호출 안 됨(가짜 외부 MCP E2E) |
+| M5 | 검색·출처, 첨부, 설정 화면, 이메일, 사용량 막대, WebFetch 차단(D7), 외부 MCP 연결(FR-25: 예시 설정 파일·`.gitignore`·허용 도구 차단 확인 포함) | 도구·첨부·설정 E2E, 폰 첨부 확인, 검색 턴 지연 판정, 허용 밖 도구 호출 안 됨(가짜 외부 MCP E2E) |
 | M6 | CSRF(D3), 안전장치, PWA, iOS Safari, 실제 산책 1회 | 보안 테스트 통과, 산책 측정 기록 |
 
 ## 6. 요구사항 추적표
@@ -203,4 +203,5 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.
 - M0에서 넘어온 약속: Linux CI 시각 비교 기준 이미지는 화면이 생기는 M2~M3에서 CI 산출물을 받아 승인해 더한다(그 전에는 Linux CI가 시각 비교를 건너뛰고 스모크 5개만 돈다). 첨부 `purge_orphans` 안전장치는 M5. `run.sh`의 `--fake`·`--phone`은 필요한 마일스톤(M3~M4)에서 추가한다.
 - D8 (외부 MCP 등록): 서버 설정 파일 직접 등록 + 도구 허용 목록, M5(2026-10-23 확정).
-- D8 후속(M5 초반 스파이크, D7과 같은 시점): 후보 HasData(원격 HTTP `https://mcp.hasdata.com/mcp`, `x-api-key` 헤더, `?apis=`로 도구 제한)를 API 키로 `tools/list`·샘플 호출해 도구 이름·인자·결과 형식·한국어 품질·지연·무료 동시 요청 1개 제한을 확인하고, `web_search` 표시 매핑과 `google_search` 이름 변경 여부를 정한다. Spec·계약에는 이 스파이크 뒤에 반영한다.
+- 외부 MCP 구현 메모: v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
+- D8 후속(M5 초반 스파이크, D7과 같은 시점): 범위는 D7, 검색 후보, 허용 밖 도구 차단, 도구 정의 지연, 이름 길이 한도다. 허용 밖 도구 차단 방식(CLI 거부·`--disallowedTools`·서버 중계)이 정해지면 Spec 5.6을 고친다. 후보 HasData(원격 HTTP `https://mcp.hasdata.com/mcp`, `x-api-key` 헤더, `?apis=`로 도구 제한)를 API 키로 `tools/list`·샘플 호출해 도구 이름·인자·결과 형식·한국어 품질·지연·무료 동시 요청 1개 제한을 확인하고, `web_search` 표시 매핑과 `google_search` 이름 변경 여부를 정한다. Spec·계약에는 이 스파이크 뒤에 반영한다.
