@@ -11,7 +11,7 @@ from app.db.migrate import alembic_config, upgrade_to_head
 from app.db.session import create_engine_for
 from app.main import create_app
 
-TABLES = {"persona", "user_profile"}
+TABLES = {"persona", "user_profile", "conversation_session", "turn", "note"}
 
 
 async def table_names(url: str) -> set[str]:
@@ -81,7 +81,14 @@ async def test_enum_check_constraints_match_models(database_url):
                 in_db = set(re.findall(r"'([^']*)'", match.group(1)))
                 assert in_db == set(column.type.enums), f"{table.name}.{column.name}"
                 checked.add(f"{table.name}.{column.name}")
-    assert "user_profile.chat_model" in checked
+    assert {
+        "user_profile.chat_model",
+        "conversation_session.mode",
+        "conversation_session.status",
+        "conversation_session.extract_status",
+        "turn.role",
+        "note.kind",
+    } <= checked
 
 
 async def test_batch_recreate_keeps_child_rows(database_url, tmp_path):

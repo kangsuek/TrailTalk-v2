@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
-from app.api import health
+from app.api import health, profile
 from app.client_config import load_client_config
 from app.config import Settings, settings
 from app.db.migrate import upgrade_to_head
@@ -51,6 +51,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
 
     api = APIRouter(prefix="/api")
     api.include_router(health.router)
+    api.include_router(profile.router)
     app.include_router(api)
 
     # 빌드된 웹 앱이 있으면 같은 서버에서 정적 파일로 서빙한다.
