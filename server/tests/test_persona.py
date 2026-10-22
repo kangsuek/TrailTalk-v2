@@ -46,7 +46,10 @@ def test_default_persona_is_valid():
         (lambda d: d["speech_style"].update(registr="오타"), "speech_style.registr"),
         (lambda d: d["voice"].update(speaking_rate="빠르게"), "voice.speaking_rate"),
         (lambda d: d.update(role="   "), "role"),
-        (lambda d: d["speech_style"].update(max_sentences_voice=True), "max_sentences_voice"),
+        (
+            lambda d: d["speech_style"].update(max_sentences_voice=True),
+            "speech_style.max_sentences_voice",
+        ),
         (lambda d: d["voice"].update(pitch=2), "voice.pitch"),
         (lambda d: d["voice"].pop("instructions"), "voice.instructions"),
         (lambda d: d["voice"].update(speaking_rate=5), "voice.speaking_rate"),
@@ -64,7 +67,9 @@ def test_invalid_persona_reports_field(persona_dir, mutate, field):
     with pytest.raises(AppError) as excinfo:
         load_persona(persona_dir, "jenny")
     assert excinfo.value.code == "persona_invalid"
-    assert field in excinfo.value.message
+    assert excinfo.value.status_code == 500
+    reported = excinfo.value.message.split("잘못된 필드: ")[-1].split(", ")
+    assert field in reported
 
 
 def test_missing_or_unsafe_persona_id(persona_dir):
@@ -72,6 +77,7 @@ def test_missing_or_unsafe_persona_id(persona_dir):
         with pytest.raises(AppError) as excinfo:
             load_persona(persona_dir, persona_id)
         assert excinfo.value.code == "persona_not_found"
+        assert excinfo.value.status_code == 404
 
 
 def test_file_name_must_match_id(persona_dir):
@@ -117,3 +123,11 @@ def test_default_persona_avoids_its_own_forbidden_style():
 def test_persona_lists_are_immutable():
     persona = load_persona(settings.persona_dir, settings.default_persona).persona
     assert isinstance(persona.personality, tuple)
+
+
+def test_unreadable_path_is_persona_invalid(persona_dir):
+    (persona_dir / "folder.yaml").mkdir()  # 파일 자리에 디렉터리
+    with pytest.raises(AppError) as excinfo:
+        load_persona(persona_dir, "folder")
+    assert excinfo.value.code == "persona_invalid"
+    assert excinfo.value.status_code == 500

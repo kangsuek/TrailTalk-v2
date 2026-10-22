@@ -38,6 +38,8 @@ def load_persona(persona_dir: Path, persona_id: str) -> LoadedPersona:
         raise AppError(
             "persona_not_found", f"페르소나를 찾을 수 없습니다: {persona_id}", 404
         ) from None
+    except OSError as exc:  # 디렉터리·권한 문제
+        raise _invalid(path, f"파일을 읽을 수 없습니다({type(exc).__name__})") from exc
 
     version = hashlib.sha256(raw).hexdigest()[:16]
     cached = _cache.get(path)

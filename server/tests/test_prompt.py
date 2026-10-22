@@ -36,6 +36,7 @@ def persona():
 def check_snapshot(name: str, actual: str) -> None:
     path = SNAPSHOT_DIR / f"{name}.txt"
     if os.environ.get("UPDATE_SNAPSHOTS"):
+        assert not os.environ.get("CI"), "CI에서는 스냅샷을 갱신할 수 없습니다"
         SNAPSHOT_DIR.mkdir(exist_ok=True)
         path.write_text(actual, encoding="utf-8")
     assert path.exists(), f"스냅샷이 없습니다. UPDATE_SNAPSHOTS=1로 만드세요: {path.name}"
@@ -148,12 +149,18 @@ def test_yaml_change_alone_changes_prompt(tmp_path, persona):
     data["name"] = "모모"
     data["speech_style"]["register"] = "차분한 존댓말"
     data["speech_style"]["max_sentences_voice"] = 3
+    data["speech_style"]["use"] = ["새표현"]
+    data["brainstorm_style"] = ["새스타일"]
+    data["examples"] = ["{호칭}, 새예시"]
     (tmp_path / "jenny.yaml").write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     changed = load_persona(tmp_path, "jenny").persona
     prompt = build_system_prompt(changed, mode="voice", now=NOW, timezone=TZ)
     assert "너의 이름: 모모" in prompt
     assert "말투: 차분한 존댓말" in prompt
     assert "3문장 이내" in prompt
+    assert "자주 쓰는 표현: 새표현" in prompt
+    assert "- 새스타일" in prompt
+    assert "- (호칭), 새예시" in prompt
     original = build_system_prompt(persona, mode="voice", now=NOW, timezone=TZ)
     assert "모모" not in original
     assert "제니" in original
