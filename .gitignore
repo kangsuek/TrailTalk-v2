@@ -1,0 +1,30 @@
+.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json
+
+# 비밀 값
+.env
+.env.*
+!.env.example
+
+# 빌드·캐시
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+playwright-report/
+test-results/
+*.log
+
+# 로컬 데이터: DB, 첨부, 음성 녹음, CLI 작업 폴더
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+server/data/
+.e2e/
+.run-fake/
