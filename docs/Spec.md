@@ -99,7 +99,7 @@
 server/   app/{api,voice,persona,llm,mcp,services,jobs,db}, personas/, migrations/, tests/
 web/      src/{core,platform,screens,api}, e2e/
 shared/   sounds/, fixtures/transitions.json, client-defaults.json
-docs/     Intent.md, Spec.md, client-contract.md, (마일스톤 계획·검증 기록)
+docs/     Intent.md, Spec.md, client-contract.md, implementation-plan.md, design/ (마일스톤 검증 기록은 필요할 때 추가)
 ```
 
 ### 4.3 계층 규칙
