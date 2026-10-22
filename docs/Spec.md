@@ -2,7 +2,7 @@
 
 이 문서는 [Intent.md](Intent.md)의 의도를 구현 가능한 명세로 풀어 쓴다. 근거는 v1 저장소(`~/pythonProject/TrailTalk/`)의 `docs/requirements-design.md`, `docs/client-contract.md`, `docs/handoff.md`와 코드다.
 
-- **v1 계승**: v1에서 동작을 확인한 규칙은 그대로 가져온다. 세부 필드·오류 코드는 v1 `client-contract.md`가 상세 기준이고, v2에서 `docs/client-contract.md`로 옮겨 정본으로 삼는다(바꾸는 규칙은 10절).
+- **v1 계승**: v1에서 동작을 확인한 규칙은 그대로 가져온다. 세부 필드·오류 코드는 [client-contract.md](client-contract.md)가 정본이다(v1 규약을 옮기고 v2 변경을 반영했다. 바꾸는 규칙은 10절).
 - **v2 변경**: v1의 한계(Intent 9절)를 푸는 항목은 `[v2]`로 표시한다.
 - **결정**: 결정 항목은 13절에 모았다.
 
@@ -48,7 +48,7 @@
 | FR-14 | 일지를 날짜별 최신순 목록으로 보고 별표·완료 표시, 제목 수정, 삭제(단건·선택)를 한다 | P1 | 계승 |
 | FR-15 | 키워드로 일지·아이디어를 검색하는 화면 검색(`GET /journal?q=`)을 만든다. 제니 도구 `search_notes`·`search_conversations`는 M1~M2에서 별도로 만든다 | P2 | v1 미구현(v1 `GET /journal`에 `q` 없음) |
 | FR-16 | 일지를 Markdown으로 내보낸다 | P2 | 계승(v1 미구현) |
-| FR-17 | 설정: 호칭, 이메일, 관심사, 보이스(미리 듣기), 말 속도, 대화 모델, 음성 원본 보관 | P1 | 계승 |
+| FR-17 | 설정: 호칭, 이메일, 관심사, 보이스(미리 듣기), 말 속도, 맞장구 켜기·끄기, 대화 모델, 음성 원본 보관, 화면 모드 | P1 | 계승 |
 | FR-18 | 주간 트렌드·행사 브리핑. 세션 시작 인사 뒤 "이번 주 소식 들을래요?"라고 묻고 사용자가 원할 때만 재생한다 | P2 | 계승(v1 미구현) |
 | FR-19 | Claude Code에서 일지를 조회하는 MCP 서버 | P2 | 계승(v1 미구현) |
 | FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`, 해외는 `search_USA`, 오류 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
@@ -190,7 +190,7 @@ v1 서버가 남긴 `turn_latency` 기록(2026-10-18~21, 실제 사용 314행 �
 
 ### 5.3 세션 상태 머신과 발화 판정
 
-상태: `idle`, `listening`, `processing`, `speaking`, `paused`, `offline`, `closing`. 이벤트·명령·전이 표는 v1 `client-contract.md` 4절과 `shared/fixtures/transitions.json`(사례 33개)를 그대로 이식하고 v2 사례를 더한다. 핵심 규칙:
+상태: `idle`, `listening`, `processing`, `speaking`, `paused`, `offline`, `closing`. 이벤트·명령·전이 표는 `client-contract.md` 6절과 `shared/fixtures/transitions.json`(사례 33개)를 그대로 이식하고 v2 사례를 더한다. 핵심 규칙:
 
 - 한 번 누르기: `idle`=시작, `speaking`/`processing`=끼어들기, `paused`=다시 듣기. 종료: 화면 아래 조작 영역의 "대화종료" 버튼(`idle`과 `closing` 외 모든 상태에 보임. 글 대화에서는 입력창 아래 버튼 줄)을 누르면 확인 창("끝내고 정리하기" / "계속 대화하기")을 거쳐 종료하고, 큰 버튼 길게 누르기는 같은 종료를 확인 없이 하는 보조 수단이다.
 - 듣기·쉬기에서 30분 무발화면 `closing`. 서버도 같은 기준(`IDLE_TIMEOUT_S`)으로 안전망을 둔다. 화면 문구의 "30분"은 설정값에서 읽는다 `[v2]`.
@@ -269,7 +269,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 
 ## 7. 서버 API
 
-모든 경로는 `/api` 아래. 상세 필드·오류 코드는 v2 `docs/client-contract.md`(v1 계승)가 정본이다.
+모든 경로는 `/api` 아래. 상세 필드·오류 코드는 [client-contract.md](client-contract.md)가 정본이다.
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
@@ -296,7 +296,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 
 **SSE 이벤트**: `transcript`(음성 턴에서만 첫 이벤트) → `turn` → (`sentence` · `tool`)* → `done` 또는 `error`. 클라이언트는 모르는 `type`·필드·`summary.kind`를 무시한다. 시작 전 오류는 SSE가 아니라 JSON 오류다. 오디오: 업로드 16kHz 모노 Opus(webm, 불가 시 WAV), 응답 문장별 MP3(base64).
 
-**v2 계약 변경(M0 이식 때 `client-contract.md`에 반영)**: SSE `sentence.speech_text`(`audio`가 `null`일 때만), `done.superseded`, 사용자 턴 `merged_from`(DB와 일지 상세 `turns[]`), 지연 보고 `ack_ms`, `turn_latency.tts_model`, 병합으로 인한 `turn_in_progress` 처리 변경(5.3), 뒷말 즉시 전송에 따른 상태 머신 전이.
+**v2 계약 변경(`client-contract.md` 0절 요약표에 반영 완료)**: SSE `sentence.speech_text`(음성 문장이 `audio: null`일 때만 값이 온다), `done.superseded`, 사용자 턴 `merged_from`(DB와 일지 상세 `turns[]`), 지연 보고 `ack_ms`와 요약 지표, `turn_latency.tts_model`, 세션 시작 응답의 `persona.ack`(맞장구 소리), 프로필 `ack_enabled`, 변경성 요청의 `X-TrailTalk` 헤더와 `csrf_rejected`, 병합으로 인한 `turn_in_progress` 처리 변경(5.3), 뒷말 즉시 전송·종료 확인·맞장구에 따른 상태 머신 이벤트와 명령.
 
 **공통 오류 코드(요약, 전체는 `client-contract.md`)**: `session_not_found`, `session_ended`, `turn_in_progress`, `turn_not_found`, `no_speech`, `audio_invalid`, `attachment_invalid`/`_too_large`, `voice_unavailable`, `stt_failed`/`_timeout`, `tts_failed`/`_timeout`, `llm_error`/`_process_exited`/`_timeout`, `note_not_found`, `invalid_range`, `session_not_ended`, `session_active`, `persona_not_found`. 클라이언트 측 코드: `network_error`, `http_error`, `stream_closed`, `bad_event`.
 
@@ -307,7 +307,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 - **대화**: 시작 전(방식 선택 음성/글, 지난 아이디어 카드, 연결 상태, 남은 토큰 막대) → 대화 중(헤더 오른쪽의 남은 토큰 막대는 시작 화면과 같은 위치, 아래 조작 영역 맨 위에 시작 화면과 같은 "음성으로/글로" 선택 버튼, 그 아래 큰 버튼 한 개와 일시 중단·대화종료 보조 버튼(글 대화는 입력창과 대화종료 버튼), 말풍선, 도구 알림, 보관한 말 수, 여러 줄 글 입력(기본 2줄)·첨부) → 정리 중("그만 기다리기") → 끝남.
 - **일지 목록**: 날짜별로 묶어 최신순으로만 보인다. 보기 전환과 정렬 선택은 없다. 상태 알약(대화 중·정리 중·실패), 선택 삭제. 진행 중인 대화는 "대화 중" 알약과 강조 테두리로 보이고, 누르면 대화 화면으로 돌아간다. 진행 중인 대화는 지울 수 없다.
 - **일지 상세**: 결론·알게 된 것·확인할 것·노트(별표·완료·수정)·인용·전문(첨부 썸네일), 제목 수정, 글/음성으로 이어서, 다시 정리, 삭제. 진행 중이지만 열려 있지 않은 대화에는 "대화 끝내기"를 보인다.
-- **설정**: 세 구역으로 나눈다. ① 내 정보: 호칭(1~20자), 이메일(`mail_ready` 표시), 관심사(최대 10개). ② 음성·대화 모델: 보이스(▶로 미리 듣기), 말 속도(0.75~1.5, 기본값으로 되돌리기), 대화 모델(haiku·sonnet·opus). ③ 보관·화면·앱: 음성 원본 30일 보관 스위치, 화면 모드(시스템 설정 따르기·라이트·다크, 이 기기에만 적용), 새 버전 적용·서버 연결 상태·캐릭터·버전. 값을 바꾸면 바로 저장하고 헤더 오른쪽에 "저장됨"을 보인다.
+- **설정**: 세 구역으로 나눈다. ① 내 정보: 호칭(1~20자), 이메일(`mail_ready` 표시), 관심사(최대 10개). ② 음성·대화 모델: 보이스(▶로 미리 듣기), 말 속도(0.75~1.5, 기본값으로 되돌리기), 맞장구 켜기·끄기, 대화 모델(haiku·sonnet·opus). ③ 보관·화면·앱: 음성 원본 30일 보관 스위치, 화면 모드(시스템 설정 따르기·라이트·다크, 이 기기에만 적용), 새 버전 적용·서버 연결 상태·캐릭터·버전. 값을 바꾸면 바로 저장하고 헤더 오른쪽에 "저장됨"을 보인다.
 - 새 버전은 자동으로 새로 고치지 않고 "새 버전 적용" 버튼으로 바꾼다. 음성 모듈은 지연 로드하며 로드 전에는 "음성으로 대화"를 막는다.
 
 ## 9. 보안과 개인정보
