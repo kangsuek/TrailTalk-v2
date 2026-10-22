@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>정리 · 끝남</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+.app{width:360px;height:800px;box-sizing:border-box;display:flex;flex-direction:column;background:#F3F0E8;color:#16241D;overflow:hidden}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hd{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #DDD8CB}
+.who{display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:50%;background:#1D5B43;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.nm{font-size:16px;font-weight:700;line-height:1.2}
+.st{font-size:13px;color:#4A5A52;line-height:1.2;margin-top:2px}
+.use{width:108px;text-align:right}
+.uh{font-size:12px;color:#4A5A52;line-height:1.2}
+.ub{height:6px;border-radius:3px;background:#DDD8CB;margin:4px 0 3px;overflow:hidden}
+.ub i{display:block;height:100%;background:#1D5B43;border-radius:3px}
+.us{font-size:11px;color:#4A5A52;line-height:1.2}
+.msgs{flex:1;min-height:0;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px}
+.u{align-self:flex-end;max-width:80%;background:#1D5B43;color:#fff;padding:10px 14px;border-radius:18px 18px 4px 18px;font-size:16px;line-height:1.55}
+.j{align-self:flex-start;max-width:88%;background:#fff;border:1px solid #DDD8CB;padding:10px 14px;border-radius:18px 18px 18px 4px;font-size:16px;line-height:1.55}
+.tabs{height:64px;flex:none;display:flex;background:#fff;border-top:1px solid #DDD8CB}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:#4A5A52;font-weight:500}
+.tab.on{color:#1D5B43;font-weight:700}
+.dock{flex:none;background:#fff;border-radius:28px 28px 0 0;box-shadow:0 -6px 24px rgba(22,36,29,.08);padding:16px 20px 12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:5px 12px;border-radius:999px;line-height:1.4}
+</style>
+</helmet>
+<div class="app">
+  <header class="hd">
+    <div class="who">
+      <div class="av" aria-hidden="true">제</div>
+      <div><div class="nm">제니</div><div class="st" style="color:#16241D;font-weight:700">대화를 마쳤어요</div></div>
+    </div>
+    <div class="use">
+      <div class="uh">남은 토큰 58%</div>
+      <div class="ub"><i style="width:58%"></i></div>
+      <div class="us">3시간 뒤 초기화</div>
+    </div>
+  </header>
+
+  <main class="msgs" style="justify-content:flex-end">
+    <div class="u">오늘은 여기까지 할게.</div>
+    <div class="j">오늘 아이디어 3개, 할 일 1개 저장했어요! 다음 산책 때 또 이어서 얘기해요!</div>
+
+    <section aria-label="오늘의 정리" style="align-self:stretch;background:#fff;border:1px solid #DDD8CB;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;font-weight:700;color:#4A5A52">오늘 저장한 것</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="pill" style="background:#DCEBE2;color:#14452F">아이디어 3</span>
+        <span class="pill" style="background:#F7E6C4;color:#6E3B00">할 일 1</span>
+        <span class="pill" style="background:#E6E2D6;color:#2F3A34">메모 0</span>
+      </div>
+      <div style="height:1px;background:#EEEADF"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px;color:#1D5B43"><path d="M12 3a9 9 0 1 0 9 9"/></svg>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700">일지를 정리하고 있어요</div>
+          <div style="font-size:13px;color:#4A5A52;line-height:1.4">요약과 할 일을 모으는 중이에요. 최대 45초.</div>
+        </div>
+      </div>
+      <div style="height:6px;border-radius:3px;background:#E6E2D6;overflow:hidden" aria-hidden="true"><i style="display:block;height:100%;width:55%;background:#1D5B43"></i></div>
+    </section>
+
+    <button style="align-self:center;border:0;background:none;color:#4A5A52;font-size:14px;text-decoration:underline;min-height:44px;padding:0 12px">그만 기다리기</button>
+  </main>
+
+  <section class="dock" aria-label="다음 행동" style="gap:10px;padding-bottom:16px">
+    <button style="width:100%;height:56px;border:0;border-radius:16px;background:#1D5B43;color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6M9 12h6"/></svg>
+      일지에서 보기
+    </button>
+    <button style="width:100%;height:52px;border:1.5px solid #C9C3B3;border-radius:16px;background:#fff;color:#16241D;font-size:16px;font-weight:500">새 대화 시작</button>
+  </section>
+
+  <nav class="tabs" aria-label="메인 메뉴">
+    <button class="tab on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>대화</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6M9 12h6"/></svg>일지</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>설정</button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

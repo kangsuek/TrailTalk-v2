@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>일지 선택 · 삭제 확인 (다크)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#0D1612}
+button{font-family:inherit;cursor:pointer}
+.app{width:360px;height:800px;box-sizing:border-box;display:flex;flex-direction:column;background:#0D1612;color:#EDEAE0;overflow:hidden;position:relative}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hd2{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;border-bottom:1px solid #26382E}
+.ttl{font-size:20px;font-weight:700}
+.tbtn{border:0;background:none;min-height:44px;padding:0 12px;font-size:15px;font-weight:700;color:#6BD0A4}
+.list{flex:1;min-height:0;overflow:hidden;padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.dh{font-size:13px;font-weight:700;color:#A9B7AE;padding:6px 2px 0}
+.row{display:flex;align-items:center;gap:12px}
+.card{flex:1;min-width:0;background:#17241D;border:1px solid #2F4237;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:left;color:#EDEAE0;box-sizing:border-box}
+.card.sel{border:2px solid #4FB58D;background:#1A2D24}
+.meta{font-size:12px;color:#A9B7AE}
+.ct{font-size:16px;font-weight:700;line-height:1.4}
+.cb{width:28px;height:28px;border-radius:50%;border:2px solid #6B7C72;background:#0D1612;flex:none;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.cb.on{background:#4FB58D;border-color:#4FB58D;color:#0A1410}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;line-height:1.4}
+.bar{flex:none;background:#141F19;border-top:1px solid #26382E;padding:10px 16px;display:flex;gap:10px}
+.tabs{height:64px;flex:none;display:flex;background:#141F19;border-top:1px solid #26382E}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:#A9B7AE;font-weight:500}
+.tab.on{color:#6BD0A4;font-weight:700}
+</style>
+</helmet>
+<div class="app">
+  <header class="hd2">
+    <button class="tbtn" style="padding-left:0;color:#EDEAE0">취소</button>
+    <h1 class="ttl" style="margin:0;font-size:17px">2개 선택됨</h1>
+    <button class="tbtn">전체 선택</button>
+  </header>
+
+  <main class="list">
+    <div class="dh">10월 22일 (목)</div>
+    <div class="row">
+      <span class="cb on" aria-label="선택됨"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke-width:3"><path d="M5 12l4 4 10-10"/></svg></span>
+      <div class="card sel">
+        <span class="meta">오전 7:12 · 38분</span>
+        <span class="ct">비 오기 전 알림 앱 아이디어</span>
+        <span style="display:flex;gap:6px"><span class="pill" style="background:#1F3A2E;color:#9ADBB9">아이디어 3</span><span class="pill" style="background:#3A2E14;color:#F0C26A">할 일 1</span></span>
+      </div>
+    </div>
+    <div class="row">
+      <span class="cb" aria-label="선택 안 됨"></span>
+      <div class="card" style="opacity:.85">
+        <span class="meta">오전 6:20 · 12분</span>
+        <span class="ct">저녁 산책 코스 고민</span>
+        <span style="font-size:13px;color:#F0C26A;font-weight:700">정리 중이라 지울 수 없어요</span>
+      </div>
+    </div>
+    <div class="dh">10월 21일 (수)</div>
+    <div class="row">
+      <span class="cb on" aria-label="선택됨"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px;stroke-width:3"><path d="M5 12l4 4 10-10"/></svg></span>
+      <div class="card sel">
+        <span class="meta">오전 6:10 · 3분</span>
+        <span class="ct">제목 없는 대화</span>
+        <span><span class="pill" style="background:#3A1E18;color:#F5B9AB">정리 실패</span></span>
+      </div>
+    </div>
+    <div class="row">
+      <span class="cb" aria-label="선택 안 됨"></span>
+      <div class="card">
+        <span class="meta">오전 6:55 · 41분</span>
+        <span class="ct">하루에 떠오른 생각 수를 세어 보기</span>
+        <span style="display:flex;gap:6px"><span class="pill" style="background:#1F3A2E;color:#9ADBB9">아이디어 3</span><span class="pill" style="background:#2A3A32;color:#CBD5CE">메모 1</span></span>
+      </div>
+    </div>
+  </main>
+
+  <div class="bar">
+    <button style="flex:1;height:52px;border:0;border-radius:16px;background:#E8806B;color:#1A0A06;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+      2개 지우기
+    </button>
+  </div>
+
+  <nav class="tabs" aria-label="메인 메뉴">
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>대화</button>
+    <button class="tab on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6M9 12h6"/></svg>일지</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>설정</button>
+  </nav>
+
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;padding:16px;box-sizing:border-box">
+    <div role="alertdialog" aria-label="삭제 확인" style="width:100%;background:#1A2822;border:1px solid #2F4237;border-radius:24px;padding:20px 18px 14px;display:flex;flex-direction:column;gap:10px;margin-bottom:64px">
+      <div style="font-size:18px;font-weight:700;line-height:1.4">대화 2개를 지울까요?</div>
+      <div style="font-size:15px;line-height:1.55;color:#A9B7AE">노트와 전문, 보관한 녹음이 모두 지워지고 되돌릴 수 없어요.</div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button style="flex:1;height:52px;border:1.5px solid #3A4F43;border-radius:16px;background:#1F2D26;color:#EDEAE0;font-size:16px;font-weight:500">취소</button>
+        <button style="flex:1;height:52px;border:0;border-radius:16px;background:#E8806B;color:#1A0A06;font-size:16px;font-weight:700">지우기</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

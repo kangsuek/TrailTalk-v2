@@ -2,6 +2,8 @@
 
 - 의도: [docs/Intent.md](docs/Intent.md)
 - 명세: [docs/Spec.md](docs/Spec.md) — 마일스톤은 12절(M0~M6)
+- 규약: [docs/client-contract.md](docs/client-contract.md) — API·SSE·상태 머신·오류 코드의 정본
+- 화면 시안: [docs/design/README.md](docs/design/README.md) — 아티팩트 링크와 소스 사본(`docs/design/*.dc.html`). 시안을 고치면 같은 커밋에서 이 폴더도 맞춘다.
 - v1 소스(참고용): `~/pythonProject/TrailTalk/`
 
 위 문서는 자동으로 불러오지 않는다(`@` import 금지). 필요한 절만 `grep -n "^#"`으로 위치를 찾아 범위를 지정해 읽는다.

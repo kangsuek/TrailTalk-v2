@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>설정 · 내 정보</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit}
+button{cursor:pointer}
+.app{width:360px;height:800px;box-sizing:border-box;display:flex;flex-direction:column;background:#F3F0E8;color:#16241D;overflow:hidden}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hd2{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #DDD8CB}
+.ttl{font-size:20px;font-weight:700}
+.body{flex:1;min-height:0;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:16px}
+.sec{background:#fff;border:1px solid #DDD8CB;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.lb{font-size:15px;font-weight:700}
+.ds{font-size:13px;line-height:1.45;color:#4A5A52}
+.in{height:48px;box-sizing:border-box;border:1.5px solid #C9C3B3;border-radius:12px;padding:0 14px;font-size:16px;color:#16241D;background:#fff;width:100%}
+.chip{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:500;padding:0 4px 0 12px;border-radius:999px;background:#E3EFE7;color:#14452F;min-height:40px}
+.chip button{border:0;background:none;color:#14452F;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}
+.tabs{height:64px;flex:none;display:flex;background:#fff;border-top:1px solid #DDD8CB}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:#4A5A52;font-weight:500}
+.tab.on{color:#1D5B43;font-weight:700}
+</style>
+</helmet>
+<div class="app">
+  <header class="hd2">
+    <h1 class="ttl" style="margin:0">설정</h1>
+    <span style="font-size:13px;font-weight:700;color:#14452F;display:flex;align-items:center;gap:4px">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M5 12l4 4 10-10"/></svg>
+      저장됨
+    </span>
+  </header>
+
+  <main class="body">
+    <section class="sec" aria-label="호칭">
+      <label class="lb" for="n">호칭</label>
+      <div class="ds">제니가 대화를 시작할 때 이렇게 불러요. 첫 인사에서만 써요.</div>
+      <input id="n" class="in" value="다니엘">
+      <div style="display:flex;justify-content:space-between" class="ds"><span>1~20자</span><span>3 / 20</span></div>
+    </section>
+
+    <section class="sec" aria-label="이메일">
+      <label class="lb" for="m">내 이메일</label>
+      <div class="ds">"이메일로 보내줘"라고 하면 이 주소로만 보내요.</div>
+      <input id="m" class="in" value="daniel@example.com">
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#14452F">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M5 12l4 4 10-10"/></svg>
+        메일 보내기 준비됐어요
+      </div>
+    </section>
+
+    <section class="sec" aria-label="관심사">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lb">관심사</span><span class="ds">4 / 10</span></div>
+      <div class="ds">대화에서 이야기를 이어 갈 때 참고해요.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span class="chip">전시<button aria-label="전시 지우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+        <span class="chip">테크<button aria-label="테크 지우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+        <span class="chip">등산<button aria-label="등산 지우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+        <span class="chip">맛집<button aria-label="맛집 지우기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input class="in" aria-label="관심사 추가" placeholder="관심사 추가 (30자 이내)" style="flex:1;width:auto">
+        <button style="height:48px;padding:0 18px;border:0;border-radius:12px;background:#1D5B43;color:#fff;font-size:15px;font-weight:700">추가</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="메인 메뉴">
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>대화</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6M9 12h6"/></svg>일지</button>
+    <button class="tab on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>설정</button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

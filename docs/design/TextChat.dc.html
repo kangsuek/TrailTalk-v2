@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>글 대화</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font-family:inherit}
+button{cursor:pointer}
+a{color:#14452F}
+.app{width:360px;height:800px;box-sizing:border-box;display:flex;flex-direction:column;background:#F3F0E8;color:#16241D;overflow:hidden}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.hd{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #DDD8CB}
+.who{display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:50%;background:#1D5B43;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.nm{font-size:16px;font-weight:700;line-height:1.2}
+.st{font-size:13px;color:#4A5A52;line-height:1.2;margin-top:2px}
+.use{width:108px;text-align:right}
+.uh{font-size:12px;color:#4A5A52;line-height:1.2}
+.ub{height:6px;border-radius:3px;background:#DDD8CB;margin:4px 0 3px;overflow:hidden}
+.ub i{display:block;height:100%;background:#1D5B43;border-radius:3px}
+.us{font-size:11px;color:#4A5A52;line-height:1.2}
+.msgs{flex:1;min-height:0;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px}
+.u{align-self:flex-end;max-width:84%;background:#1D5B43;color:#fff;padding:10px 14px;border-radius:18px 18px 4px 18px;font-size:16px;line-height:1.55}
+.j{align-self:flex-start;max-width:92%;background:#fff;border:1px solid #DDD8CB;padding:10px 14px;border-radius:18px 18px 18px 4px;font-size:16px;line-height:1.6}
+.tabs{height:64px;flex:none;display:flex;background:#fff;border-top:1px solid #DDD8CB}
+.tab{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;color:#4A5A52;font-weight:500}
+.tab.on{color:#1D5B43;font-weight:700}
+.comp{flex:none;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -6px 24px rgba(22,36,29,.08);padding:12px 12px 12px;display:flex;flex-direction:column;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;box-sizing:border-box;font-size:13px;font-weight:500;padding:0 6px 0 10px;border-radius:999px;background:#EEEADF;border:1px solid #DDD8CB;min-height:36px}
+.chip button{border:0;background:none;color:#4A5A52;width:28px;height:28px;display:flex;align-items:center;justify-content:center;padding:0}
+.ib{width:44px;height:44px;border-radius:50%;border:0;background:none;color:#16241D;display:flex;align-items:center;justify-content:center;flex:none}
+</style>
+</helmet>
+<div class="app">
+  <header class="hd">
+    <div class="who">
+      <div class="av" aria-hidden="true">제</div>
+      <div><div class="nm">제니</div><div class="st">글 대화</div></div>
+    </div>
+    <div class="use">
+      <div class="uh">남은 토큰 62%</div>
+      <div class="ub"><i style="width:62%"></i></div>
+      <div class="us">3시간 뒤 초기화</div>
+    </div>
+  </header>
+
+  <main class="msgs" style="justify-content:flex-end">
+    <div class="u" style="display:flex;flex-direction:column;gap:8px">
+      <div style="width:100%;height:112px;border-radius:12px;background:#DCEBE2;color:#14452F;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:20px;height:20px"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+        사진 자리 · trail-map.jpg
+      </div>
+      <span>이 등산로 지도에서 쉬어 갈 만한 곳 세 군데만 골라 줘.</span>
+    </div>
+
+    <div class="j">
+      <div>지도를 보니까 이런 곳이 좋아 보여요!</div>
+      <ul style="margin:6px 0 6px;padding-left:20px;display:flex;flex-direction:column;gap:2px">
+        <li><b>약수터 앞 평지</b>: 물도 마시고 앉기 편해요.</li>
+        <li><b>능선 전망대</b>: 바람이 세니 겉옷을 챙기세요.</li>
+        <li><b>갈림길 쉼터</b>: 내려올 때 한 번 더 쉬기 좋아요.</li>
+      </ul>
+      <div style="font-size:13px;color:#4A5A52">어디가 제일 끌리세요?</div>
+    </div>
+  </main>
+
+  <section class="comp" aria-label="글 입력">
+    <div style="display:flex;gap:4px;padding:4px;border-radius:999px;background:#EEEADF;width:100%;box-sizing:border-box">
+      <button style="flex:1;height:44px;border:0;border-radius:999px;background:transparent;color:#16241D;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        음성으로
+      </button>
+      <button style="flex:1;height:44px;border:0;border-radius:999px;background:#1D5B43;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg>
+        글로
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="chip">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+        trail-map2.jpg
+        <button aria-label="첨부 빼기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </span>
+      <span class="chip">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 3h9l4 4v14H6zM14 3v5h5"/></svg>
+        코스-메모.txt
+        <button aria-label="첨부 빼기"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="ib" aria-label="파일 첨부"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11l-8 8a5 5 0 0 1-7-7l8-8a3 3 0 0 1 4 4l-8 8"/></svg></button>
+      <textarea aria-label="메시지" rows="2" style="flex:1;min-width:0;height:68px;box-sizing:border-box;border:1.5px solid #C9C3B3;border-radius:20px;padding:10px 14px;font-size:16px;line-height:1.5;font-family:inherit;color:#16241D;background:#fff;resize:none">전망대로 가 볼까 하는데
+시간은 얼마나 걸릴까?</textarea>
+      <button class="ib" aria-label="보내기" style="background:#1D5B43;color:#fff"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-3-7z"/></svg></button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span style="font-size:12px;color:#4A5A52;padding:0 6px">첨부는 글과 함께 보내요 · 최대 3개</span>
+      <button aria-label="대화 종료" style="flex:none;height:44px;padding:0 16px;border:1.5px solid #C9C3B3;border-radius:999px;background:#fff;color:#16241D;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        대화종료
+      </button>
+    </div>
+  </section>
+
+  <nav class="tabs" aria-label="메인 메뉴">
+    <button class="tab on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>대화</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM9 8h6M9 12h6"/></svg>일지</button>
+    <button class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>설정</button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":360,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
