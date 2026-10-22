@@ -261,7 +261,7 @@ ID는 UUID 문자열, 시각은 UTC. 열거값은 DB CHECK 제약, 스키마 변
 | `note` | id, session_id, turn_id, kind(idea/todo/memo), content, cites, starred, done, created_at |
 | `turn_latency` | turn_id, session_id, 서버 단계 ms(upload/stt/first_token/first_queued/first_synth/synth_wait/first_sentence/done), open_llm_ms, cli_resumed, cli_age_ms, cli_abort, cancel_wait_ms, cancel_outcome, sentence_count, reply_chars, tool_count, search_used, 클라이언트 보고 ms, first_sound_notice, ack_ms `[v2]`, tts_model `[v2]` |
 | `persona` | id, yaml 경로, version(YAML 내용 해시), updated_at |
-| `user_profile` | 단일 행: nickname, email, interests[], persona_id, voice, speaking_rate, chat_model, keep_audio |
+| `user_profile` | 단일 행: nickname, email, interests[], persona_id, voice, speaking_rate, ack_enabled `[v2]`, chat_model, keep_audio |
 | `pending_upload` (기기 로컬 IndexedDB) | id, session_id, audio, recorded_at, retry_count, record_only |
 | `briefing` (P2) | id, week_start, script_text, audio_path, sources_json |
 
