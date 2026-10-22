@@ -11,9 +11,18 @@
 
 ## 작업 규칙
 
-- 자동 커밋/푸시 허용(2026-10-22 사용자 확정). 묻지 않고 커밋하고 푸시한다. 단, 매번 커밋·푸시 전에 독립 general-purpose 서브에이전트로 diff 리뷰를 하고 지적을 반영한다. 저장소는 `main` 브랜치로 초기화했다. 원격은 GitHub 계정 kangsuek의 저장소이며, 저장소 이름과 공개 여부가 정해져 원격이 설정된 뒤부터 푸시한다(그 전에는 커밋만 한다).
+- 브랜치와 병합(2026-10-22 사용자 확정): 코드 작업은 작업(`M0-03` 같은 ID) 하나당 브랜치 하나(`m0-03-config` 형식)에서 한다. 브랜치 안에서는 묻지 않고 커밋하고, 원격 브랜치에 푸시해 백업한다. 브랜치 커밋마다 리뷰하지 않고 병합 승인을 요청하기 전에 한 번 리뷰한다. `main`에는 사용자 승인 뒤에만 병합(`--no-ff`)·푸시한다. 승인을 요청하기 전에 다음 세 가지를 모두 통과시키고 결과를 보고한다: 검증 명령 전부, Playwright 실구동 검증, 독립 general-purpose 서브에이전트 diff 리뷰(지적 반영). 문서만 바꾸는 변경(`docs/` 아래 전부(시안 `docs/design/*.dc.html` 포함), `CLAUDE.md`, `README.md`)은 예외로, 사용자 승인 없이 서브에이전트 리뷰만 거쳐 `main`에 바로 커밋·푸시한다. 설정·데이터 파일(`server/personas/*.yaml`, `shared/client-defaults.json` 등)과 코드가 섞인 변경은 코드 규칙을 따른다. 마일스톤 종료 확인은 그 마일스톤 마지막 작업의 `main` 병합 승인과 겸한다.
+- 원격은 GitHub 계정 kangsuek의 `TrailTalk-v2`이고 기본 브랜치는 `main`이다.
 - 웹 앱(PWA)이므로 실제 동작 검증은 Playwright로 브라우저(Chromium)를 띄워 한다. 단위 테스트만으로 끝내지 않는다. 가짜 마이크는 `--use-fake-device-for-media-stream`과 wav 파일을 쓴다.
 - 화면 캡처도 Playwright 브라우저로 한다. OS 좌표 자동화(osascript)는 쓰지 않는다.
 - 검증용 서버를 띄울 때는 DB, 첨부, 오디오, CLI 작업 폴더를 모두 임시 경로로 바꾼다(서버 시작 때 `purge_orphans`가 DB에 없는 첨부를 지운다). 사용자의 실제 서버(포트 8000)와 DB는 건드리지 않는다. 실제 Claude CLI와 OpenAI 호출은 사용량과 과금이 있으니 필요할 때만 쓰고 알린다.
 - 캐릭터 이름·성격·말투·보이스·안내 문구는 코드가 아닌 `server/personas/*.yaml`에만 둔다.
 - 마일스톤 하나를 구현·검증하고 사용자 확인을 받은 뒤 다음으로 넘어간다.
+
+## 개발 규칙
+
+- 코드 수정 전에 Spec.md·client-contract.md의 해당 절과 영향받는 기존 기능·테스트를 먼저 확인한다.
+- 기존 테스트는 임의로 삭제하거나 완화하지 않는다. 계약이 바뀌어 고쳐야 하면 문서 변경과 함께 하고 이유를 커밋 메시지에 적는다.
+- 변경 후 검증 명령을 모두 실행한다(해당 폴더와 스크립트가 생긴 뒤부터). 서버(`server/`): `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. 웹(`web/`): `npm run typecheck`, `npm run typecheck:core`, `npm run lint`, `npm run test`, `npm run build`, `npm run gen:api -- --check`.
+- 테스트나 검증이 실패하면 구현을 멈추고 원인과 영향 범위를 보고한 뒤 지시를 기다린다.
+- `main` 병합 승인을 요청할 때 변경 요약(`git diff --stat`과 핵심 변경), 검증 결과, 서브에이전트 리뷰 결과를 함께 보고한다. 문서만 바꾼 직접 커밋은 커밋 뒤 보고한다.
