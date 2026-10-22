@@ -50,8 +50,8 @@
 | M0-10 | OpenAPI→TS 타입 생성 | `app/openapi.py`, `web/scripts/gen-api.mjs`(openapi-typescript), `npm run gen:api`와 `npm run gen:api -- --check`, 생성물 `web/src/api/schema.d.ts` 커밋 | 대기 |
 | M0-11 | core 비의존 린트 | `web/src/core/`를 두 겹으로 강제한다. (1) oxlint 오버라이드: `src/core/**`에서 브라우저 전역(`window`, `document`, `navigator`, `localStorage`, `indexedDB`, `fetch` 등)과 `react`, `../platform` import 금지. (2) `tsconfig.core.json`(lib에서 DOM 제외)으로 `npm run typecheck:core`. 타이머·`TextDecoder`·`AbortController`처럼 DOM 밖에서도 필요한 전역은 허용 목록이나 주입 규칙을 정한다. 착수 첫 단계에서 oxlint `overrides`가 `src/core/**`에만 걸리는지 확인하고, 안 되면 대안을 정해 사용자에게 알린다. 위반 샘플 파일로 둘 다 실패함을 확인하는 테스트 | 대기 |
 | M0-12 | 실행 스크립트 | `run.sh`(서버 8000 + 웹 5173), `stop.sh`(PID 파일로 이 저장소가 띄운 프로세스만 종료, 사용자 8000 서버와 구별). `--fake`·`--phone`은 해당 마일스톤에서 추가 | 대기 |
-| M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 대기 |
-| M0-14 | 문서 정합 | `CLAUDE.md`(폴더 구조·명령·규칙), 이 문서의 대시보드, client-contract 7절과 설정값 파일의 일치 확인 | 대기 |
+| M0-13 | E2E 스모크 | Playwright(Chromium). 임시 DB·임시 경로의 격리 서버(포트 8100)와 웹을 띄워, 앱이 뜨고 서버 연결 "연결됨"이 보이는지 확인. 스크린샷 비교(`toHaveScreenshot`) 틀을 빈 앱 화면 1~2장으로 만든다(핵심 화면 기준 이미지는 M2~M3). 기준 이미지는 CI와 같은 Linux 환경에서 만든다(맥에서 만들면 글꼴 렌더링이 달라 CI에서 실패하므로 CI 산출물을 받아 승인하거나 Docker로 만든다). CI에는 Playwright 브라우저 설치 단계가 이미 조건부로 들어 있다. 사용자의 실제 서버(8000)와 DB는 건드리지 않는다 | 대기 |
+| M0-14 | 문서 정합 | `CLAUDE.md`(폴더 구조·명령·개발 규칙·`verify.sh` 사용), 이 문서의 대시보드, client-contract 7절과 설정값 파일의 일치 확인 | 대기 |
 | M0-15 | 검증 자동화 | `scripts/verify.sh`(`--quick`), `.claude/settings.json`(deny·ask 규칙과 PreToolUse 훅 2개), `.claude/hooks/{guard-protected,gate-git}.py`, `.githooks/pre-push`, `.github/workflows/verify.yml`, CLAUDE.md 개발 규칙. 스크린샷 비교는 M0-13에서 틀만, 핵심 화면 기준 이미지는 M2~M3 | 진행 중 |
 
 디자인 시안 사본은 이미 저장소에 있다(커밋 fd642e8).

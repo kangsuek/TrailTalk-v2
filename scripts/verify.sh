@@ -7,7 +7,11 @@ set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUICK=0
-[ "${1:-}" = "--quick" ] && QUICK=1
+case "${1:-}" in
+  "") ;;
+  --quick) QUICK=1 ;;
+  *) echo "사용법: scripts/verify.sh [--quick]" >&2; exit 2 ;;
+esac
 
 step() { # step <이름> <폴더> <명령...>
   local name="$1" dir="$2"
@@ -34,8 +38,10 @@ web_step() { # web_step <npm 스크립트> [추가 인자...]
   shift
   if has_npm_script "$script"; then
     step "web: npm run $script $*" web npm run "$script" ${1:+-- "$@"}
-  else
+  elif [ -f "$ROOT/web/package.json" ]; then
     skip "web: $script" "web/package.json에 스크립트 없음"
+  else
+    skip "web: $script" "web/package.json 없음"
   fi
 }
 
