@@ -105,9 +105,11 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 ### 2.5 도구 이름
 
-`name`은 다음 중 하나다: `send_email`, `save_note`, `search_notes`, `search_conversations`(지난 대화 전체의 주고받은 말 찾기), `summarize_session`, `pause_session`, `end_session`, `set_nickname`, `set_model`, `web_search`, `web_fetch`.
+`name`은 다음 중 하나이거나, `[v2]` 외부 MCP 도구(M5)의 `mcp__<서버>__<도구>`다: `send_email`, `save_note`, `search_notes`, `search_conversations`(지난 대화 전체의 주고받은 말 찾기), `summarize_session`, `pause_session`, `end_session`, `set_nickname`, `set_model`, `web_search`, `web_fetch`.
 
 `web_search`는 내장 웹 검색이거나 검색 API 도구 `search_USA`(해외·영어권)·`search_naver`(국내 뉴스)다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
+
+`[v2]` 외부 MCP 도구(M5)는 화면에 도구 이름 그대로 "<도구> 사용 중"으로 보이고(`mcp__` 접두사 이름은 외부 도구로 판단), `end`의 `summary`는 항상 `result` kind(결과 문자열)다. 클라이언트는 모르는 이름도 이벤트를 버리지 않는다.
 
 ### 2.6 도구 결과 요약
 
