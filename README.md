@@ -21,6 +21,17 @@ docs/     문서
 
 [uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
 
+## 실행
+
+```bash
+./run.sh            # 서버(8000)와 웹(5173)을 띄우고 브라우저를 연다. DB는 server/data/trailtalk.db
+./run.sh --tmp      # 임시 데이터(.run/tmp)로 실행(실제 DB를 건드리지 않는 확인용)
+./run.sh --no-open  # 브라우저를 열지 않는다
+./stop.sh           # 다른 터미널에서 끄기(이 저장소의 run.sh만 종료). Ctrl+C로도 끌 수 있다
+```
+
+포트는 `API_PORT`, `WEB_PORT` 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
+
 ## 검증
 
 ```bash
