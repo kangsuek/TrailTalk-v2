@@ -16,7 +16,7 @@
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
-| M1 | 글 대화 | 진행 중 | 2/14 | 2026-10-23 | - | - |
+| M1 | 글 대화 | 진행 중 | 3/14 | 2026-10-23 | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 A `m1-a-data-profile`(M1-03 프로필 API 진행 중)
-다음 작업: 묶음 A 검증·리뷰 뒤 병합 승인 요청
+현재 작업: 묶음 A `m1-a-data-profile`(구현 완료, 검증·리뷰 중)
+다음 작업: 묶음 A 병합 승인 요청
 
 ## 3. M0 기반
 
@@ -96,7 +96,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 |---|---|---|---|---|
 | M1-01 | A | 모델·리비전 0002 | `db/models.py`에 `conversation_session`·`turn`·`note`(열거 CHECK), `migrations/versions/0002_*.py`, `test_migrations.py`의 `TABLES`·열거 CHECK 시험 갱신, `test_conversation_models.py` | 완료 |
 | M1-02 | A | 설정 키 | `config.py`: `claude_cli_path`, `claude_code_oauth_token`, `cli_turn_timeout_s`, `llm_chat_model`, `internal_base_url`, `cli_env_passthrough`. 테스트는 `Settings(_env_file=None)` | 완료 |
-| M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`), 오류 코드·문서 9절 갱신 | 대기 |
+| M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`). 오류 코드는 기존 `persona_not_found`·`validation_error`를 쓴다. 생성 타입 `schema.d.ts` 갱신 | 완료 |
 | M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만) | 대기 |
 | M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 대기 |
 | M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 대기 |
@@ -115,7 +115,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 
 - [x] **M1-01** 빈 DB에서 `upgrade head`가 성공하고 모델과 마이그레이션이 일치한다. 열거 CHECK가 모델과 같다.
 - [x] **M1-02** 새 설정 키 기본값·환경 변수 시험이 있고 실제 `.env`를 읽지 않는다.
-- [ ] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다.
+- [x] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다. `voice` 이름 검사는 `GET /api/voices`가 생기는 M3로 미룬다(client-contract 4.1에 명시).
 - [ ] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
 - [ ] **M1-05** 가짜 CLI로 위 시험이 모두 통과하고 시간 민감 시험은 3번 연속 통과한다. 외부 서버 목록이 비면 CLI 인자·mcp 설정이 v1과 같다는 시험과 토큰·`headers` 값이 인자·로그에 없다는 시험이 있다.
 - [ ] **M1-06** 사용자 턴이 먼저, 답변은 문장마다 커밋되고 서버를 중간에 죽여도 받은 문장이 남는다. 무발화 30분(시험은 짧게 덮어씀)에 세션이 끝난다. 서버 kill·무발화 시험은 3번 연속 통과한다.
