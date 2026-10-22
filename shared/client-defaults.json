@@ -1,0 +1,23 @@
+{
+  "vad": {
+    "speech_threshold": 0.5,
+    "silence_threshold": 0.25,
+    "playback_speech_threshold": 0.8,
+    "playback_silence_threshold": 0.65,
+    "end_of_speech_silence_ms": 1800,
+    "min_speech_ms": 300
+  },
+  "session": {
+    "idle_timeout_minutes": 30
+  },
+  "audio": {
+    "upload": { "codec": "opus", "sample_rate_hz": 16000, "channels": 1 },
+    "response": { "codec": "mp3" }
+  },
+  "turn": {
+    "ack_delay_ms": 300,
+    "ack_min_speech_ms": 1000,
+    "ack_overlap_max_ms": 300,
+    "merge_min_speech_ms": 600
+  }
+}

@@ -31,6 +31,7 @@
 ### 1.1 경로와 타입
 
 - 모든 서버 API는 `/api` 아래에 둔다(예: `/api/health`, `/api/sessions`).
+- `GET /api/health`: DB에 닿으면 200 `{"status":"ok","db":"ok"}`, 닿지 않으면 503 `db_unavailable`(9절 형식). CSRF 검사와 인증이 없다.
 - 타입은 FastAPI OpenAPI 스키마에서 생성한다. 서버 `python -m app.openapi`, 웹 openapi-typescript(`npm run gen:api` → `web/src/api/schema.d.ts`).
 - 턴 SSE는 POST 응답이라 `EventSource` 대신 스트림을 직접 읽는다. 파서는 `web/src/core/sse.ts`다. 줄 끝은 `\r\n`·`\r`·`\n`만 인정하고, 빈 줄로 끝나지 않은 마지막 메시지는 버린다.
 
