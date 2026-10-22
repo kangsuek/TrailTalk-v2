@@ -6,6 +6,7 @@
   --primary: #1d5b43;
   --amber: #b26a00;
   --brick: #8a2615;
+  /* 시안 문서에 없는 구분선 색(카드 테두리와 같은 계열) */
   --line: #ddd8cb;
   --header-h: 60px;
   --tabbar-h: 64px;
@@ -116,6 +117,11 @@ body {
   font-weight: 500;
   color: var(--text-sub);
   cursor: pointer;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -4px;
 }
 
 .tab[aria-current='page'] {

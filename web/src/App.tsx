@@ -14,10 +14,18 @@ function useConnection(): Connection {
   const [connection, setConnection] = useState<Connection>('checking')
   useEffect(() => {
     const controller = new AbortController()
-    const check = () =>
-      void fetchHealth(controller.signal).then((result) => {
-        if (!controller.signal.aborted) setConnection(nextConnection(result))
-      })
+    let inFlight = false // 이전 확인이 끝나기 전에는 새로 보내지 않는다
+    const check = () => {
+      if (inFlight) return
+      inFlight = true
+      void fetchHealth(controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) setConnection(nextConnection(result))
+        })
+        .finally(() => {
+          inFlight = false
+        })
+    }
     check()
     const timer = window.setInterval(check, HEALTH_INTERVAL_MS)
     return () => {
