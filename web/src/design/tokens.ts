@@ -6,7 +6,7 @@ export const LIGHT = {
   text: '#16241D',
   textSub: '#4A5A52',
   primary: '#1D5B43',
-  amber: '#B26A00',
+  amber: '#9C5C00',
   brick: '#8A2615',
 } as const
 
