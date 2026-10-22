@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Persona, UserProfile
@@ -17,7 +18,14 @@ async def get_or_create_profile(db: AsyncSession) -> UserProfile:
     if profile is None:
         profile = UserProfile(id=PROFILE_ID, interests=[])
         db.add(profile)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # 다른 요청이 먼저 만들었다(첫 GET과 PUT이 동시에 온 경우). 그 행을 쓴다
+            await db.rollback()
+            profile = await db.get(UserProfile, PROFILE_ID)
+            if profile is None:
+                raise
     return profile
 
 

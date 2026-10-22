@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator
@@ -64,9 +65,20 @@ class Settings(BaseSettings):
     @field_validator("internal_base_url")
     @classmethod
     def _valid_internal_base_url(cls, value: str) -> str:
-        if not value.startswith(("http://", "https://")):
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"}:
             raise ValueError(f"internal_base_url은 http(s) 주소여야 합니다: {value}")
+        # CLI가 도구 서버 토큰을 실어 부르는 주소이므로 루프백만 허용한다(밖으로 새지 않게)
+        if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise ValueError(f"internal_base_url은 루프백 주소여야 합니다: {value}")
         return value.rstrip("/")
+
+    @field_validator("claude_code_oauth_token", mode="before")
+    @classmethod
+    def _blank_token_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("cli_env_passthrough", mode="before")
     @classmethod

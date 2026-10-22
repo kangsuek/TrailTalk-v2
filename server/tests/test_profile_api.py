@@ -156,3 +156,48 @@ def test_failed_put_changes_nothing(client):
     put(client, nickname="지은")
     assert put(client, nickname="새이름", speaking_rate=9).status_code == 422
     assert client.get("/api/profile").json()["nickname"] == "지은"
+
+
+def test_failed_persona_check_keeps_other_fields_unchanged(client):
+    """persona 404가 나면 같은 요청의 다른 필드도 바뀌지 않는다(원자성)."""
+    put(client, nickname="지은")
+    response = put(client, nickname="바뀌면 안 됨", persona_id="nobody")
+    assert response.status_code == 404
+    assert client.get("/api/profile").json()["nickname"] == "지은"
+
+
+def _db_rows(app, sql: str):
+    url = app.state.settings.database_url.replace("+aiosqlite", "")
+    with create_engine(url).connect() as conn:
+        return conn.execute(text(sql)).all()
+
+
+def test_put_persona_id_creates_persona_row_and_refreshes_version(client, app):
+    from app.persona.loader import load_persona
+
+    version = load_persona(app.state.settings.persona_dir, "jenny").version
+    assert put(client, persona_id="jenny").status_code == 200
+    rows = _db_rows(app, "SELECT id, version FROM persona")
+    assert [(r.id, r.version) for r in rows] == [("jenny", version)]
+
+    url = app.state.settings.database_url.replace("+aiosqlite", "")
+    with create_engine(url).begin() as conn:
+        conn.execute(text("UPDATE persona SET version = 'stale'"))
+    assert put(client, persona_id="jenny").status_code == 200
+    assert _db_rows(app, "SELECT version FROM persona")[0].version == version
+
+
+def test_persona_id_null_clears_the_stored_value(client, app):
+    put(client, persona_id="jenny")
+    assert _db_rows(app, "SELECT persona_id FROM user_profile")[0].persona_id == "jenny"
+    put(client, persona_id=None)
+    assert _db_rows(app, "SELECT persona_id FROM user_profile")[0].persona_id is None
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+def test_voice_rejects_blank(client, value):
+    assert put(client, voice=value).status_code == 422
+
+
+def test_voice_is_trimmed(client):
+    assert put(client, voice="  nova  ").json()["voice"] == "nova"

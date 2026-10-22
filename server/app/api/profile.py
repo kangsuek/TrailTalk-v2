@@ -39,6 +39,7 @@ Nickname = Annotated[
     str, AfterValidator(_stripped), Field(min_length=1, max_length=20), AfterValidator(_one_line)
 ]
 Interest = Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length=30)]
+Voice = Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length=100)]
 
 
 class ProfileResponse(BaseModel):
@@ -65,7 +66,9 @@ class ProfileUpdate(BaseModel):
     email: Annotated[str, AfterValidator(_stripped), Field(max_length=254)] | None = None
     interests: list[Interest] | None = None
     persona_id: str | None = None
-    voice: Annotated[str, Field(min_length=1, max_length=100)] | None = None
+    voice: Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length=100)] | None = (
+        None
+    )
     speaking_rate: Annotated[float, Field(ge=0.75, le=1.5)] | None = None
     ack_enabled: StrictBool | None = None
     keep_audio: StrictBool | None = None

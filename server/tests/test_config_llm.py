@@ -50,3 +50,27 @@ def test_oauth_token_is_not_shown_in_repr():
 def test_invalid_llm_settings_are_rejected(field, value):
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **{field: value})
+
+
+@pytest.mark.parametrize(
+    "url", ["http://127.0.0.1:8000", "http://localhost:8100", "http://[::1]:8000"]
+)
+def test_internal_base_url_accepts_loopback_only(url):
+    assert Settings(_env_file=None, internal_base_url=url).internal_base_url == url
+
+
+@pytest.mark.parametrize(
+    "url", ["http://example.com", "http://192.168.0.5:8000", "https://tail.ts.net", "http://"]
+)
+def test_internal_base_url_rejects_non_loopback(url):
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, internal_base_url=url)
+
+
+def test_blank_oauth_token_means_no_token(tmp_path, monkeypatch):
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    assert Settings(_env_file=None, claude_code_oauth_token="").claude_code_oauth_token is None
+    assert Settings(_env_file=None, claude_code_oauth_token="  ").claude_code_oauth_token is None
+    env = tmp_path / ".env"
+    env.write_text("CLAUDE_CODE_OAUTH_TOKEN=\n", encoding="utf-8")
+    assert Settings(_env_file=env).claude_code_oauth_token is None
