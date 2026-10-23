@@ -70,7 +70,7 @@ def test_tool_call_order_and_input():
     assert started.tool_use_id == called.tool_use_id == finished.tool_use_id
     assert called.input["kind"] == "idea"
     assert finished.summary == {"kind": "result", "result": "저장 완료"}
-    assert tool_turn[-1].text.endswith(text_of(tool_turn)[-10:])
+    assert tool_turn[-1].text == text_of(tool_turn)  # 도구를 쓴 턴도 최종 글은 델타의 합
 
 
 def test_unknown_tool_result_has_no_summary():
