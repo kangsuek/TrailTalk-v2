@@ -522,3 +522,18 @@ def test_search_notes_reminds_that_notes_are_reference_data(mcp):
 )
 def test_rejects_more_proxy_headers(mcp, header):
     assert mcp.request("tools/list", extra_headers={header: "203.0.113.7"}).status_code == 403
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "똑똑한 모델 말고 빠른 모델로 바꿔줘",  # 거부한 방향이 함께 있다
+        "이 모델 너무 빠른데 이상해",  # 불평 맥락
+        "똑똑한 모델이나 빠른 모델 중에 뭐가 좋아?",  # 방향이 둘이라 모호하다
+    ],
+)
+def test_set_model_rejects_negated_or_ambiguous_directions(mcp, client, text):
+    set_user_text(mcp, client, text)
+    for model in ("haiku", "opus"):
+        assert mcp.call("set_model", model=model)["isError"]
+    assert chat_model(client) is None

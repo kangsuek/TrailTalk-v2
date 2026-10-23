@@ -58,6 +58,8 @@ _MODEL_HINTS = {
     "sonnet": ("기본", "균형", "보통"),
     "opus": ("똑똑한", "똑똑하게"),
 }
+# 이 말이 있으면 방향 말이 거부·불평일 수 있어 이름 없는 모델 변경을 받지 않는다
+_NEGATIONS = ("말고", "말아", "아니", "싫", "그만", "별로", "이상")
 _NICKNAME_MIN_CHARS = 2  # 님·씨를 뗀 호칭이 이보다 짧으면 거의 모든 발화에 들어 있어 근거가 못 된다
 # 지난 대화 전문 검색(search_conversations)
 _CONVO_HITS = 8  # 찾은 말 최대 건수(최신순)
@@ -396,7 +398,8 @@ def build_mcp_server(app) -> MCPServer:
                     hinted = {
                         m for m, words in _MODEL_HINTS.items() if any(w in said for w in words)
                     }
-                    if "모델" not in said or not hinted:
+                    negated = any(w in said for w in _NEGATIONS)
+                    if "모델" not in said or len(hinted) != 1 or negated:
                         raise ToolError(
                             "사용자가 이번에 모델을 말했을 때만 바꿀 수 있습니다"
                             "(모델 이름, 또는 '빠른 모델'·'똑똑한 모델' 같은 말)."

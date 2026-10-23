@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy import text as sql_text
 
 from app.api.events import parse_sse_data
 from app.db.models import (
@@ -798,3 +799,27 @@ def test_closing_message_uses_the_persona_the_session_started_with(
         closing = client.post(f"/api/sessions/{session_id}/end").json()["closing"]
     assert closing == data["closing"]["nothing"]
     assert closing != "미나의 마무리 인사예요."
+
+
+def test_end_falls_back_to_default_persona_when_session_persona_file_is_gone(api):
+    """세션을 시작한 페르소나 파일이 사라져도 /end는 이미 끝난 세션의 마무리 응답을 준다."""
+    session_id = start(api)["session"]["id"]
+
+    async def point_to_missing_persona(db):
+        await db.execute(
+            sql_text(
+                "INSERT INTO persona (id, yaml_path, version, updated_at) "
+                "VALUES ('ghost', 'ghost.yaml', 'x', '2026-10-23 00:00:00.000000')"
+            )
+        )
+        await db.execute(
+            sql_text("UPDATE conversation_session SET persona_id = 'ghost' WHERE id = :id"),
+            {"id": session_id},
+        )
+        await db.commit()
+
+    load(api, point_to_missing_persona)
+    response = api.post(f"/api/sessions/{session_id}/end")
+    assert response.status_code == 200
+    persona = load_persona(api.fake_cli.settings.persona_dir, "jenny").persona
+    assert response.json()["closing"] == persona.closing.nothing
