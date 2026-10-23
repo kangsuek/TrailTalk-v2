@@ -106,23 +106,35 @@ def start_error(exc: AppError) -> AppError:
 
 
 async def _set_status(
-    db: AsyncSession, session_id: str, status: SessionStatus, ended_at: datetime | None = None
-) -> None:
-    """상태를 바꾼다. 이미 끝난 세션은 건드리지 않는다(종료 요청과 턴이 겹쳐도 ended를 지킨다).
+    db: AsyncSession,
+    session_id: str,
+    status: SessionStatus,
+    ended_at: datetime | None = None,
+    idle_cutoff: datetime | None = None,
+) -> int:
+    """상태를 바꾸고 바뀐 행 수를 돌려준다. 이미 끝난 세션은 건드리지 않는다(종료 요청과 턴이
+    겹쳐도 ended를 지킨다).
 
-    ended_at: 끝난 시각(기본은 지금). 무발화 종료는 마지막 활동 시각을 넘긴다."""
+    ended_at: 끝난 시각(기본은 지금). 무발화 종료는 마지막 활동 시각을 넘긴다.
+    idle_cutoff: 무발화 종료용. cutoff 이후에 쓴 턴이 있으면(감시가 대상을 고른 뒤 말을 걸었다)
+    같은 문장 안에서 건너뛴다. 확인과 쓰기 사이에 끼어드는 경쟁이 없다."""
     values: dict = {"status": status}
     if status is SessionStatus.ENDED:
         values["ended_at"] = ended_at or utcnow()
-    await db.execute(
-        update(ConversationSession)
-        .where(
-            ConversationSession.id == session_id,
-            ConversationSession.status != SessionStatus.ENDED,
-        )
-        .values(**values)
-        .execution_options(synchronize_session=False)
+    query = update(ConversationSession).where(
+        ConversationSession.id == session_id,
+        ConversationSession.status != SessionStatus.ENDED,
     )
+    if idle_cutoff is not None:
+        spoke_after = (
+            select(Turn.id)
+            .where(Turn.session_id == ConversationSession.id, Turn.created_at >= idle_cutoff)
+            .correlate(ConversationSession)
+            .exists()
+        )
+        query = query.where(~spoke_after)
+    result = await db.execute(query.values(**values).execution_options(synchronize_session=False))
+    return result.rowcount
 
 
 async def get_session(db: AsyncSession, session_id: str) -> ConversationSession:
@@ -266,7 +278,10 @@ async def _discard_new_session(
     app: FastAPI, db: AsyncSession, session_id: str, cli_session_id: str | None
 ) -> None:
     await db.rollback()
-    await teardown(app, session_id, cli_session_id)
+    try:
+        await teardown(app, session_id, cli_session_id)
+    except Exception:  # 정리가 실패해도 빈 세션은 지운다(남으면 active로 떠돈다)
+        logger.exception("시작 실패 세션의 CLI 정리 실패(session=%s)", session_id)
     await db.execute(delete(ConversationSession).where(ConversationSession.id == session_id))
     await db.commit()
 
@@ -276,13 +291,21 @@ async def end_session(
     db: AsyncSession,
     convo: ConversationSession,
     ended_at: datetime | None = None,
-) -> None:
+    idle_cutoff: datetime | None = None,
+) -> bool:
     """세션을 끝낸다. 이미 끝났으면 정리만 다시 한다(멱등). ended_at: 끝난 시각(기본은 지금).
+
+    idle_cutoff: 무발화 종료에서만 준다. 그 뒤에 말을 건 세션이면 끝내지 않고 False를 돌려준다
+    (CLI도 닫지 않는다). 그 밖에는 True.
 
     정리(CLI 닫기)는 턴 잠금을 쥐고 한다. 일지 정리(추출)와 다시 열기는 M2에서 더한다.
     """
-    await _set_status(db, convo.id, SessionStatus.ENDED, ended_at)
+    changed = await _set_status(db, convo.id, SessionStatus.ENDED, ended_at, idle_cutoff)
     await db.commit()
+    if idle_cutoff is not None and changed == 0:
+        await db.refresh(convo)
+        if convo.status is not SessionStatus.ENDED:
+            return False  # 그사이 말을 걸었다
     runtime = app.state.runtimes.ensure(convo.id)
     await app.state.llm.close(convo.id)  # 진행 중인 턴이 있으면 여기서 끊긴다
     locked = False
@@ -296,11 +319,12 @@ async def end_session(
     try:
         await db.refresh(convo)  # 턴 중에 바뀐 cli_session_id·상태를 다시 읽는다
         if convo.status is not SessionStatus.ENDED:
-            return
+            return True
         await teardown(app, convo.id, convo.cli_session_id)
     finally:
         if locked:
             runtime.turn_lock.release()
+    return True
 
 
 def check_turn_allowed(app: FastAPI, convo: ConversationSession) -> None:

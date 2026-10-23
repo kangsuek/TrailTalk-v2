@@ -205,3 +205,4 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - D8 (외부 MCP 등록): 서버 설정 파일 직접 등록 + 도구 허용 목록, M5(2026-10-23 확정).
 - 외부 MCP 구현 메모(M5): 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체로 넓히고 stderr뿐 아니라 CLI 결과의 `error_message`에도 적용한다. v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
 - D8 후속(M5 초반 스파이크, D7과 같은 시점): 범위는 D7, 검색 후보, 허용 밖 도구 차단, 도구 정의 지연, 이름 길이 한도다. 허용 밖 도구 차단 방식(CLI 거부·`--disallowedTools`·서버 중계)이 정해지면 Spec 5.6을 고친다. 후보 HasData(원격 HTTP `https://mcp.hasdata.com/mcp`, `x-api-key` 헤더, `?apis=`로 도구 제한)를 API 키로 `tools/list`·샘플 호출해 도구 이름·인자·결과 형식·한국어 품질·지연·무료 동시 요청 1개 제한을 확인하고, `web_search` 표시 매핑과 `google_search` 이름 변경 여부를 정한다. Spec·계약에는 이 스파이크 뒤에 반영한다.
+- SSE keep-alive(heartbeat): 도구가 오래 걸릴 때 Tailscale 터널 등이 유휴 연결을 끊을 수 있다. 폰 접속과 지연을 재는 M3~M4에서 확인하고 필요하면 주기적 주석 이벤트를 넣는다.

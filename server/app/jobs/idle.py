@@ -72,8 +72,13 @@ async def sweep_idle(app: FastAPI, now: datetime | None = None) -> list[str]:
                 convo = await db.get(ConversationSession, session_id)
                 if convo is None:
                     continue
-                # 끝난 시각은 마지막 활동 시각이다(서버가 꺼져 있던 동안이 끼어들지 않게)
-                await conversation.end_session(app, db, convo, ended_at=idle[session_id])
+                # 끝난 시각은 마지막 활동 시각이다(서버가 꺼져 있던 동안이 끼어들지 않게).
+                # 확인한 뒤 말을 걸었다면 end_session이 쓰기에서 건너뛴다(False)
+                done = await conversation.end_session(
+                    app, db, convo, ended_at=idle[session_id], idle_cutoff=cutoff
+                )
+                if done is False:
+                    continue
         except Exception:
             logger.exception("무발화 세션 종료 실패(session=%s)", session_id)
             continue

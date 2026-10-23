@@ -140,3 +140,29 @@ def test_session_spoken_to_during_sweep_is_kept(make, monkeypatch):
         assert sweep(api, 31) == []
         assert calls == [None, session_id]
         assert session_row(api, session_id).status is SessionStatus.ACTIVE
+
+
+def test_end_is_skipped_atomically_when_the_user_spoke_after_the_cutoff(make):
+    """감시가 대상을 고른 뒤 발화가 들어왔다면, 끝내기 쓰기 자체가 그 세션을 건너뛴다."""
+    from app.services import conversation
+
+    with make() as api:
+        session_id = start(api)["session"]["id"]
+        cutoff = utcnow() - timedelta(minutes=30)  # 인사말은 방금이라 cutoff보다 새롭다
+
+        async def end_with_cutoff(db):
+            convo = await db.get(ConversationSession, session_id)
+            return await conversation.end_session(api.app, db, convo, idle_cutoff=cutoff)
+
+        assert load(api, end_with_cutoff) is False
+        assert session_row(api, session_id).status is SessionStatus.ACTIVE
+        assert api.app.state.llm.active_count == 1  # CLI도 닫히지 않았다
+
+        async def end_later(db):
+            convo = await db.get(ConversationSession, session_id)
+            return await conversation.end_session(
+                api.app, db, convo, idle_cutoff=utcnow() + timedelta(hours=1)
+            )
+
+        assert load(api, end_later) is True
+        assert session_row(api, session_id).status is SessionStatus.ENDED

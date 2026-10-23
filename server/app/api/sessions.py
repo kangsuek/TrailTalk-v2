@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from app.api.events import sse_response_doc
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
+from app.persona.loader import load_persona
 from app.services import closing, conversation
-from app.services.profile import profile_with_persona
 
 router = APIRouter(tags=["sessions"])
 
@@ -149,8 +149,9 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
     await db.commit()
     await db.refresh(convo)
     counts = await closing.count_notes(db, session_id, since=convo.reopened_at)
-    _, loaded = await profile_with_persona(db, app.state.settings)
-    await db.commit()
+    settings = app.state.settings
+    # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도)
+    loaded = load_persona(settings.persona_dir, convo.persona_id or settings.default_persona)
     return SessionClosed(
         session=SessionOut.of(convo),
         closing=closing.closing_message(loaded.persona, counts),

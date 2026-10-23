@@ -760,3 +760,41 @@ def test_nickname_goes_only_to_the_greeting_request(api, monkeypatch, tmp_path):
     sent = [json.loads(line) for line in content_log.read_text(encoding="utf-8").splitlines()]
     assert "민수" in sent[0]  # 첫 요청(인사말)에만
     assert "민수" not in sent[1]
+
+
+def test_failed_start_still_deletes_the_empty_session_when_teardown_fails(api, monkeypatch):
+    from app.services import conversation
+
+    monkeypatch.setenv("FAKE_CLAUDE_FIXTURE", "error_invalid_model")
+
+    async def broken_teardown(*args, **kwargs):
+        raise RuntimeError("정리 실패")
+
+    monkeypatch.setattr(conversation, "teardown", broken_teardown)
+    assert api.post("/api/sessions", json={"mode": "text"}).status_code == 502
+    assert load(api, lambda db: db.scalar(select(ConversationSession.id))) is None
+
+
+def test_closing_message_uses_the_persona_the_session_started_with(
+    fake_cli, home, monkeypatch, tmp_path
+):
+    """대화 중에 프로필의 페르소나를 바꿔도 마무리 멘트는 그 세션의 페르소나를 따른다."""
+    import yaml
+
+    source = fake_cli.settings.persona_dir / "jenny.yaml"
+    data = yaml.safe_load(source.read_text(encoding="utf-8"))
+    personas = tmp_path / "personas"
+    personas.mkdir()
+    (personas / "jenny.yaml").write_text(yaml.safe_dump(data, allow_unicode=True), "utf-8")
+    other = {**data, "id": "mina", "name": "미나"}
+    other["closing"] = {**data["closing"], "nothing": "미나의 마무리 인사예요."}
+    (personas / "mina.yaml").write_text(yaml.safe_dump(other, allow_unicode=True), "utf-8")
+
+    monkeypatch.setenv("FAKE_CLAUDE_FIXTURE", "multiturn")
+    settings = fake_cli.settings.model_copy(update={"persona_dir": personas})
+    with TestClient(create_app(settings)) as client:
+        session_id = client.post("/api/sessions", json={"mode": "text"}).json()["session"]["id"]
+        assert client.put("/api/profile", json={"persona_id": "mina"}).status_code == 200
+        closing = client.post(f"/api/sessions/{session_id}/end").json()["closing"]
+    assert closing == data["closing"]["nothing"]
+    assert closing != "미나의 마무리 인사예요."
