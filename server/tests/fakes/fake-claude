@@ -1,0 +1,5 @@
+#!/bin/sh
+# 가짜 Claude CLI 실행 파일. E2E 서버가 CLAUDE_CLI_PATH로 쓴다(web/playwright.config.ts).
+# 서버 가상환경의 Python으로 녹화를 재생한다(FAKE_CLAUDE_FIXTURE 등은 fake_claude.py 참고).
+here=$(cd "$(dirname "$0")" && pwd)
+exec "$here/../../.venv/bin/python" "$here/fake_claude.py" "$@"

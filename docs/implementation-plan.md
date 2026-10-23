@@ -16,7 +16,7 @@
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
-| M1 | 글 대화 | 진행 중 | 3/14 | 2026-10-23 | - | - |
+| M1 | 글 대화 | 진행 중 | 5/14 | 2026-10-23 | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 A `m1-a-data-profile`(구현 완료, 검증·리뷰 중)
-다음 작업: 묶음 A 병합 승인 요청
+현재 작업: 묶음 B `m1-b-llm`(구현 완료, 검증·리뷰 중). 묶음 A는 2026-10-23 `main` 병합(`4243d77`)
+다음 작업: 묶음 B 병합 승인 요청
 
 ## 3. M0 기반
 
@@ -97,8 +97,8 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | M1-01 | A | 모델·리비전 0002 | `db/models.py`에 `conversation_session`·`turn`·`note`(열거 CHECK), `migrations/versions/0002_*.py`, `test_migrations.py`의 `TABLES`·열거 CHECK 시험 갱신, `test_conversation_models.py` | 완료 |
 | M1-02 | A | 설정 키 | `config.py`: `claude_cli_path`, `claude_code_oauth_token`, `cli_turn_timeout_s`, `llm_chat_model`, `internal_base_url`, `cli_env_passthrough`. 테스트는 `Settings(_env_file=None)` | 완료 |
 | M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`). 오류 코드는 기존 `persona_not_found`·`validation_error`를 쓴다. 생성 타입 `schema.d.ts` 갱신 | 완료 |
-| M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만) | 대기 |
-| M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 대기 |
+| M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만). M1은 내장 도구를 모두 끈다(`--tools ""`, 웹 검색은 M5). 단발 호출·사용량 콜백·검색 요약은 쓰는 마일스톤(M2·M5)에서 이식한다 | 완료 |
+| M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 완료 |
 | M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 대기 |
 | M1-07 | C | 세션 API와 SSE | `api/events.py`, `api/sessions.py`(`POST /sessions`·`/sessions/{id}/turns`·`/sessions/{id}/end`), 라우터 등록 | 대기 |
 | M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태. 의존성 `mcp` 추가(사용자 확인) | 대기 |
@@ -116,8 +116,8 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 - [x] **M1-01** 빈 DB에서 `upgrade head`가 성공하고 모델과 마이그레이션이 일치한다. 열거 CHECK가 모델과 같다.
 - [x] **M1-02** 새 설정 키 기본값·환경 변수 시험이 있고 실제 `.env`를 읽지 않는다.
 - [x] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다. `voice` 이름 검사는 `GET /api/voices`가 생기는 M3로 미룬다(client-contract 4.1에 명시).
-- [ ] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
-- [ ] **M1-05** 가짜 CLI로 위 시험이 모두 통과하고 시간 민감 시험은 3번 연속 통과한다. 외부 서버 목록이 비면 CLI 인자·mcp 설정이 v1과 같다는 시험과 토큰·`headers` 값이 인자·로그에 없다는 시험이 있다.
+- [x] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
+- [x] **M1-05** 가짜 CLI로 위 시험이 모두 통과하고 시간 민감 시험은 3번 연속 통과한다. 외부 서버 목록이 비면 CLI 인자가 기본값(자체 서버만 허용, 내장 도구 끔)과 같다는 시험과 토큰·`headers` 값이 인자·로그에 없다는 시험이 있다.
 - [ ] **M1-06** 사용자 턴이 먼저, 답변은 문장마다 커밋되고 서버를 중간에 죽여도 받은 문장이 남는다. 무발화 30분(시험은 짧게 덮어씀)에 세션이 끝난다. 서버 kill·무발화 시험은 3번 연속 통과한다.
 - [ ] **M1-07** SSE 순서(`turn` → `sentence`·`tool` → `done`|`error`)와 오류 코드(`session_not_found`·`session_ended`·`turn_in_progress`)를 시험한다.
 - [ ] **M1-08** `/internal/mcp/` JSON-RPC 직접 호출 시험이 있다. 프록시 헤더는 403, 토큰 없음·틀림은 401이다. 프록시 환경 대비 `NO_PROXY=127.0.0.1`이 실행 문서에 있다. `set_nickname`·`set_model`은 사용자 발화 근거가 없으면 거절한다.
@@ -203,5 +203,5 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.
 - M0에서 넘어온 약속: Linux CI 시각 비교 기준 이미지는 화면이 생기는 M2~M3에서 CI 산출물을 받아 승인해 더한다(그 전에는 Linux CI가 시각 비교를 건너뛰고 스모크 5개만 돈다). 첨부 `purge_orphans` 안전장치는 M5. `run.sh`의 `--fake`·`--phone`은 필요한 마일스톤(M3~M4)에서 추가한다.
 - D8 (외부 MCP 등록): 서버 설정 파일 직접 등록 + 도구 허용 목록, M5(2026-10-23 확정).
-- 외부 MCP 구현 메모: v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
+- 외부 MCP 구현 메모(M5): 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체로 넓히고 stderr뿐 아니라 CLI 결과의 `error_message`에도 적용한다. v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
 - D8 후속(M5 초반 스파이크, D7과 같은 시점): 범위는 D7, 검색 후보, 허용 밖 도구 차단, 도구 정의 지연, 이름 길이 한도다. 허용 밖 도구 차단 방식(CLI 거부·`--disallowedTools`·서버 중계)이 정해지면 Spec 5.6을 고친다. 후보 HasData(원격 HTTP `https://mcp.hasdata.com/mcp`, `x-api-key` 헤더, `?apis=`로 도구 제한)를 API 키로 `tools/list`·샘플 호출해 도구 이름·인자·결과 형식·한국어 품질·지연·무료 동시 요청 1개 제한을 확인하고, `web_search` 표시 매핑과 `google_search` 이름 변경 여부를 정한다. Spec·계약에는 이 스파이크 뒤에 반영한다.

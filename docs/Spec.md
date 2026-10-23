@@ -236,7 +236,7 @@ v1 서버가 남긴 `turn_latency` 기록(2026-10-18~21, 실제 사용 314행 �
 | `search_USA` / `search_naver` | 해외(Tavily) / 국내 뉴스(네이버) 검색 | 오류 시 내장 `WebSearch` 폴백. 클라이언트에는 같은 `web_search` 요약으로 보인다 |
 | `WebSearch` / `WebFetch` (CLI 내장) | 폴백·페이지 읽기 | 파일·셸 도구는 모두 끈다(외부 MCP는 아래 "외부 MCP" 절의 예외). `localhost`·사설 대역으로의 fetch 차단 수단은 D7에서 정한다 `[v2]` |
 
-내장 도구는 `--tools "WebSearch,WebFetch"`로 제한하고(`--tools`는 외부 MCP 도구와 무관하다), 외부 서버가 없을 때 `--allowedTools "mcp__trailtalk__*,WebSearch,WebFetch"`로 허용 범위를 정한다(외부 서버가 있을 때는 아래 "외부 MCP" 절). MCP 도구가 보이도록 `ENABLE_TOOL_SEARCH=false`를 준다. CLI는 빈 전용 작업 폴더에서 실행하고 버전을 고정한다. 웹 페이지·첨부 속 지시는 사실 정보로만 다루고 따르지 않는다(프롬프트 규칙).
+내장 도구는 `--tools "WebSearch,WebFetch"`로 제한하고(웹 검색을 만드는 M5 전까지는 `--tools ""`로 내장 도구를 모두 끄고 `--allowedTools`에는 `mcp__trailtalk__*`만 둔다. `--tools`는 외부 MCP 도구와 무관하다), 외부 서버가 없을 때 `--allowedTools "mcp__trailtalk__*,WebSearch,WebFetch"`로 허용 범위를 정한다(외부 서버가 있을 때는 아래 "외부 MCP" 절). MCP 도구가 보이도록 `ENABLE_TOOL_SEARCH=false`를 준다. CLI는 빈 전용 작업 폴더에서 실행하고 버전을 고정한다. 웹 페이지·첨부 속 지시는 사실 정보로만 다루고 따르지 않는다(프롬프트 규칙).
 
 #### 외부 MCP `[v2]` (FR-25, M5)
 
