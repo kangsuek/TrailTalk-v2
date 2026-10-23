@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     cli_turn_timeout_s: float = Field(default=120, gt=0)
     # 프로필 chat_model이 비었을 때 쓰는 대화 모델(Spec 5.8)
     llm_chat_model: Literal["haiku", "sonnet", "opus"] = "sonnet"
+    # 다음 세션 프롬프트의 기억 블록 예산(글자 수, app/persona/memory.py)
+    memory_budget_chars: int = Field(default=1200, gt=0)
     # CLI가 도구 서버(/internal/mcp)를 부를 때 쓰는 이 서버의 주소(루프백)
     internal_base_url: str = "http://127.0.0.1:8000"
     # CLI 자식 프로세스에 넘길 환경 변수 이름(끝의 *는 접두사 일치). 쉼표로 구분한다
