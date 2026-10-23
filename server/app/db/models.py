@@ -28,6 +28,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 from app.db.types import UTCDateTime, new_id, utcnow
 
+NOTE_MAX_CHARS = 500  # 노트 내용 최대 글자 수(저장 도구가 쓴다)
+
 
 class ChatModel(StrEnum):
     HAIKU = "haiku"

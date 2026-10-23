@@ -16,7 +16,7 @@
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
-| M1 | 글 대화 | 진행 중 | 5/14 | 2026-10-23 | - | - |
+| M1 | 글 대화 | 진행 중 | 10/14 | 2026-10-23 | - | - |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 B `m1-b-llm`(구현 완료, 검증·리뷰 중). 묶음 A는 2026-10-23 `main` 병합(`4243d77`)
-다음 작업: 묶음 B 병합 승인 요청
+현재 작업: 묶음 C `m1-c-turns-tools`(구현 완료, 검증·리뷰 중). 묶음 A·B는 2026-10-23 `main` 병합(`4243d77`, `9d1f2b4`)
+다음 작업: 묶음 C 병합 승인 요청
 
 ## 3. M0 기반
 
@@ -99,11 +99,11 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`). 오류 코드는 기존 `persona_not_found`·`validation_error`를 쓴다. 생성 타입 `schema.d.ts` 갱신 | 완료 |
 | M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만). M1은 내장 도구를 모두 끈다(`--tools ""`, 웹 검색은 M5). 단발 호출·사용량 콜백·검색 요약은 쓰는 마일스톤(M2·M5)에서 이식한다 | 완료 |
 | M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 완료 |
-| M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 대기 |
-| M1-07 | C | 세션 API와 SSE | `api/events.py`, `api/sessions.py`(`POST /sessions`·`/sessions/{id}/turns`·`/sessions/{id}/end`), 라우터 등록 | 대기 |
-| M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태. 의존성 `mcp` 추가(사용자 확인) | 대기 |
-| M1-09 | C | 프롬프트·기억 | `MemoryContext` 채우기(열린 아이디어·할 일·관심사), `rules.py` 도구 절을 실제 도구 목록에 맞춤, 스냅샷 갱신·차이 검토 | 대기 |
-| M1-10 | C | 계약·타입 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 반영(2.9에 `journal_status`는 M2 전까지 `null` 명시) | 대기 |
+| M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 완료 |
+| M1-07 | C | 세션 API와 SSE | `api/events.py`, `api/sessions.py`(`POST /sessions`·`/sessions/{id}/turns`·`/sessions/{id}/end`), 라우터 등록 | 완료 |
+| M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태. 의존성 `mcp` 추가(사용자 확인) | 완료 |
+| M1-09 | C | 프롬프트·기억 | `MemoryContext` 채우기(열린 아이디어·할 일·관심사), `rules.py` 도구 절을 실제 도구 목록에 맞춤, 스냅샷 갱신·차이 검토 | 완료 |
+| M1-10 | C | 계약·타입 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 반영(2.9에 `journal_status`는 M2 전까지 `null` 명시) | 완료 |
 | M1-11 | D | 웹 대화 화면 | `core/sse.ts`, `api/conversation.ts`, `screens/` 대화 화면(시작 버튼·말풍선·입력창·도구 알림·대화종료·`session_ended` 처리) | 대기 |
 | M1-12 | D | E2E | 가짜 CLI를 `CLAUDE_CLI_PATH`로 쓰는 격리 서버(8100)로 대화·즉시 기록(DB 확인)·새로고침 후 이어짐·오류 | 대기 |
 | M1-13 | D | 톤 평가 | `server/tests/persona_eval/`(v1 이식, 글 대화 맥락 질문 20개, `RUN_REAL_CLI=1`), 실제 CLI 1회 실행과 `docs/eval/` 리포트 | 대기 |
@@ -118,11 +118,11 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 - [x] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다. `voice` 이름 검사는 `GET /api/voices`가 생기는 M3로 미룬다(client-contract 4.1에 명시).
 - [x] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
 - [x] **M1-05** 가짜 CLI로 위 시험이 모두 통과하고 시간 민감 시험은 3번 연속 통과한다. 외부 서버 목록이 비면 CLI 인자가 기본값(자체 서버만 허용, 내장 도구 끔)과 같다는 시험과 토큰·`headers` 값이 인자·로그에 없다는 시험이 있다.
-- [ ] **M1-06** 사용자 턴이 먼저, 답변은 문장마다 커밋되고 서버를 중간에 죽여도 받은 문장이 남는다. 무발화 30분(시험은 짧게 덮어씀)에 세션이 끝난다. 서버 kill·무발화 시험은 3번 연속 통과한다.
-- [ ] **M1-07** SSE 순서(`turn` → `sentence`·`tool` → `done`|`error`)와 오류 코드(`session_not_found`·`session_ended`·`turn_in_progress`)를 시험한다.
-- [ ] **M1-08** `/internal/mcp/` JSON-RPC 직접 호출 시험이 있다. 프록시 헤더는 403, 토큰 없음·틀림은 401이다. 프록시 환경 대비 `NO_PROXY=127.0.0.1`이 실행 문서에 있다. `set_nickname`·`set_model`은 사용자 발화 근거가 없으면 거절한다.
-- [ ] **M1-09** 프롬프트 스냅샷 갱신 차이를 검토했고 호칭이 프롬프트에 없다.
-- [ ] **M1-10** `gen:api -- --check`가 통과한다. client-contract가 코드와 같다.
+- [x] **M1-06** 사용자 턴이 먼저, 답변은 문장마다 커밋되고 서버를 중간에 죽여도 받은 문장이 남는다. 무발화 30분(시험은 짧게 덮어씀)에 세션이 끝난다. 서버 kill·무발화 시험은 3번 연속 통과한다.
+- [x] **M1-07** SSE 순서(`turn` → `sentence`·`tool` → `done`|`error`)와 오류 코드(`session_not_found`·`session_ended`·`turn_in_progress`)를 시험한다.
+- [x] **M1-08** `/internal/mcp/` JSON-RPC 직접 호출 시험이 있다. 프록시 헤더는 403, 토큰 없음·틀림은 401이다. 프록시 환경 대비 `NO_PROXY=127.0.0.1`이 실행 문서에 있다. `set_nickname`·`set_model`은 사용자 발화 근거가 없으면 거절한다.
+- [x] **M1-09** 프롬프트 스냅샷 갱신 차이를 검토했고 호칭이 프롬프트에 없다.
+- [x] **M1-10** `gen:api -- --check`가 통과한다. client-contract가 코드와 같다.
 - [ ] **M1-11** 브라우저에서 글을 보내면 답변이 문장 단위로 나오고 도구 알림과 대화종료가 동작한다. `src/core` 비의존 규칙을 지킨다.
 - [ ] **M1-12** E2E가 대화·즉시 기록(DB 확인)·새로고침 후 이어짐·오류 표시를 확인하고, 임시 경로 격리 서버로 통과하며 사용자 8000 서버와 DB는 바뀌지 않는다.
 - [ ] **M1-13** 톤 평가가 18/20 이상이고 인사말 이후 호칭이 0개다(말투 예시의 `(호칭)`을 글자 그대로 말하지 않는지 포함). 실제 CLI 사용량을 알렸다.
@@ -205,3 +205,4 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - D8 (외부 MCP 등록): 서버 설정 파일 직접 등록 + 도구 허용 목록, M5(2026-10-23 확정).
 - 외부 MCP 구현 메모(M5): 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체로 넓히고 stderr뿐 아니라 CLI 결과의 `error_message`에도 적용한다. v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
 - D8 후속(M5 초반 스파이크, D7과 같은 시점): 범위는 D7, 검색 후보, 허용 밖 도구 차단, 도구 정의 지연, 이름 길이 한도다. 허용 밖 도구 차단 방식(CLI 거부·`--disallowedTools`·서버 중계)이 정해지면 Spec 5.6을 고친다. 후보 HasData(원격 HTTP `https://mcp.hasdata.com/mcp`, `x-api-key` 헤더, `?apis=`로 도구 제한)를 API 키로 `tools/list`·샘플 호출해 도구 이름·인자·결과 형식·한국어 품질·지연·무료 동시 요청 1개 제한을 확인하고, `web_search` 표시 매핑과 `google_search` 이름 변경 여부를 정한다. Spec·계약에는 이 스파이크 뒤에 반영한다.
+- SSE keep-alive(heartbeat): 도구가 오래 걸릴 때 Tailscale 터널 등이 유휴 연결을 끊을 수 있다. 폰 접속과 지연을 재는 M3~M4에서 확인하고 필요하면 주기적 주석 이벤트를 넣는다.

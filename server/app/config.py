@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     auto_migrate: bool = True
     # 무발화 종료 기준. 클라이언트 설정값 session.idle_timeout_minutes를 이 값으로 덮어쓴다
     idle_timeout_s: float = 1800
+    # 무발화 감시가 도는 간격(초, app/jobs/idle.py)
+    idle_check_interval_s: float = Field(default=60, gt=0)
 
     # 데이터 폴더. 검증용 서버는 모두 임시 경로로 바꿔 띄운다(CLAUDE.md)
     attachments_dir: Path = SERVER_DIR / "data" / "attachments"
@@ -47,8 +49,12 @@ class Settings(BaseSettings):
     claude_code_oauth_token: SecretStr | None = None
     # 답변 하나를 기다리는 최대 시간(초). 넘으면 턴을 끊는다
     cli_turn_timeout_s: float = Field(default=120, gt=0)
+    # 쓰지 않는 CLI 프로세스를 닫는 시간(초). 세션 자체의 무발화 종료(idle_timeout_s)와 별개다
+    cli_idle_timeout_s: float = Field(default=600, gt=0)
     # 프로필 chat_model이 비었을 때 쓰는 대화 모델(Spec 5.8)
     llm_chat_model: Literal["haiku", "sonnet", "opus"] = "sonnet"
+    # 다음 세션 프롬프트의 기억 블록 예산(글자 수, app/persona/memory.py)
+    memory_budget_chars: int = Field(default=1200, gt=0)
     # CLI가 도구 서버(/internal/mcp)를 부를 때 쓰는 이 서버의 주소(루프백)
     internal_base_url: str = "http://127.0.0.1:8000"
     # CLI 자식 프로세스에 넘길 환경 변수 이름(끝의 *는 접두사 일치). 쉼표로 구분한다

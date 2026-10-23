@@ -74,3 +74,9 @@ def test_blank_oauth_token_means_no_token(tmp_path, monkeypatch):
     env = tmp_path / ".env"
     env.write_text("CLAUDE_CODE_OAUTH_TOKEN=\n", encoding="utf-8")
     assert Settings(_env_file=env).claude_code_oauth_token is None
+
+
+def test_memory_budget_default_and_validation():
+    assert Settings(_env_file=None).memory_budget_chars == 1200
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, memory_budget_chars=0)
