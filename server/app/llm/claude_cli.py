@@ -179,7 +179,7 @@ class ClaudeCliSession:
         return self._proc.pid if self._proc else None
 
     async def start(self) -> None:
-        self._cwd.mkdir(parents=True, exist_ok=True)
+        self._cwd.mkdir(mode=0o700, parents=True, exist_ok=True)
         try:
             self._proc = await asyncio.create_subprocess_exec(
                 *self._command,
@@ -409,7 +409,7 @@ class ClaudeCliBackend:
         secrets = [token.get_secret_value()] if token else []
         try:
             if mcp_config is not None:
-                cwd.mkdir(parents=True, exist_ok=True)
+                cwd.mkdir(mode=0o700, parents=True, exist_ok=True)
                 mcp_path = cwd / "mcp.json"
                 fd = os.open(mcp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:

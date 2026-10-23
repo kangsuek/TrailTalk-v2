@@ -383,6 +383,7 @@ async def test_mcp_config_written_privately_and_passed(fake_cli):
         assert path.parent == session._cwd
         assert json.loads(path.read_text()) == config
         assert path.stat().st_mode & 0o777 == 0o600
+        assert path.parent.stat().st_mode & 0o777 == 0o700  # mcp.json이 든 폴더도 소유자만
         assert "secret-mcp-token" not in " ".join(args)  # 인자(프로세스 목록)에는 값이 없다
         assert "secret-mcp-token" not in session._redact("auth Bearer secret-mcp-token 실패")
     finally:
