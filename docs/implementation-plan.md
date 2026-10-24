@@ -133,7 +133,7 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | 기준 | 목표 | 측정값 | 결과 |
 |---|---|---|---|
 | 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과 | 390개 통과, 린트·포맷 통과 | 통과 |
-| 웹 | typecheck 두 종류, lint, test, build 통과 | 단위 102개 통과 | 통과 |
+| 웹 | typecheck 두 종류, lint, test, build 통과 | 단위 103개 통과 | 통과 |
 | 타입 생성 | `npm run gen:api -- --check` 통과 | verify.sh 전체 통과 | 통과 |
 | 즉시 기록 | 글 대화의 사용자 턴·답변 문장이 오가는 즉시 DB에 있음 | E2E가 DB를 직접 조회해 확인(`chat.spec.ts`) | 통과 |
 | E2E | Playwright 통과, 임시 경로 격리 확인 | 17개 통과, 격리 확인 | 통과 |

@@ -93,6 +93,11 @@ export default function ConversationScreen({
     }
   }
 
+  // 보내는 동안 새로 쓰던 글이 있으면 덮어쓰지 않는다
+  function restoreDraft(text: string) {
+    setDraft((current) => (current.trim() ? current : text))
+  }
+
   async function send() {
     const text = draft.trim()
     if (!text || state.sending || !state.sessionId || state.status === 'ended') return
@@ -115,7 +120,7 @@ export default function ConversationScreen({
               code: event.code,
               unsentId: id,
             })
-            if (event.code !== 'session_ended' && event.code !== 'session_not_found') setDraft(text)
+            if (event.code !== 'session_ended' && event.code !== 'session_not_found') restoreDraft(text)
             return
           }
           dispatch({ type: 'event', event })
@@ -132,7 +137,7 @@ export default function ConversationScreen({
         code,
         unsentId: unsent ? id : undefined,
       })
-      if (unsent && code !== 'session_ended' && code !== 'session_not_found') setDraft(text)
+      if (unsent && code !== 'session_ended' && code !== 'session_not_found') restoreDraft(text)
     }
   }
 
@@ -192,6 +197,7 @@ export default function ConversationScreen({
         initial={initial}
         name={state.personaName ?? ''}
         sub={state.ending ? '정리 중…' : STATUS_LABEL[state.status]}
+        heading
         connection={connection}
       />
       <ol className="msgs" ref={listRef} aria-label="대화 내용" aria-live="polite">

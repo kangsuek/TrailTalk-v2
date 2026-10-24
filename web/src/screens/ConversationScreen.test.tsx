@@ -176,6 +176,27 @@ describe('ConversationScreen', () => {
     expect(screen.getByRole('textbox', { name: '메시지' })).toHaveValue('안녕')
   })
 
+  it('전송이 실패해도 그 사이 새로 쓰던 글은 덮어쓰지 않는다', async () => {
+    let fail: (response: Response) => void = () => {}
+    mockServer({
+      ...startOk,
+      'POST /api/sessions/s1/turns': () => new Promise<Response>((resolve) => (fail = resolve)),
+    })
+    render(<ConversationScreen />)
+    await startConversation()
+    const box = screen.getByRole('textbox', { name: '메시지' })
+    await userEvent.type(box, '첫 글{Enter}')
+    await userEvent.type(box, '다음 글')
+    fail(
+      Response.json(
+        { error: { code: 'turn_in_progress', message: '이전 답변이 아직 끝나지 않았습니다.' } },
+        { status: 409 },
+      ),
+    )
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(box).toHaveValue('다음 글')
+  })
+
   it('세션이 이미 끝났다는 오류면 끝난 화면으로 가고 글은 되돌리지 않는다', async () => {
     mockServer({
       ...startOk,

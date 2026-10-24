@@ -10,6 +10,7 @@
   --line: #ddd8cb;
   /* 시안 TextChat·DarkTextChat에서 읽은 값 */
   --line-strong: #c9c3b3;
+  --bubble-line: #ddd8cb;
   --surface: #ffffff;
   --field: #ffffff;
   --ghost-bg: #ffffff;
@@ -34,6 +35,7 @@
     --brick: #e8806b;
     --line: #26382e;
     --line-strong: #3a4f43;
+    --bubble-line: #2f4237;
     --surface: #141f19;
     --field: #0d1612;
     --ghost-bg: #1f2d26;
@@ -53,6 +55,7 @@
   --brick: #e8806b;
   --line: #26382e;
   --line-strong: #3a4f43;
+  --bubble-line: #2f4237;
   --surface: #141f19;
   --field: #0d1612;
   --ghost-bg: #1f2d26;
@@ -356,7 +359,7 @@ body {
 
 :root[data-theme='dark'] .bubble-user {
   background: #2b7a5a;
-  color: #edeae0;
+  color: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -368,7 +371,7 @@ body {
 
 .bubble-assistant {
   align-self: flex-start;
-  border: 1px solid var(--line);
+  border: 1px solid var(--bubble-line);
   border-radius: 18px 18px 18px 4px;
   background: var(--card);
 }
