@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchHealth } from './api/health.ts'
+import ConversationScreen from './screens/ConversationScreen.tsx'
 import {
   CONNECTION_LABEL,
   HEALTH_INTERVAL_MS,
@@ -51,7 +52,11 @@ export default function App() {
         </span>
       </header>
       <main className="app-main">
-        <p>{tab} 화면은 준비 중입니다.</p>
+        {/* 탭을 바꿔도 진행 중인 대화가 사라지지 않게 숨기기만 한다 */}
+        <div className="screen" hidden={tab !== '대화'}>
+          <ConversationScreen />
+        </div>
+        {tab !== '대화' && <p className="placeholder">{tab} 화면은 준비 중입니다.</p>}
       </main>
       <nav className="tabs" aria-label="메인 메뉴">
         {TABS.map((name) => (

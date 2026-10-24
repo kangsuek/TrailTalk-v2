@@ -16,7 +16,12 @@ test.describe('스모크', () => {
     for (const name of ['일지', '설정', '대화']) {
       await nav.getByRole('button', { name }).click()
       await expect(nav.getByRole('button', { name })).toHaveAttribute('aria-current', 'page')
-      await expect(page.getByText(`${name} 화면은 준비 중입니다.`)).toBeVisible()
+      if (name === '대화') {
+        // 대화 화면은 M1에서 만들었다(자세한 시험은 chat.spec.ts)
+        await expect(page.getByRole('button', { name: '글로 대화 시작' })).toBeVisible()
+      } else {
+        await expect(page.getByText(`${name} 화면은 준비 중입니다.`)).toBeVisible()
+      }
     }
   })
 
