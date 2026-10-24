@@ -41,4 +41,5 @@ git config core.hooksPath .githooks   # 직접 푸시할 때도 전체 검증이
 ```
 
 서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`.
+페르소나 톤 평가(실제 Claude CLI를 써서 구독 사용량이 든다): `(cd server && RUN_REAL_CLI=1 uv run python -m tests.persona_eval.run_eval)`. 리포트는 `docs/eval/`에 남는다.
 웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`, `e2e`(Playwright. 처음에는 `npx playwright install chromium`. 임시 폴더 `web/.e2e/`의 격리 서버 8100과 웹 5174를 자동으로 띄운다. 스크린샷 기준 이미지는 OS별(`e2e/__screenshots__/<OS>/`)이라 기준이 없는 OS에서는 시각 비교를 건너뛴다. 갱신은 `npm run e2e:update`로 하고 눈으로 확인한 뒤 커밋). 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. GitHub에서는 push·PR마다 같은 검증이 돌아간다(`.github/workflows/verify.yml`).

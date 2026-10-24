@@ -13,7 +13,7 @@
 
 ```
 server/   FastAPI 서버(Python 3.12, uv). app/ 코드, migrations/ Alembic, personas/ 캐릭터 YAML, tests/
-web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, e2e/ Playwright
+web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, src/screens·src/components 화면, e2e/ Playwright
 shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
 scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
 ```
@@ -23,6 +23,7 @@ scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
 - 화면을 바꿔 스크린샷 기준이 달라지면 `cd web && npm run e2e:update`로 갱신하고 이미지를 눈으로 확인한 뒤 커밋한다.
+- 프롬프트·페르소나를 바꾸면 톤 평가를 다시 돌린다: `cd server && RUN_REAL_CLI=1 uv run python -m tests.persona_eval.run_eval`(실제 Claude CLI 사용량이 나가므로 알리고 쓴다). 리포트는 `docs/eval/`에 남고 기준은 20개 중 18개 이상·인사말 이후 호칭 0개다.
 - 모델을 바꾸면 Alembic 리비전을 같은 커밋에 넣는다(`cd server && uv run alembic revision --autogenerate -m "..."`).
 
 ## 작업 규칙
