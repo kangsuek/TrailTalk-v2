@@ -16,7 +16,7 @@
 | 마일스톤 | 내용 | 상태 | 작업(완료/전체) | 시작 | 종료 | 종료 커밋 |
 |---|---|---|---|---|---|---|
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
-| M1 | 글 대화 | 진행 중 | 14/14 | 2026-10-23 | - | - |
+| M1 | 글 대화 | 완료 | 14/14 | 2026-10-23 | 2026-10-24 | 4737f99 |
 | M2 | 일지 | 대기 | - | - | - | - |
 | M3 | 음성 | 대기 | - | - | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: 묶음 D `m1-d-web-eval`(M1-14 문서 정합·종료 점검 중). 묶음 A·B·C는 `main` 병합(`4243d77`, `9d1f2b4`, `0bd5816`)
-다음 작업: 묶음 D 서브에이전트 리뷰와 병합 승인 요청(M1 종료 확인 겸)
+현재 작업: 없음. M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
+다음 작업: M2 일지 착수(상세화: 작업 표·대상 시안 보드 지정, 사용자 확인 뒤 시작)
 
 ## 3. M0 기반
 
@@ -90,45 +90,11 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 
 **범위 밖**: 일지 추출·재시도·목록·상세·삭제·다시 열기(M2), 마크다운 렌더링·시작 화면 카드(M2), 음성·끼어들기·`prepare`(M3~M4), 웹 검색·첨부·이메일·사용량 막대·설정 화면(M5), CSRF(M6). `POST /sessions/{id}/end`의 `journal_status`는 M2 전까지 `null`이다(client-contract 2.9에는 M1-10에서 반영한다).
 
-### 4.1 작업 표
+### 4.1 작업 요약
 
-| ID | 묶음 | 작업 | 산출물 | 상태 |
-|---|---|---|---|---|
-| M1-01 | A | 모델·리비전 0002 | `db/models.py`에 `conversation_session`·`turn`·`note`(열거 CHECK), `migrations/versions/0002_*.py`, `test_migrations.py`의 `TABLES`·열거 CHECK 시험 갱신, `test_conversation_models.py` | 완료 |
-| M1-02 | A | 설정 키 | `config.py`: `claude_cli_path`, `claude_code_oauth_token`, `cli_turn_timeout_s`, `llm_chat_model`, `internal_base_url`, `cli_env_passthrough`. 테스트는 `Settings(_env_file=None)` | 완료 |
-| M1-03 | A | 프로필 API | `GET/PUT /api/profile`(client-contract 4.1 규칙, `default_chat_model`). 오류 코드는 기존 `persona_not_found`·`validation_error`를 쓴다. 생성 타입 `schema.d.ts` 갱신 | 완료 |
-| M1-04 | B | LLM 계층 이식 | `app/llm/{backend,events,parser,claude_cli,manager}.py`, `LlmError` 계열(`llm_error`·`llm_process_exited`·`llm_timeout`). `build_command`의 `--allowedTools`는 서버 목록에서 만든다(M1은 자체 서버만). M1은 내장 도구를 모두 끈다(`--tools ""`, 웹 검색은 M5). 단발 호출·사용량 콜백·검색 요약은 쓰는 마일스톤(M2·M5)에서 이식한다 | 완료 |
-| M1-05 | B | 가짜 CLI·녹화·시험 | `tests/fakes/`, `tests/fixtures/claude_cli/`(v1 복사, 경로 치환 확인), `fake_cli` 픽스처, `test_llm_cli.py`: 다중 턴, 크래시 후 `--resume`, 모델 변경 재기동, 시간 초과, 환경 격리, 토큰 비로깅 | 완료 |
-| M1-06 | C | 대화 서비스 | `services/runtime.py`, `services/conversation.py`(시작·턴·종료), `jobs/idle.py`(30분 무발화 종료), `llm/sentences.py`(문장 분리) | 완료 |
-| M1-07 | C | 세션 API와 SSE | `api/events.py`, `api/sessions.py`(`POST /sessions`·`/sessions/{id}/turns`·`/sessions/{id}/end`), 라우터 등록 | 완료 |
-| M1-08 | C | 도구 서버(MCP) | `mcp/server.py`: `save_note`·`search_notes`·`search_conversations`·`summarize_session`·`pause_session`·`end_session`·`set_nickname`·`set_model`, 인증 미들웨어, `mount_mcp`. `mcp_client_config`는 외부 서버 목록(M1은 빈 목록)을 받는 형태. 의존성 `mcp` 추가(사용자 확인) | 완료 |
-| M1-09 | C | 프롬프트·기억 | `MemoryContext` 채우기(열린 아이디어·할 일·관심사), `rules.py` 도구 절을 실제 도구 목록에 맞춤, 스냅샷 갱신·차이 검토 | 완료 |
-| M1-10 | C | 계약·타입 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 반영(2.9에 `journal_status`는 M2 전까지 `null` 명시) | 완료 |
-| M1-11 | D | 웹 대화 화면 | `core/sse.ts`, `api/conversation.ts`, `screens/` 대화 화면(시작 버튼·말풍선·입력창·도구 알림·대화종료·`session_ended` 처리). 시안 적용(2026-10-24): 대화 01·09의 헤더(아바타·이름·상태, 오른쪽에 연결 상태)·하단 탭 아이콘·말풍선 폭·입력 영역(둥근 보내기 버튼·대화종료 아이콘)·라이트·다크 토큰 | 완료 |
-| M1-12 | D | E2E | 가짜 CLI를 `CLAUDE_CLI_PATH`로 쓰는 격리 서버(8100)로 대화·즉시 기록(DB 확인)·새로고침 뒤에도 서버 기록 유지(화면 복원은 M2 일지)·오류 | 완료 |
-| M1-13 | D | 톤 평가 | `server/tests/persona_eval/`(v1 이식, 글 대화 맥락 질문 20개, `RUN_REAL_CLI=1`), 실제 CLI 1회 실행과 `docs/eval/` 리포트 | 완료 |
-| M1-14 | D | 문서 정합·종료 | 이 문서 갱신, client-contract·CLAUDE.md 점검, 종료 체크리스트 | 완료 |
+M1-01~M1-14 14개 작업을 모두 완료했다(2026-10-24 종료, 종료 커밋 `4737f99`). 묶음 A `m1-a-data-profile`(M1-01~03: 모델·설정·프로필 API), B `m1-b-llm`(M1-04~05: LLM 계층·가짜 CLI), C `m1-c-turns-tools`(M1-06~10: 대화 서비스·세션 API(SSE)·도구 서버·프롬프트·계약 타입), D `m1-d-web-eval`(M1-11~14: 웹 글 대화 화면·E2E·톤 평가·문서 정합)를 `main`에 병합했다. 화면은 시안 대화 01·09를 적용했고 뒤 마일스톤 몫은 7절에 이월했다. 톤 평가는 1회차 18/20(인사말 이후 호칭 2건)에서 호칭 규칙을 보강해 2회차 19/20·호칭 0건이다(`docs/eval/`). 작업별 산출물과 점검 상세는 `git log -- docs/implementation-plan.md`의 이전 판에 남아 있다.
 
-묶음은 브랜치 하나씩이다: A `m1-a-data-profile`(M1-01~03), B `m1-b-llm`(M1-04~05), C `m1-c-turns-tools`(M1-06~10), D `m1-d-web-eval`(M1-11~14). 순서는 A → B → C → D이고 묶음마다 승인을 받는다.
-
-### 4.2 작업별 점검
-
-- [x] **M1-01** 빈 DB에서 `upgrade head`가 성공하고 모델과 마이그레이션이 일치한다. 열거 CHECK가 모델과 같다.
-- [x] **M1-02** 새 설정 키 기본값·환경 변수 시험이 있고 실제 `.env`를 읽지 않는다.
-- [x] **M1-03** 필드별 범위·오류(422)·기본값 생성·`client` 읽기 전용 시험이 있다. `voice` 이름 검사는 `GET /api/voices`가 생기는 M3로 미룬다(client-contract 4.1에 명시).
-- [x] **M1-04** 파서가 녹화 이벤트를 모두 해석하고 `is_error`·중단을 구분한다.
-- [x] **M1-05** 가짜 CLI로 위 시험이 모두 통과하고 시간 민감 시험은 3번 연속 통과한다. 외부 서버 목록이 비면 CLI 인자가 기본값(자체 서버만 허용, 내장 도구 끔)과 같다는 시험과 토큰·`headers` 값이 인자·로그에 없다는 시험이 있다.
-- [x] **M1-06** 사용자 턴이 먼저, 답변은 문장마다 커밋되고 서버를 중간에 죽여도 받은 문장이 남는다. 무발화 30분(시험은 짧게 덮어씀)에 세션이 끝난다. 서버 kill·무발화 시험은 3번 연속 통과한다.
-- [x] **M1-07** SSE 순서(`turn` → `sentence`·`tool` → `done`|`error`)와 오류 코드(`session_not_found`·`session_ended`·`turn_in_progress`)를 시험한다.
-- [x] **M1-08** `/internal/mcp/` JSON-RPC 직접 호출 시험이 있다. 프록시 헤더는 403, 토큰 없음·틀림은 401이다. 프록시 환경 대비 `NO_PROXY=127.0.0.1`이 실행 문서에 있다. `set_nickname`·`set_model`은 사용자 발화 근거가 없으면 거절한다.
-- [x] **M1-09** 프롬프트 스냅샷 갱신 차이를 검토했고 호칭이 프롬프트에 없다.
-- [x] **M1-10** `gen:api -- --check`가 통과한다. client-contract가 코드와 같다.
-- [x] **M1-11** 브라우저에서 글을 보내면 답변이 문장 단위로 나오고 도구 알림과 대화종료가 동작한다. `src/core` 비의존 규칙을 지킨다.
-- [x] **M1-12** E2E가 대화·즉시 기록(DB 확인)·새로고침 뒤에도 서버 기록 유지(화면 복원은 M2 일지)·오류 표시를 확인하고, 임시 경로 격리 서버로 통과하며 사용자 8000 서버와 DB는 바뀌지 않는다.
-- [x] **M1-13** 톤 평가가 18/20 이상이고 인사말 이후 호칭이 0개다(말투 예시의 `(호칭)`을 글자 그대로 말하지 않는지 포함). 실제 CLI 사용량을 알렸다. 1회차 18/20이었으나 인사말 이후 호칭 2건(`idea-app`·`idea-pick`)으로 호칭 기준 미달이어서, 호칭 규칙에 틀린 예·맞는 예를 더하고 첫인사 요청에 "이번 한 번만"을 넣은 뒤 2회차에 19/20·호칭 0건을 얻었다(`docs/eval/persona-2026-10-24-2.md`).
-- [x] **M1-14** 문서의 명령·구조가 실제와 같다. README·CLAUDE.md에 톤 평가 실행 명령과 `src/screens`·`src/components`를 더했다.
-
-### 4.3 완료 기준
+### 4.2 완료 기준
 
 | 기준 | 목표 | 측정값 | 결과 |
 |---|---|---|---|
@@ -140,15 +106,15 @@ M0에는 LLM·음성 호출이 없으므로 실제 CLI 점검과 구독 사용�
 | 톤 평가 | 20개 중 18개 이상, 인사말 이후 호칭 0개 | 19/20, 호칭 0건(2회차) | 통과 |
 | 게이트 | `scripts/verify.sh` 전체 통과 | 서버 pytest·린트, 웹 타입·린트·테스트·빌드·타입 생성·E2E 모두 통과 | 통과 |
 
-### 4.4 M1 종료 체크리스트
+### 4.3 M1 종료 체크리스트
 
-- [ ] 단위 테스트와 Playwright 실구동 통과, 완료 기준 표 채움
-- [ ] 톤 평가 실제 CLI 점검(구독 사용량 확인 포함)
-- [ ] `CLAUDE.md`와 client-contract가 코드와 일치
-- [ ] 묶음마다 독립 서브에이전트가 diff를 리뷰하고 지적을 반영
-- [ ] 커밋·푸시
-- [ ] 사용자 확인
-- [ ] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
+- [x] 단위 테스트와 Playwright 실구동 통과, 완료 기준 표 채움
+- [x] 톤 평가 실제 CLI 점검(구독 사용량 확인 포함)
+- [x] `CLAUDE.md`와 client-contract가 코드와 일치
+- [x] 묶음마다 독립 서브에이전트가 diff를 리뷰하고 지적을 반영
+- [x] 커밋·푸시
+- [x] 사용자 확인
+- [x] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
 
 ## 5. M2~M6 요약
 
@@ -188,6 +154,7 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 
 ## 7. 이월·결정
 
+- 새로고침 뒤 대화 화면 복원은 M2 일지에서 한다. M1은 서버에 기록이 남는 것까지만 확인했다(M1-12).
 - 시안 적용 이월(M1 대화 화면, 2026-10-24): 남은 토큰 막대·"음성으로/글로" 선택 버튼·파일 첨부 버튼과 안내 문구(대화 09)는 각각 M5·M3·M5에서 만든다. 시작 화면의 "지난 아이디어 이어 가기" 카드(대화 01)는 M2, 마이크 원형 버튼은 M3에서 만든다. 마크다운 목록 서식은 M2. M1 시작 화면은 글 대화 전용이라 시안 대화 01을 같은 배치(위에 제목, 아래에 둥근 조작 영역)로만 맞췄다.
 - D6 (주간 브리핑 관심사): P2로 미룸.
 - FR-21 이메일은 우선순위 P2지만 Spec 12절에 따라 M5에 둔다.
