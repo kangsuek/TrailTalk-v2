@@ -8,6 +8,14 @@
   --brick: #8a2615;
   /* 시안 문서에 없는 구분선 색(카드 테두리와 같은 계열) */
   --line: #ddd8cb;
+  /* 시안 TextChat·DarkTextChat에서 읽은 값 */
+  --line-strong: #c9c3b3;
+  --bubble-line: #ddd8cb;
+  --surface: #ffffff;
+  --field: #ffffff;
+  --ghost-bg: #ffffff;
+  --on-primary: #ffffff;
+  --tab-on: #1d5b43;
   --header-h: 60px;
   --tabbar-h: 64px;
   font-family: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
@@ -26,6 +34,13 @@
     --amber: #e3a23b;
     --brick: #e8806b;
     --line: #26382e;
+    --line-strong: #3a4f43;
+    --bubble-line: #2f4237;
+    --surface: #141f19;
+    --field: #0d1612;
+    --ghost-bg: #1f2d26;
+    --on-primary: #0a1410;
+    --tab-on: #6bd0a4;
     color-scheme: dark;
   }
 }
@@ -39,6 +54,13 @@
   --amber: #e3a23b;
   --brick: #e8806b;
   --line: #26382e;
+  --line-strong: #3a4f43;
+  --bubble-line: #2f4237;
+  --surface: #141f19;
+  --field: #0d1612;
+  --ghost-bg: #1f2d26;
+  --on-primary: #0a1410;
+  --tab-on: #6bd0a4;
   color-scheme: dark;
 }
 
@@ -70,10 +92,29 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.app-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .app-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 1.2;
+}
+
+.ic {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
 }
 
 .conn {
@@ -104,12 +145,17 @@ body {
 .tabs {
   display: flex;
   height: var(--tabbar-h);
-  background: var(--card);
+  background: var(--surface);
   border-top: 1px solid var(--line);
 }
 
 .tab {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border: 0;
   background: none;
   font: inherit;
@@ -125,6 +171,306 @@ body {
 }
 
 .tab[aria-current='page'] {
-  color: var(--primary);
+  color: var(--tab-on);
   font-weight: 700;
+}
+
+/* 화면 틀: 대화 화면이 남는 높이를 채우고 안에서 스크롤한다 */
+.app {
+  height: 100dvh;
+}
+
+.app-main {
+  display: flex;
+  min-height: 0;
+  padding: 0;
+  flex-direction: column;
+}
+
+.screen {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.placeholder {
+  margin: 0;
+  padding: 16px;
+}
+
+/* 버튼 */
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--ghost-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-big {
+  min-height: 80px;
+  font-size: 18px;
+}
+
+/* 대화 화면 */
+.chat {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.chat-start {
+  justify-content: space-between;
+}
+
+.chat-start-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px 16px;
+}
+
+.dock {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 16px 20px 20px;
+  border-radius: 28px 28px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -6px 24px rgb(22 36 29 / 8%);
+}
+
+.chat-start-title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.chat-start-sub {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-sub);
+  font-size: 15px;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.avatar {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.chat-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.chat-status {
+  margin-top: 2px;
+  color: var(--text-sub);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.msgs {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 16px;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+}
+
+/* 내용이 적을 때 아래쪽에 붙인다(justify-content:flex-end는 넘칠 때 위쪽을 잘라 먹는다) */
+.msgs > :first-child {
+  margin-top: auto;
+}
+
+.bubble {
+  max-width: 92%;
+  padding: 10px 14px;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble-user {
+  align-self: flex-end;
+  max-width: 84%;
+  border-radius: 18px 18px 4px 18px;
+  background: var(--primary);
+  color: var(--on-primary);
+  line-height: 1.55;
+}
+
+:root[data-theme='dark'] .bubble-user {
+  background: #2b7a5a;
+  color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .bubble-user {
+    background: #2b7a5a;
+    color: #edeae0;
+  }
+}
+
+.bubble-assistant {
+  align-self: flex-start;
+  border: 1px solid var(--bubble-line);
+  border-radius: 18px 18px 18px 4px;
+  background: var(--card);
+}
+
+.bubble-assistant[data-status='error'] {
+  border-color: var(--brick);
+}
+
+.bubble-wait,
+.bubble-sub {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.tool-note {
+  margin-top: 6px;
+  color: var(--amber);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tool-note[data-error='true'] {
+  color: var(--brick);
+}
+
+.chat-error {
+  margin: 0;
+  padding: 8px 16px;
+  color: var(--brick);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.composer {
+  display: flex;
+  padding: 12px;
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -6px 24px rgb(22 36 29 / 8%);
+  flex-direction: column;
+  gap: 10px;
+}
+
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  height: 68px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 20px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.composer textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.send {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+  flex: none;
+}
+
+.send:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.composer-ended {
+  align-items: stretch;
 }
