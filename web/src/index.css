@@ -8,6 +8,13 @@
   --brick: #8a2615;
   /* 시안 문서에 없는 구분선 색(카드 테두리와 같은 계열) */
   --line: #ddd8cb;
+  /* 시안 TextChat·DarkTextChat에서 읽은 값 */
+  --line-strong: #c9c3b3;
+  --surface: #ffffff;
+  --field: #ffffff;
+  --ghost-bg: #ffffff;
+  --on-primary: #ffffff;
+  --tab-on: #1d5b43;
   --header-h: 60px;
   --tabbar-h: 64px;
   font-family: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
@@ -26,6 +33,12 @@
     --amber: #e3a23b;
     --brick: #e8806b;
     --line: #26382e;
+    --line-strong: #3a4f43;
+    --surface: #141f19;
+    --field: #0d1612;
+    --ghost-bg: #1f2d26;
+    --on-primary: #0a1410;
+    --tab-on: #6bd0a4;
     color-scheme: dark;
   }
 }
@@ -39,6 +52,12 @@
   --amber: #e3a23b;
   --brick: #e8806b;
   --line: #26382e;
+  --line-strong: #3a4f43;
+  --surface: #141f19;
+  --field: #0d1612;
+  --ghost-bg: #1f2d26;
+  --on-primary: #0a1410;
+  --tab-on: #6bd0a4;
   color-scheme: dark;
 }
 
@@ -70,10 +89,29 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.app-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .app-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 1.2;
+}
+
+.ic {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
 }
 
 .conn {
@@ -104,12 +142,17 @@ body {
 .tabs {
   display: flex;
   height: var(--tabbar-h);
-  background: var(--card);
+  background: var(--surface);
   border-top: 1px solid var(--line);
 }
 
 .tab {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border: 0;
   background: none;
   font: inherit;
@@ -125,7 +168,7 @@ body {
 }
 
 .tab[aria-current='page'] {
-  color: var(--primary);
+  color: var(--tab-on);
   font-weight: 700;
 }
 
@@ -161,9 +204,9 @@ body {
 .btn {
   min-height: 44px;
   padding: 0 18px;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--line-strong);
   border-radius: 999px;
-  background: var(--card);
+  background: var(--ghost-bg);
   color: var(--text);
   font: inherit;
   font-size: 15px;
@@ -184,17 +227,7 @@ body {
 .btn-primary {
   border-color: var(--primary);
   background: var(--primary);
-  color: #ffffff;
-}
-
-:root[data-theme='dark'] .btn-primary {
-  color: #0d1612;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn-primary {
-    color: #0d1612;
-  }
+  color: var(--on-primary);
 }
 
 .btn-big {
@@ -211,31 +244,49 @@ body {
 }
 
 .chat-start {
+  justify-content: space-between;
+}
+
+.chat-start-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px 16px;
+}
+
+.dock {
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px 16px;
-  text-align: center;
+  gap: 8px;
+  padding: 16px 20px 20px;
+  border-radius: 28px 28px 0 0;
+  background: var(--surface);
+  box-shadow: 0 -6px 24px rgb(22 36 29 / 8%);
 }
 
 .chat-start-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
+  line-height: 1.35;
   font-weight: 700;
 }
 
 .chat-start-sub {
-  margin: 0 0 12px;
+  margin: 0;
+  line-height: 1.5;
   color: var(--text-sub);
   font-size: 15px;
 }
 
-.chat-who {
-  display: flex;
+.btn-ghost {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--line);
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 
 .avatar {
@@ -246,19 +297,9 @@ body {
   justify-content: center;
   border-radius: 50%;
   background: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   font-size: 15px;
   font-weight: 700;
-}
-
-:root[data-theme='dark'] .avatar {
-  color: #0d1612;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .avatar {
-    color: #0d1612;
-  }
 }
 
 .chat-name {
@@ -286,8 +327,13 @@ body {
   list-style: none;
 }
 
+/* 내용이 적을 때 아래쪽에 붙인다(justify-content:flex-end는 넘칠 때 위쪽을 잘라 먹는다) */
+.msgs > :first-child {
+  margin-top: auto;
+}
+
 .bubble {
-  max-width: 88%;
+  max-width: 92%;
   padding: 10px 14px;
   font-size: 16px;
   line-height: 1.6;
@@ -301,9 +347,10 @@ body {
 
 .bubble-user {
   align-self: flex-end;
+  max-width: 84%;
   border-radius: 18px 18px 4px 18px;
   background: var(--primary);
-  color: #ffffff;
+  color: var(--on-primary);
   line-height: 1.55;
 }
 
@@ -359,18 +406,26 @@ body {
   display: flex;
   padding: 12px;
   border-radius: 24px 24px 0 0;
-  background: var(--card);
+  background: var(--surface);
   box-shadow: 0 -6px 24px rgb(22 36 29 / 8%);
   flex-direction: column;
   gap: 10px;
 }
 
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .composer textarea {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  height: 68px;
   padding: 10px 14px;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--line-strong);
   border-radius: 20px;
-  background: var(--bg);
+  background: var(--field);
   color: var(--text);
   font: inherit;
   font-size: 16px;
@@ -383,11 +438,34 @@ body {
   outline-offset: 1px;
 }
 
+.send {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  cursor: pointer;
+  flex: none;
+}
+
+.send:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .composer-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-end;
 }
 
 .composer-ended {

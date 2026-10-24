@@ -1,4 +1,6 @@
 import { useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import Header from '../components/Header.tsx'
+import type { Connection } from '../core/connection.ts'
 import { ApiError, endSession, sendTurn, startSession } from '../api/conversation.ts'
 import {
   conversationReducer,
@@ -24,7 +26,9 @@ function errorMessage(error: unknown): string {
 }
 
 function AssistantBubble({ message }: { message: AssistantMessage }) {
-  const notices = message.tools.map((tool) => ({ tool, text: toolNotice(tool) })).filter((n) => n.text)
+  const notices = message.tools
+    .map((tool) => ({ tool, text: toolNotice(tool) }))
+    .filter((n) => n.text)
   const waiting = message.status === 'streaming' && message.sentences.length === 0
   return (
     <li className="bubble bubble-assistant" data-status={message.status}>
@@ -48,7 +52,11 @@ function MessageItem({ message }: { message: Message }) {
   return <AssistantBubble message={message} />
 }
 
-export default function ConversationScreen() {
+export default function ConversationScreen({
+  connection = 'checking',
+}: {
+  connection?: Connection
+}) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
   const aborter = useRef<AbortController | null>(null)
@@ -74,7 +82,10 @@ export default function ConversationScreen() {
         type: 'started',
         sessionId: started.session.id,
         personaName: started.persona.name,
-        greeting: { turnId: started.greeting.turn_id, text: started.greeting.text },
+        greeting: {
+          turnId: started.greeting.turn_id,
+          text: started.greeting.text,
+        },
       })
     } catch (error) {
       if (controller.signal.aborted) return
@@ -98,7 +109,12 @@ export default function ConversationScreen() {
           if (event.type === 'turn') gotTurn = true
           if (event.type === 'error' && !gotTurn) {
             // 서버가 받지 못한 메시지: 말풍선을 빼고 입력창으로 되돌린다. 세션이 끝났다면 되돌리지 않는다
-            dispatch({ type: 'failed', message: event.message, code: event.code, unsentId: id })
+            dispatch({
+              type: 'failed',
+              message: event.message,
+              code: event.code,
+              unsentId: id,
+            })
             if (event.code !== 'session_ended' && event.code !== 'session_not_found') setDraft(text)
             return
           }
@@ -144,21 +160,26 @@ export default function ConversationScreen() {
   if (state.status === 'idle' || state.status === 'starting') {
     return (
       <section className="chat chat-start" aria-label="대화 시작">
-        <h2 className="chat-start-title">글로 이야기해 볼까요?</h2>
-        <p className="chat-start-sub">버튼을 누르면 대화가 시작돼요.</p>
-        {state.error && (
-          <p className="chat-error" role="alert">
-            {state.error}
-          </p>
-        )}
-        <button
-          type="button"
-          className="btn btn-primary btn-big"
-          disabled={state.status === 'starting'}
-          onClick={() => void start()}
-        >
-          {state.status === 'starting' ? '시작하는 중…' : '글로 대화 시작'}
-        </button>
+        <Header initial="T" name="TrailTalk" sub="대화 전" heading connection={connection} />
+        <div className="chat-start-body">
+          <h2 className="chat-start-title">글로 이야기해 볼까요?</h2>
+          <p className="chat-start-sub">버튼을 누르면 대화가 시작돼요.</p>
+          {state.error && (
+            <p className="chat-error" role="alert">
+              {state.error}
+            </p>
+          )}
+        </div>
+        <div className="dock">
+          <button
+            type="button"
+            className="btn btn-primary btn-big"
+            disabled={state.status === 'starting'}
+            onClick={() => void start()}
+          >
+            {state.status === 'starting' ? '시작하는 중…' : '글로 대화 시작'}
+          </button>
+        </div>
       </section>
     )
   }
@@ -167,15 +188,12 @@ export default function ConversationScreen() {
   const initial = state.personaName?.slice(0, 1) ?? ''
   return (
     <section className="chat" aria-label="대화">
-      <div className="chat-who">
-        <div className="avatar" aria-hidden="true">
-          {initial}
-        </div>
-        <div>
-          <div className="chat-name">{state.personaName}</div>
-          <div className="chat-status">{state.ending ? '정리 중…' : STATUS_LABEL[state.status]}</div>
-        </div>
-      </div>
+      <Header
+        initial={initial}
+        name={state.personaName ?? ''}
+        sub={state.ending ? '정리 중…' : STATUS_LABEL[state.status]}
+        connection={connection}
+      />
       <ol className="msgs" ref={listRef} aria-label="대화 내용" aria-live="polite">
         {state.messages.map((message) => (
           <MessageItem key={message.id} message={message} />
@@ -194,16 +212,29 @@ export default function ConversationScreen() {
         </div>
       ) : (
         <div className="composer">
-          <textarea
-            aria-label="메시지"
-            rows={2}
-            maxLength={MAX_LENGTH}
-            value={draft}
-            placeholder="메시지를 입력하세요"
-            disabled={state.ending}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-          />
+          <div className="composer-row">
+            <textarea
+              aria-label="메시지"
+              rows={2}
+              maxLength={MAX_LENGTH}
+              value={draft}
+              placeholder="메시지를 입력하세요"
+              disabled={state.ending}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={onKeyDown}
+            />
+            <button
+              type="button"
+              className="send"
+              aria-label="보내기"
+              disabled={!draft.trim() || state.sending}
+              onClick={() => void send()}
+            >
+              <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12l16-8-6 16-3-7z" />
+              </svg>
+            </button>
+          </div>
           <div className="composer-actions">
             <button
               type="button"
@@ -211,15 +242,10 @@ export default function ConversationScreen() {
               disabled={state.ending}
               onClick={() => void end()}
             >
+              <svg className="ic" viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
               대화종료
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!draft.trim() || state.sending}
-              onClick={() => void send()}
-            >
-              보내기
             </button>
           </div>
         </div>
