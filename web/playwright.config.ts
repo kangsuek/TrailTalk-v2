@@ -23,9 +23,11 @@ export default defineConfig({
         `CLI_WORK_DIR="$PWD/../web/${DATA_DIR}/cli" ` +
         `WEB_DIST_DIR="$PWD/../web/${DATA_DIR}/no-dist" ` +
         // 실제 Claude CLI 대신 녹화를 재생하는 가짜 CLI(server/tests/fakes). 첫 사용자 메시지에는
-        // save_note 도구를 쓰는 턴이 나온다. 사용자 구독 사용량이 나가지 않는다
+        // save_note 도구를 쓰는 턴이 나온다. 일지 정리(단발 호출)는 추출 녹화 한 줄을 낸다(줄이 하나라
+        // 파일을 고치지 않는다). 사용자 구독 사용량이 나가지 않는다
         `CLAUDE_CLI_PATH="$PWD/tests/fakes/fake-claude" ` +
         `CLI_ENV_PASSTHROUGH="FAKE_CLAUDE_*" FAKE_CLAUDE_FIXTURE=tool_call ` +
+        `FAKE_CLAUDE_ONESHOT="$PWD/tests/fixtures/claude_cli/extract.jsonl" ` +
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,

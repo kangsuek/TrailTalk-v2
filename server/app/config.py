@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     cli_idle_timeout_s: float = Field(default=600, gt=0)
     # 프로필 chat_model이 비었을 때 쓰는 대화 모델(Spec 5.8)
     llm_chat_model: Literal["haiku", "sonnet", "opus"] = "sonnet"
+    # 일지 정리(추출) 단발 호출 모델과 한 번 호출의 최대 시간(초, app/jobs/extract.py)
+    llm_extract_model: Literal["haiku", "sonnet", "opus"] = "haiku"
+    extract_timeout_s: float = Field(default=60, gt=0)
+    # 끝내기 API가 일지 정리를 기다리는 최대 시간(초). 넘으면 journal_status pending으로 먼저 답한다
+    extract_wait_s: float = Field(default=45, ge=0)
     # 다음 세션 프롬프트의 기억 블록 예산(글자 수, app/persona/memory.py)
     memory_budget_chars: int = Field(default=1200, gt=0)
     # CLI가 도구 서버(/internal/mcp)를 부를 때 쓰는 이 서버의 주소(루프백)

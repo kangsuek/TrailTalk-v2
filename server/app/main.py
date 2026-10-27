@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
@@ -13,7 +14,7 @@ from app.config import Settings, settings
 from app.db.migrate import upgrade_to_head
 from app.db.session import create_engine_for, create_session_factory
 from app.errors import install_error_handlers
-from app.jobs import idle
+from app.jobs import extract, idle
 from app.llm.claude_cli import ClaudeCliBackend
 from app.llm.manager import LlmSessionManager
 from app.mcp.server import mount_mcp
@@ -53,6 +54,10 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         )
         await llm.start()
         app.state.llm = llm
+        try:  # 정리 도중 서버가 꺼진 대화를 다시 정리한다. 실패해도 서버는 뜬다
+            await extract.resume_pending(app)
+        except Exception:
+            logging.getLogger("trailtalk.extract").exception("남은 일지 정리 재개 실패")
         idle_watch = asyncio.create_task(idle.run(app), name="idle-watch")
         try:
             async with mcp.session_manager.run():
@@ -60,6 +65,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         finally:
             idle_watch.cancel()
             await asyncio.wait([idle_watch])
+            await extract.cancel_all(app)  # 남은 정리는 pending으로 남아 다음 시작 때 다시 돈다
             await llm.shutdown()
             await engine.dispose()
 
@@ -67,6 +73,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app.state.settings = app_settings
     app.state.client_config = load_client_config(app_settings)  # 틀린 파일이면 시작하지 않는다
     app.state.runtimes = RuntimeRegistry()
+    extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)
     app.add_middleware(RequestContextMiddleware)
     install_error_handlers(app)
 

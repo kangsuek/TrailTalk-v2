@@ -81,7 +81,8 @@ export interface paths {
         put?: never;
         /**
          * End Session
-         * @description 세션을 끝내고 마무리 멘트를 준다(멱등). 일지 정리(추출)는 M2에서 더한다.
+         * @description 세션을 끝내고 일지 정리를 띄워 최대 extract_wait_s 기다린 뒤 마무리 멘트를 준다(멱등).
+         *     마무리 멘트의 저장 개수는 정리로 더해진 노트까지 센다.
          */
         post: operations["end_session_api_sessions__session_id__end_post"];
         delete?: never;
@@ -230,7 +231,8 @@ export interface components {
          * SessionClosed
          * @description 끝내기 응답. closing은 캐릭터가 하는 마무리 멘트, saved는 이 대화에서 저장한 노트 개수다.
          *
-         *     journal_status는 일지 정리(M2) 전까지 항상 null이다.
+         *     journal_status는 일지 정리 상태다. pending이면 기다리는 시간 안에 정리가 끝나지 않은 것이다
+         *     (개수가 나중에 늘 수 있다). null은 정리 기록이 없는 것이다.
          */
         SessionClosed: {
             session: components["schemas"]["SessionOut"];

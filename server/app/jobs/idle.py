@@ -3,7 +3,7 @@
 클라이언트 타이머의 안전망이다. 끝내기를 누르지 않고 떠난 세션도 여기서 끝나므로 CLI·런타임(MCP
 토큰)·CLI 기록 파일이 정리된다. 종료는 conversation.end_session을 그대로 쓴다.
 앱이 시작하면 바로 한 번 돌고(서버가 꺼진 동안 지난 세션), 그 뒤 idle_check_interval_s마다 돈다.
-일지 정리(추출)는 M2에서 더한다.
+끝낸 대화는 end_session이 일지 정리(추출)를 띄운다.
 """
 
 import asyncio

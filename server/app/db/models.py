@@ -130,6 +130,9 @@ class ConversationSession(Base):
     persona_id: Mapped[str | None] = mapped_column(ForeignKey("persona.id", ondelete="SET NULL"))
     system_prompt: Mapped[str | None] = mapped_column(Text)  # 시작 때 고정
     cli_session_id: Mapped[str | None] = mapped_column(String(100))
+    # 일지 정리에 마지막으로 성공했을 때 전문의 마지막 턴 seq. 다시 연 대화를 다시 정리할 때 노트는
+    # 이 뒤에서만 뽑는다(app/jobs/extract.py). 정리한 적이 없으면 null
+    extracted_until_seq: Mapped[int | None] = mapped_column(Integer)
 
 
 class Turn(Base):

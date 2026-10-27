@@ -14,6 +14,7 @@ from app.api.events import sse_response_doc
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
 from app.errors import AppError
+from app.jobs import extract
 from app.persona.loader import load_persona
 from app.services import closing, conversation
 
@@ -63,7 +64,8 @@ class SavedCounts(BaseModel):
 class SessionClosed(BaseModel):
     """끝내기 응답. closing은 캐릭터가 하는 마무리 멘트, saved는 이 대화에서 저장한 노트 개수다.
 
-    journal_status는 일지 정리(M2) 전까지 항상 null이다."""
+    journal_status는 일지 정리 상태다. pending이면 기다리는 시간 안에 정리가 끝나지 않은 것이다
+    (개수가 나중에 늘 수 있다). null은 정리 기록이 없는 것이다."""
 
     session: SessionOut
     closing: str
@@ -143,14 +145,19 @@ async def create_turn(
 
 @router.post("/sessions/{session_id}/end")
 async def end_session(session_id: str, request: Request, db: DbSession) -> SessionClosed:
-    """세션을 끝내고 마무리 멘트를 준다(멱등). 일지 정리(추출)는 M2에서 더한다."""
+    """세션을 끝내고 일지 정리를 띄워 최대 extract_wait_s 기다린 뒤 마무리 멘트를 준다(멱등).
+    마무리 멘트의 저장 개수는 정리로 더해진 노트까지 센다."""
     app = request.app
+    settings = app.state.settings
     convo = await conversation.get_session(db, session_id)
     await conversation.end_session(app, db, convo)
     await db.commit()
+    await extract.wait_extraction(app, session_id, settings.extract_wait_s)
     await db.refresh(convo)
     counts = await closing.count_notes(db, session_id, since=convo.reopened_at)
-    settings = app.state.settings
+    journal_status = convo.extract_status.value if convo.extract_status else None
+    if journal_status is None and session_id in app.state.extractions:
+        journal_status = "pending"  # 정리 작업이 막 떠서 아직 상태를 쓰지 않았다
     # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도).
     # 그 파일이 사라졌거나 깨졌어도 이미 끝난 세션의 응답이 실패하지 않게 기본 페르소나로 대신한다
     try:
@@ -162,5 +169,5 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
         closing=closing.closing_message(loaded.persona, counts),
         closing_audio=None,
         saved=SavedCounts(**{kind.value: count for kind, count in counts.items()}),
-        journal_status=None,
+        journal_status=journal_status,
     )
