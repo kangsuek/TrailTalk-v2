@@ -16,6 +16,12 @@ FAKE_CLAUDE_CONTENT_LOG 파일에는 받은 content를 JSON 한 줄로 남긴다
 이미지 원문이 커지면 길이·해시만 남기게 고친다).
 서버가 메시지 앞에 붙이는 앱 안내 문단("(앱 안내: …)\n\n", 지금 시각·끼어들기)은 건너뛰고 판단한다.
 
+단발 모드: 인자에 --json-schema가 있으면(일지 정리 등) stdin 전체를 프롬프트로 읽고
+FAKE_CLAUDE_ONESHOT 파일의 첫 줄(CLI JSON 출력)을 낸다. 줄이 여러 개면 첫 줄을 지워 다음 호출이
+다음 줄을 쓰게 하고, 마지막 줄은 계속 쓴다(줄이 하나면 파일을 고치지 않는다). 줄 내용이
+"__hang__"이면 멈추고, "__crash__"이면 출력 없이 죽는다. FAKE_CLAUDE_ONESHOT_DELAY(초)만큼
+기다렸다 낸다. 기록 파일에는 받은 프롬프트도 남긴다(stdin).
+
 stdin은 파일 객체 버퍼를 쓰지 않고 fd에서 직접 줄 단위로 읽는다(select와 섞어도 줄을 놓치지 않게).
 """
 
@@ -160,8 +166,43 @@ def say(text: str, session_id: str, stdin: StdinLines, delay: float) -> bool:
 _SAY_CHUNK = 4
 
 
+def oneshot(args: list[str]) -> None:
+    prompt = sys.stdin.read()
+    log_path = os.environ.get("FAKE_CLAUDE_ARGS_LOG")
+    if log_path:
+        with open(log_path, "a", encoding="utf-8") as f:
+            record = {
+                "args": args,
+                "stdin": prompt,
+                "cwd": os.getcwd(),
+                "has_token": bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")),
+                "has_other_secret": "TRAILTALK_TEST_OTHER_SECRET" in os.environ,
+            }
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    fixture = os.environ.get("FAKE_CLAUDE_ONESHOT")
+    if not fixture:
+        emit({"type": "result", "subtype": "success", "is_error": True, "result": "픽스처 없음"})
+        return
+    path = Path(fixture)
+    lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    line = lines[0]
+    if len(lines) > 1:
+        path.write_text("\n".join(lines[1:]) + "\n", encoding="utf-8")
+    if line == "__hang__":
+        time.sleep(3600)
+    if line == "__crash__":
+        print(f"fake crash {os.environ.get('CLAUDE_CODE_OAUTH_TOKEN', '')}", file=sys.stderr)
+        sys.exit(3)
+    time.sleep(float(os.environ.get("FAKE_CLAUDE_ONESHOT_DELAY", "0")))  # 느린 일지 정리 흉내
+    sys.stdout.write(line + "\n")
+    sys.stdout.flush()
+
+
 def main() -> None:
     args = sys.argv[1:]
+    if "--json-schema" in args:
+        oneshot(args)
+        return
     resume_id = args[args.index("--resume") + 1] if "--resume" in args else None
     session_id = resume_id or "00000000-0000-4000-8000-00000000fake"
     log_path = os.environ.get("FAKE_CLAUDE_ARGS_LOG")
