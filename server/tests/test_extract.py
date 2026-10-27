@@ -87,11 +87,21 @@ def run_extract(api, session_id: str) -> None:
     api.portal.call(run)
 
 
+def end_without_extraction(api, session_id: str) -> None:
+    """끝내기 API를 부르되 정리는 띄우지 않는다(이 파일의 시험은 run_extract로 직접 돌린다).
+    끝내기와 정리의 연결은 test_extract_end.py가 본다."""
+    api.app.state.extract_closed = True
+    try:
+        assert api.post(f"/api/sessions/{session_id}/end").status_code == 200
+    finally:
+        api.app.state.extract_closed = False
+
+
 def talk_and_end(api, *texts: str) -> str:
     session_id = start(api)["session"]["id"]
     for text in texts:
         turn(api, session_id, f"__say__:{text} 좋아요.")
-    assert api.post(f"/api/sessions/{session_id}/end").status_code == 200
+    end_without_extraction(api, session_id)
     return session_id
 
 
@@ -215,7 +225,7 @@ def test_timeout_kills_cli_and_fails(api, oneshot, monkeypatch):
 
 def test_greeting_only_session_skips_cli(api, oneshot):
     session_id = start(api)["session"]["id"]
-    assert api.post(f"/api/sessions/{session_id}/end").status_code == 200
+    end_without_extraction(api, session_id)
     run_extract(api, session_id)
     assert oneshot_records(api.fake_cli) == []
     assert session_row(api, session_id).extract_status is ExtractStatus.DONE
@@ -257,7 +267,7 @@ def test_reextraction_of_reopened_session_keeps_notes_and_edited_title(api, ones
         ),
     )
     set_session(api, session_id, reopened_at=resumed_at)
-    assert api.post(f"/api/sessions/{session_id}/end").status_code == 200
+    end_without_extraction(api, session_id)
     oneshot(
         cli_output(
             title="새 제목",

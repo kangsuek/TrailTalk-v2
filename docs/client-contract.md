@@ -149,8 +149,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 `POST /api/sessions/{id}/end` → `{session, closing, closing_audio, saved: {idea, todo, memo}, journal_status}`.
 
 - 여러 번 불러도 같다. `closing_audio`는 마무리 멘트 MP3(base64)로 음성 세션에서만 오고 실패하면 `null`이다. 마무리 멘트에는 호칭을 쓰지 않는다.
-- `[v2]` 일지 정리(추출)를 만드는 M2 전까지 서버는 정리를 하지 않으므로 `journal_status`는 항상 `null`이고 기다리지 않는다(아래 45초 대기도 M2부터).
-- 서버는 세션을 끝내고 일지 정리(추출)를 띄운 뒤 **최대 45초** 기다려, 이 대화에서 저장한 노트 개수로 만든 마무리 멘트(`closing`, 캐릭터 말풍선)를 준다. `journal_status`가 `pending`이면 정리가 끝나지 않은 것이다(개수가 나중에 늘 수 있다). 기다리는 동안 클라이언트는 정리 중 안내와 "그만 기다리기"를 보인다.
+- 서버는 세션을 끝내고 일지 정리(추출)를 띄운 뒤 **최대 45초** 기다려, 이 대화에서 저장한 노트 개수(정리로 더해진 노트 포함)로 만든 마무리 멘트(`closing`, 캐릭터 말풍선)를 준다. `journal_status`가 `pending`이면 정리가 끝나지 않은 것이다(개수가 나중에 늘 수 있다). 기다리는 동안 클라이언트는 정리 중 안내와 "그만 기다리기"를 보인다.
 - 끝내기 도구로 턴이 끝나 대화가 끝났을 때(`done`의 `session_status: ended`, 또는 `turn` 뒤 `session_ended` 오류)도 클라이언트는 이어서 이 API를 불러 마무리 멘트를 받는다.
 - `saved`는 다시 연 뒤 생긴 노트만 센다.
 

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
@@ -53,6 +54,10 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         )
         await llm.start()
         app.state.llm = llm
+        try:  # 정리 도중 서버가 꺼진 대화를 다시 정리한다. 실패해도 서버는 뜬다
+            await extract.resume_pending(app)
+        except Exception:
+            logging.getLogger("trailtalk.extract").exception("남은 일지 정리 재개 실패")
         idle_watch = asyncio.create_task(idle.run(app), name="idle-watch")
         try:
             async with mcp.session_manager.run():
@@ -60,6 +65,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         finally:
             idle_watch.cancel()
             await asyncio.wait([idle_watch])
+            await extract.cancel_all(app)  # 남은 정리는 pending으로 남아 다음 시작 때 다시 돈다
             await llm.shutdown()
             await engine.dispose()
 
