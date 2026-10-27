@@ -13,6 +13,14 @@ case "${1:-}" in
   *) echo "사용법: scripts/verify.sh [--quick]" >&2; exit 2 ;;
 esac
 
+# uv 설치 스크립트는 ~/.local/bin(예전 판은 ~/.cargo/bin)에 설치하지만 PATH에 없을 수 있다
+# (훅·에디터가 띄운 셸). run.sh와 같은 방식으로 찾는다
+for dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+  if [ -x "$dir/uv" ] && ! command -v uv >/dev/null; then
+    PATH="$dir:$PATH"
+  fi
+done
+
 step() { # step <이름> <폴더> <명령...>
   local name="$1" dir="$2"
   shift 2
