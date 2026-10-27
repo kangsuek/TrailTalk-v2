@@ -28,6 +28,7 @@ _SERVER_PREFIXES = ("/api", "/internal")
 
 
 def _server_path(path: str) -> bool:
+    path = "/" + path.lstrip("/").lower()  # //api·/API처럼 겉모양만 다른 경로도 서버 몫이다
     return any(path == prefix or path.startswith(prefix + "/") for prefix in _SERVER_PREFIXES)
 
 

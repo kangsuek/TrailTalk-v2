@@ -143,13 +143,13 @@ async def create_session(body: SessionCreate, request: Request, db: DbSession) -
 
 @router.post("/sessions/{session_id}/reopen")
 async def reopen_session(
-    session_id: str, body: SessionReopen, request: Request, db: DbSession
+    session_id: str, request: Request, db: DbSession, body: SessionReopen | None = None
 ) -> SessionReopened:
     """끝난 대화(또는 열려 있지 않은 진행 중 대화)를 같은 세션으로 다시 열어 이어서 대화한다.
     답변 중이면 409 turn_in_progress, 재개 인사말을 받지 못하면 시작 실패와 같은 오류이고 대화는
     원래 상태로 남는다."""
     convo, greeting, turns, loaded = await conversation.reopen_session(
-        request.app, db, session_id, SessionMode(body.mode)
+        request.app, db, session_id, SessionMode((body or SessionReopen()).mode)
     )
     return SessionReopened(
         session=SessionOut.of(convo),
@@ -189,6 +189,7 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
     await conversation.end_session(app, db, convo)
     await db.commit()
     await extract.wait_extraction(app, session_id, settings.extract_wait_s)
+    convo = await conversation.get_session(db, session_id)  # 기다리는 사이 지워졌으면 404
     await db.refresh(convo)
     counts = await closing.count_notes(db, session_id, since=convo.reopened_at)
     journal_status = convo.extract_status.value if convo.extract_status else None

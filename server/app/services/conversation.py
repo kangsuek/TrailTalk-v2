@@ -22,7 +22,7 @@ from datetime import datetime
 
 import anyio
 from fastapi import FastAPI
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import delete, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.events import (
@@ -96,6 +96,11 @@ class SessionActive(AppError):
         super().__init__("session_active", "진행 중인 대화는 끝낸 뒤 지울 수 있습니다.", 409)
 
 
+class StateChanged(AppError):
+    def __init__(self) -> None:
+        super().__init__("conflict", "그사이 대화 상태가 바뀌었어요. 다시 해 주세요.", 409)
+
+
 class SessionNotEnded(AppError):
     def __init__(self) -> None:
         super().__init__("session_not_ended", "아직 끝나지 않은 대화입니다.", 409)
@@ -158,7 +163,14 @@ async def _set_status(
             .correlate(ConversationSession)
             .exists()
         )
-        query = query.where(~spoke_after)
+        # 감시가 고른 뒤 다시 열린 대화도 건너뛴다(다시 연 시각도 활동이다)
+        query = query.where(
+            ~spoke_after,
+            or_(
+                ConversationSession.reopened_at.is_(None),
+                ConversationSession.reopened_at < idle_cutoff,
+            ),
+        )
     result = await db.execute(query.values(**values).execution_options(synchronize_session=False))
     if status is SessionStatus.ENDED and result.rowcount:
         # 같은 트랜잭션에서 정리 대기(pending)를 함께 쓴다. 정리 작업을 띄우기 전에 서버가 꺼져도
@@ -357,7 +369,11 @@ async def end_session(
     except TimeoutError:
         logger.warning("종료 중 턴 정리 대기 시간 초과(session=%s)", convo.id)
     try:
-        await db.refresh(convo)  # 턴 중에 바뀐 cli_session_id·상태를 다시 읽는다
+        # 턴 중에 바뀐 cli_session_id·상태를 다시 읽는다. 기다리는 사이 다른 기기가 지웠으면
+        # 지우기가 CLI를 정리했다(방금 만든 런타임만 버린다)
+        if await _reload(db, convo.id) is None:
+            app.state.runtimes.discard(convo.id)
+            raise SessionNotFound()
         if convo.status is not SessionStatus.ENDED:
             return True
         await teardown(app, convo.id, convo.cli_session_id)
@@ -449,9 +465,9 @@ async def reopen_session(
             app.state.runtimes.discard(session_id)
             raise SessionNotFound()
         taking_over = convo.status is not SessionStatus.ENDED
-        if taking_over:
-            await app.state.llm.close(session_id)
-        else:
+        # 지금 CLI를 닫는다. 끝난 대화도 매니저에 남은 항목이 있으면 그 기록으로 --resume하지 않게
+        await app.state.llm.close(session_id)
+        if not taking_over:
             stopped = True
             await extract.cancel_extraction(app, session_id, _EXTRACT_STOP_S)
             app.state.reformat_requests.discard(session_id)
@@ -476,15 +492,7 @@ async def reopen_session(
         )
         previous = [PastTurn(t.role.value, t.text, t.interrupted) for t in rows if t.text.strip()]
         summary = await _past_summary(db, convo)
-        # 상태와 프롬프트를 한 번에 바꾼다(그 사이 서버가 꺼져도 전문 없는 프롬프트가 남지 않게)
-        convo.status = SessionStatus.ACTIVE
-        convo.mode = mode
-        convo.ended_at = None
-        convo.extract_status = None
-        convo.cli_session_id = None
-        convo.reopened_at = now
-        convo.persona_id = loaded.persona.id
-        convo.system_prompt = build_system_prompt(
+        prompt = build_system_prompt(
             loaded.persona,
             mode=mode.value,
             now=now,
@@ -493,7 +501,33 @@ async def reopen_session(
             previous=previous,
             previous_summary=summary,
         )
+        # 상태와 프롬프트를 한 번에 바꾼다(그 사이 서버가 꺼져도 전문 없는 프롬프트가 남지 않게).
+        # 읽은 뒤 다른 곳(무발화 감시·다른 기기의 끝내기)이 상태를 바꿨으면 덮어쓰지 않는다
+        result = await db.execute(
+            update(ConversationSession)
+            .where(
+                ConversationSession.id == session_id,
+                ConversationSession.status == backup["status"],
+            )
+            .values(
+                status=SessionStatus.ACTIVE,
+                mode=mode,
+                ended_at=None,
+                extract_status=None,
+                cli_session_id=None,
+                reopened_at=now,
+                persona_id=loaded.persona.id,
+                system_prompt=prompt,
+            )
+            .execution_options(synchronize_session=False)
+        )
         await db.commit()
+        if result.rowcount == 0:
+            raise StateChanged()
+        convo = await _reload(db, session_id)
+        if not taking_over:
+            # 멈춘 뒤 다른 요청(retry)이 정리를 다시 띄웠으면 멈춘다(다시 연 대화는 저장하지 않는다)
+            await extract.cancel_extraction(app, session_id, _EXTRACT_STOP_S)
         session, _ = await open_llm(app, db, convo)
         text, cli_session_id = await _receive_greeting(
             session,
@@ -533,7 +567,7 @@ async def reopen_session(
         raise
     finally:
         runtime.turn_lock.release()
-        if committed and taking_over:  # 예전 CLI 기록은 새 CLI로 이어받은 뒤에 지운다
+        if committed:  # 예전 CLI 기록은 새 CLI로 이어받은 뒤에 지운다(끝난 대화에 남은 것도)
             with anyio.CancelScope(shield=True):
                 await asyncio.to_thread(delete_cli_session_file, backup["cli_session_id"])
     return convo, greeting, turns, loaded
@@ -563,9 +597,13 @@ async def _restore(
     app: FastAPI, db: AsyncSession, session_id: str, backup: dict, cli_session_id: str | None
 ) -> None:
     """다시 열기에 실패하면 원래 상태(끝남 또는 이어받은 진행 중)와 정리 상태를 되돌리고 새로 띄운
-    CLI를 정리한다. 이어받은 대화는 다음 턴이 예전 CLI 기록(--resume)으로 이어 간다."""
+    CLI를 정리한다. 이어받은 대화는 다음 턴이 예전 CLI 기록(--resume)으로 이어 간다.
+
+    런타임은 DB를 되돌린 뒤에 버린다(그 사이 온 턴이 다시 연 상태를 보고 새 런타임·CLI를 띄우지
+    않게. 잠금을 쥐고 있으니 그 턴은 TurnBusy다)."""
     await db.rollback()
-    await teardown(app, session_id, cli_session_id)
+    await app.state.llm.close(session_id)
+    await asyncio.to_thread(delete_cli_session_file, cli_session_id)
     query = update(ConversationSession).where(ConversationSession.id == session_id)
     took_over = backup["status"] is not SessionStatus.ENDED
     if took_over:
@@ -574,6 +612,7 @@ async def _restore(
         query = query.where(ConversationSession.status != SessionStatus.ENDED)
     result = await db.execute(query.values(**backup).execution_options(synchronize_session=False))
     await db.commit()
+    app.state.runtimes.discard(session_id)
     if took_over and result.rowcount == 0:
         await asyncio.to_thread(delete_cli_session_file, backup["cli_session_id"])
         return

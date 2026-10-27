@@ -10,7 +10,6 @@
 대화)을 넣는다. 이 블록은 다시 연 대화의 프롬프트에만 붙는다.
 """
 
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
@@ -207,12 +206,13 @@ def memory_block(memory: MemoryContext | None) -> str:
     return "\n".join(lines)
 
 
-_BLOCK_CLOSE = re.compile(r"<\s*/\s*(대화|정리)\s*>")
+_ANGLE = str.maketrans({"<": "‹", ">": "›", "＜": "‹", "＞": "›"})
 
 
 def _escape_block_tags(text: str) -> str:
-    """기록·정리 안의 글이 구분 태그(<대화>, <정리>)를 닫지 못하게 한다(공백을 넣은 변형 포함)."""
-    return _BLOCK_CLOSE.sub(lambda m: f"[/{m.group(1)}]", text)
+    """기록·정리 안의 글이 구분 태그(<대화>, <정리>)를 흉내 내거나 닫지 못하게 꺾쇠를 모두 다른
+    글자로 바꾼다(속성·전각·보이지 않는 글자를 끼운 변형까지)."""
+    return text.translate(_ANGLE)
 
 
 def _tail_lines(lines: list[str], limit: int, cut_note: str) -> list[str]:

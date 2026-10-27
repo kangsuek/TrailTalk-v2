@@ -343,9 +343,17 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
         extracted_until = convo.extracted_until_seq
         # 예전 형식 일지를 새 형식으로 '다시 정리'해 달라는 요청이면 노트는 이미 뽑았으므로
         # 다시 넣지 않는다(고친 노트가 되살아나거나 중복이 생기지 않게). 요청으로 시작한 이번만
-        # 해당한다(늦게 온 턴 때문에 다시 도는 정리는 새 말의 노트를 뽑아야 한다)
+        # 해당한다(늦게 온 턴 때문에 다시 도는 정리는 새 말의 노트를 뽑아야 한다). 앞서 정리한 뒤로
+        # 이어 간 말이 있으면(다시 열어 이어 간 뒤 정리가 실패한 일지) 그 말의 노트를 뽑아야 하므로
+        # 다시 정리로 보지 않는다
         requests: set[str] = app.state.reformat_requests
-        reformat = session_id in requests and convo.checks is None and bool(convo.summary)
+        said_after = extracted_until is not None and any(t.seq > extracted_until for t in turns)
+        reformat = (
+            session_id in requests
+            and convo.checks is None
+            and bool(convo.summary)
+            and not said_after
+        )
         requests.discard(session_id)
         await db.commit()
     if not any(t.role is TurnRole.USER for t in turns):
