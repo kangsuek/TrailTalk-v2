@@ -41,7 +41,8 @@ async def load_memory(
     now: datetime,
     exclude_session_id: str | None = None,
 ) -> MemoryContext:
-    """exclude_session_id: 요약에서 뺄 대화(다시 여는 대화 자신, S3-26)."""
+    """exclude_session_id: 기억에서 뺄 대화(다시 여는 대화 자신). 그 대화의 요약·노트는 이어서 하는
+    대화 블록에 들어가므로 기억 블록에 겹쳐 넣지 않는다."""
     since = now - timedelta(days=RECENT_DAYS)
     sessions = await db.execute(
         select(ConversationSession)
@@ -56,13 +57,21 @@ async def load_memory(
     )
     ideas = await db.execute(
         select(Note.content)
-        .where(Note.kind == NoteKind.IDEA, Note.done.is_(False))
+        .where(
+            Note.kind == NoteKind.IDEA,
+            Note.done.is_(False),
+            Note.session_id != (exclude_session_id or ""),
+        )
         .order_by(Note.starred.desc(), Note.created_at.desc())
         .limit(MAX_IDEAS)
     )
     todos = await db.execute(
         select(Note.content)
-        .where(Note.kind == NoteKind.TODO, Note.done.is_(False))
+        .where(
+            Note.kind == NoteKind.TODO,
+            Note.done.is_(False),
+            Note.session_id != (exclude_session_id or ""),
+        )
         .order_by(Note.created_at.desc())
         .limit(MAX_TODOS)
     )

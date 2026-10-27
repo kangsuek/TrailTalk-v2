@@ -53,6 +53,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{session_id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reopen Session
+         * @description 끝난 대화(또는 열려 있지 않은 진행 중 대화)를 같은 세션으로 다시 열어 이어서 대화한다.
+         *     답변 중이면 409 turn_in_progress, 재개 인사말을 받지 못하면 시작 실패와 같은 오류이고 대화는
+         *     원래 상태로 남는다.
+         */
+        post: operations["reopen_session_api_sessions__session_id__reopen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{session_id}/turns": {
         parameters: {
             query?: never;
@@ -529,6 +551,27 @@ export interface components {
             /** Ended At */
             ended_at: string | null;
         };
+        /** SessionReopen */
+        SessionReopen: {
+            /**
+             * Mode
+             * @default text
+             * @enum {string}
+             */
+            mode: "text" | "voice";
+        };
+        /**
+         * SessionReopened
+         * @description 다시 열기 응답. greeting은 전문 끝에 새로 남긴 재개 인사말(호칭 없음), turns는 그 인사말까지
+         *     포함한 전체 전문(일지 상세의 turns와 같은 형식)이다.
+         */
+        SessionReopened: {
+            session: components["schemas"]["SessionOut"];
+            greeting: components["schemas"]["GreetingOut"];
+            persona: components["schemas"]["PersonaOut"];
+            /** Turns */
+            turns: components["schemas"]["TurnOut"][];
+        };
         /** SessionStarted */
         SessionStarted: {
             session: components["schemas"]["SessionOut"];
@@ -879,6 +922,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionStarted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reopen_session_api_sessions__session_id__reopen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionReopen"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionReopened"];
                 };
             };
             /** @description Validation Error */

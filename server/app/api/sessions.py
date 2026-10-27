@@ -1,6 +1,6 @@
-"""대화 세션 API(client-contract 2절): 시작(인사말), 글 턴(SSE), 종료(마무리 멘트).
+"""대화 세션 API(client-contract 2절): 시작(인사말), 글 턴(SSE), 종료(마무리 멘트), 다시 열기.
 
-음성 턴·다시 열기·미리 띄우기는 해당 마일스톤(M2~M4)에서 더한다.
+음성 턴·미리 띄우기는 해당 마일스톤(M3~M4)에서 더한다.
 """
 
 from datetime import datetime
@@ -11,10 +11,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.events import sse_response_doc
+from app.api.journal import TurnOut
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
 from app.jobs import extract
-from app.persona.loader import load_session_persona
+from app.persona.loader import LoadedPersona, load_session_persona
 from app.services import closing, conversation
 
 router = APIRouter(tags=["sessions"])
@@ -102,8 +103,30 @@ class SessionStarted(BaseModel):
     persona: PersonaOut
 
 
+class SessionReopen(BaseModel):
+    mode: Literal["text", "voice"] = "text"  # 이번에 쓸 방식(처음과 달라도 된다)
+
+
+class SessionReopened(BaseModel):
+    """다시 열기 응답. greeting은 전문 끝에 새로 남긴 재개 인사말(호칭 없음), turns는 그 인사말까지
+    포함한 전체 전문(일지 상세의 turns와 같은 형식)이다."""
+
+    session: SessionOut
+    greeting: GreetingOut
+    persona: PersonaOut
+    turns: list[TurnOut]
+
+
 class TurnCreate(BaseModel):
     text: Annotated[str, Field(min_length=1, max_length=4000, pattern=r"\S")]
+
+
+def _persona_out(loaded: LoadedPersona) -> PersonaOut:
+    return PersonaOut(
+        id=loaded.persona.id,
+        name=loaded.persona.name,
+        ack=[AckOut(text=text, audio=None) for text in loaded.persona.ack],
+    )
 
 
 @router.post("/sessions", status_code=201)
@@ -114,11 +137,25 @@ async def create_session(body: SessionCreate, request: Request, db: DbSession) -
     return SessionStarted(
         session=SessionOut.of(convo),
         greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
-        persona=PersonaOut(
-            id=loaded.persona.id,
-            name=loaded.persona.name,
-            ack=[AckOut(text=text, audio=None) for text in loaded.persona.ack],
-        ),
+        persona=_persona_out(loaded),
+    )
+
+
+@router.post("/sessions/{session_id}/reopen")
+async def reopen_session(
+    session_id: str, body: SessionReopen, request: Request, db: DbSession
+) -> SessionReopened:
+    """끝난 대화(또는 열려 있지 않은 진행 중 대화)를 같은 세션으로 다시 열어 이어서 대화한다.
+    답변 중이면 409 turn_in_progress, 재개 인사말을 받지 못하면 시작 실패와 같은 오류이고 대화는
+    원래 상태로 남는다."""
+    convo, greeting, turns, loaded = await conversation.reopen_session(
+        request.app, db, session_id, SessionMode(body.mode)
+    )
+    return SessionReopened(
+        session=SessionOut.of(convo),
+        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
+        persona=_persona_out(loaded),
+        turns=[TurnOut.of(t) for t in turns],
     )
 
 
