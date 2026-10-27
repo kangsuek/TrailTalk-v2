@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
+from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
@@ -21,18 +23,39 @@ from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
 from app.services.runtime import RuntimeRegistry
 
+# 웹 앱이 맡지 않는 경로. 없는 경로도 index.html이 아니라 라우터의 JSON 404·405가 나간다
+_SERVER_PREFIXES = ("/api", "/internal")
+
+
+def _server_path(path: str) -> bool:
+    return any(path == prefix or path.startswith(prefix + "/") for prefix in _SERVER_PREFIXES)
+
 
 class WebMount(Mount):
-    """빌드된 웹 앱 마운트. /api 경로는 맡지 않아 라우터의 404·405가 그대로 나간다."""
+    """빌드된 웹 앱 마운트. /api·/internal 경로는 맡지 않는다."""
 
     def matches(self, scope: Scope) -> tuple[Match, Scope]:
         path = scope["path"]
         root_path = scope.get("root_path", "")  # 프록시 접두사는 뺀 경로로 판단한다
         if root_path and path.startswith(root_path):
             path = path[len(root_path) :]
-        if path == "/api" or path.startswith("/api/"):
+        if _server_path(path):
             return Match.NONE, {}
         return super().matches(scope)
+
+
+class WebApp(StaticFiles):
+    """정적 파일. 없는 경로 가운데 클라이언트 화면 경로(/journal/… 처럼 마지막 조각에 확장자가 없는
+    경로)는 index.html을 줘 새로고침해도 앱이 열린다. 없는 파일(/assets/x.js)은 그대로 404다."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as exc:
+            last = path.rsplit("/", 1)[-1]
+            if exc.status_code != 404 or "." in last or scope["method"] not in ("GET", "HEAD"):
+                raise
+            return await super().get_response("index.html", scope)
 
 
 def create_app(app_settings: Settings | None = None) -> FastAPI:
@@ -89,7 +112,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     # 빌드된 웹 앱이 있으면 같은 서버에서 정적 파일로 서빙한다.
     # 라우터는 모두 이 마운트보다 먼저 등록해야 한다(뒤에 붙인 라우트는 가려진다).
     if app_settings.web_dist_dir.is_dir():
-        static = StaticFiles(directory=app_settings.web_dist_dir, html=True)
+        static = WebApp(directory=app_settings.web_dist_dir, html=True)
         app.router.routes.append(WebMount("/", app=static, name="web"))
     return app
 
