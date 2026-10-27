@@ -32,9 +32,51 @@ for arg in "$@"; do
   esac
 done
 
-for cmd in uv npm curl lsof; do
-  command -v "$cmd" >/dev/null || { echo "$cmd 명령이 필요합니다." >&2; exit 1; }
+# uv 설치 스크립트는 ~/.local/bin(예전 판은 ~/.cargo/bin)에 설치하지만 셸 PATH에 넣지 않았을 수 있다
+for dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+  if [ -x "$dir/uv" ] && ! command -v uv >/dev/null; then
+    PATH="$dir:$PATH"
+  fi
 done
+
+install_hint() { # install_hint <명령>: 없는 도구의 설치 방법
+  case "$1" in
+    uv)
+      echo "  uv(Python 패키지 관리자, Python 3.12는 uv가 받는다):"
+      echo "    curl -LsSf https://astral.sh/uv/install.sh | sh"
+      echo "    설치 뒤 새 터미널을 열거나: source \"\$HOME/.local/bin/env\""
+      ;;
+    node | npm)
+      echo "  Node.js 24(npm 포함):"
+      echo "    https://nodejs.org 에서 24 LTS 설치 파일을 받아 설치"
+      echo "    또는 Homebrew: brew install node@24 (안내대로 PATH 추가)"
+      ;;
+    *)
+      echo "  $1: macOS 기본 도구입니다. PATH에 /usr/bin·/usr/sbin이 있는지 확인하세요."
+      ;;
+  esac
+}
+
+missing=()
+for cmd in uv node npm curl lsof; do
+  command -v "$cmd" >/dev/null || missing+=("$cmd")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "필요한 명령이 없습니다: ${missing[*]}" >&2
+  for cmd in "${missing[@]}"; do
+    [ "$cmd" = npm ] && [[ " ${missing[*]} " == *" node "* ]] && continue # node와 같은 안내
+    install_hint "$cmd" >&2
+  done
+  echo "설치한 뒤 ./run.sh 를 다시 실행하세요." >&2
+  exit 1
+fi
+
+node_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+if [ "$node_major" -lt 24 ]; then
+  echo "Node.js 24 이상이 필요합니다(현재 $(node -v 2>/dev/null || echo '알 수 없음'))." >&2
+  install_hint node >&2
+  exit 1
+fi
 
 # 이 저장소의 run.sh가 이미 떠 있으면 중복 실행하지 않는다
 if [ -f "$PID_FILE" ] && kill -0 "$(head -n 1 "$PID_FILE")" 2>/dev/null; then
