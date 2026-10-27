@@ -7,9 +7,10 @@
 둔다. 실패해도 대화와 전문은 남고 retry로 다시 돌릴 수 있다.
 아이디어·할 일·메모는 그 대화의 기존 노트와 겹치는 것(app/jobs/dedupe.py)을 거른 뒤 새것만 더한다.
 다시 연 대화를 다시 끝내면 요약·태그·확인할 것은 전문 전체로 새로 쓰고, 기존 노트(별표·완료·고친
-내용)는 두며, 사용자가 고친 제목은 바꾸지 않는다. 전문에는 다시 연 지점을 표시해 노트는 그 뒤에서만
-뽑게 한다(사용자가 고친 노트는 글이 달라 문자열로는 겹침을 알 수 없으므로, 앞부분에서 같은 항목이
-원래 글로 다시 뽑히지 않게).
+내용)는 두며, 사용자가 고친 제목은 바꾸지 않는다. 전문에는 앞서 정리에 성공한 마지막 턴
+(extracted_until_seq) 뒤에 표시를 넣어 노트는 그 뒤에서만 뽑게 한다(사용자가 고친 노트는 글이 달라
+문자열로는 겹침을 알 수 없으므로, 앞부분에서 같은 항목이 원래 글로 다시 뽑히지 않게). 정리한 적이
+없는 대화는 표시하지 않는다(앞부분 노트가 빠지지 않게).
 상태(conversation_session.extract_status, API journal_status)는 pending → done/failed다.
 
 검색 출처 인용(sources·citations)은 검색 도구가 생기는 M5부터 채워진다. 그 전에는 turn.sources가
@@ -20,7 +21,6 @@ import asyncio
 import logging
 import re
 from collections.abc import Sequence
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import FastAPI
@@ -49,6 +49,7 @@ ATTEMPTS = 2  # 첫 시도 + 재시도 1회
 TRANSCRIPT_LIMIT = 100_000  # 이보다 긴 전문은 앞부분을 잘라 뒷부분을 남긴다
 MAX_SOURCES = 30  # 정리에 알려 주는 출처 수(대화 순서, URL 중복 없이)
 _RERUNS = 5  # 정리하는 사이 새 요청·턴이 들어오면 다시 도는 최대 횟수
+MAX_CONCURRENT = 2  # 동시에 도는 정리 CLI 수(앱 시작 때 여러 대화가 한꺼번에 몰려도)
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
 Line = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -101,29 +102,34 @@ def _clean_tags(tags: Sequence[str]) -> list[str]:
     return list(dict.fromkeys(tag for tag in cleaned if tag))
 
 
-def _escape_tags(text: str) -> str:
-    """글 안에서 프롬프트의 구분 태그(<대화>, <저장한 노트>, <출처>)를 닫지 못하게 한다."""
-    for tag in ("대화", "저장한 노트", "출처"):
-        text = text.replace(f"</{tag}>", f"</ {tag}>")
-    return text
-
-
+# 전문에서 앞서 정리한 부분과 그 뒤를 나누는 표시(EXTRACT_INSTRUCTION 규칙이 같은 글을 쓴다)
 RESUMED_MARK = "(— 여기서부터 다시 열어 이어 간 대화 —)"
+_CLOSE_TAG = re.compile(r"<\s*/\s*(대화|저장한 노트|출처)\s*>")
+
+
+def _escape_tags(text: str) -> str:
+    """글 안에서 프롬프트의 구분 태그(<대화>, <저장한 노트>, <출처>)를 닫지 못하게 하고(공백을 넣은
+    변형 포함), 다시 연 지점 표시를 흉내 내지 못하게 한다."""
+    text = _CLOSE_TAG.sub(lambda m: f"[/{m.group(1)}]", text)
+    return text.replace(RESUMED_MARK, RESUMED_MARK.strip("()"))
 
 
 def build_transcript(
-    turns: Sequence[Turn], assistant: str, resumed_at: datetime | None = None
+    turns: Sequence[Turn], assistant: str, extracted_until: int | None = None
 ) -> str:
-    """resumed_at: 다시 연 시각. 그 뒤 첫 턴 앞에 RESUMED_MARK를 넣는다(새 노트는 그 뒤에서만)."""
+    """extracted_until: 앞서 정리에 성공한 마지막 턴 seq. 그 뒤 첫 턴 앞에(없으면 맨 끝에)
+    RESUMED_MARK를 넣는다(새 노트는 그 뒤에서만 뽑는다). None이면 표시하지 않는다."""
     lines = []
-    marked = resumed_at is None
+    marked = extracted_until is None
     for t in turns:
-        if not marked and t.created_at is not None and t.created_at >= resumed_at:
+        if not marked and t.seq > extracted_until:
             lines.append(RESUMED_MARK)
             marked = True
         speaker = "사용자" if t.role is TurnRole.USER else assistant
         mark = " (말이 끊김)" if t.interrupted else ""
         lines.append(f"{speaker}: {_escape_tags(_one_line(t.text))}{mark}")
+    if not marked:
+        lines.append(RESUMED_MARK)  # 정리한 뒤로 새 말이 없다(새 노트 없음)
     kept: list[str] = []
     size = 0
     for line in reversed(lines):  # 너무 길면 뒷부분(최근 대화)을 줄 단위로 남긴다
@@ -233,7 +239,7 @@ def build_prompt(
     assistant: str,
     saved: Sequence[tuple[NoteKind, str]] = (),
     sources: Sequence[dict] = (),
-    resumed_at: datetime | None = None,
+    extracted_until: int | None = None,
 ) -> str:
     """saved: 이 대화에 이미 저장된 노트(종류, 내용). 같은 항목을 다시 뽑지 않게 알려 준다. 종류를
     붙여 다른 종류의 항목까지 빼지 않게 한다. 노트는 모델이 만든 글이라(웹 내용이 섞일 수 있다)
@@ -255,7 +261,7 @@ def build_prompt(
         assistant=assistant,
         sources=source_section,
         saved=saved_section,
-        transcript=build_transcript(turns, assistant, resumed_at),
+        transcript=build_transcript(turns, assistant, extracted_until),
     )
 
 
@@ -271,14 +277,19 @@ def _assistant_name(app: FastAPI, persona_id: str | None) -> str:
 
 async def _call(app: FastAPI, prompt: str) -> Extraction:
     settings = app.state.settings
-    raw = await run_oneshot(
+    async with app.state.extract_slots:
+        raw = await _run(settings, prompt)
+    return Extraction.model_validate(raw)
+
+
+async def _run(settings, prompt: str) -> dict:
+    return await run_oneshot(
         settings,
         prompt,
         model=settings.llm_extract_model,
         json_schema=Extraction.model_json_schema(),
         timeout_s=settings.extract_timeout_s,
     )
-    return Extraction.model_validate(raw)
 
 
 def init_state(app: FastAPI) -> None:
@@ -287,6 +298,7 @@ def init_state(app: FastAPI) -> None:
     app.state.extract_writes = set()  # 취소에서 보호한 결과 쓰기
     app.state.extract_closed = False  # 앱이 끝나는 중이면 새 정리를 띄우지 않는다
     app.state.reformat_requests = set()  # 예전 형식 일지를 다시 정리해 달라는 요청(retry)
+    app.state.extract_slots = asyncio.Semaphore(MAX_CONCURRENT)
 
 
 async def _shielded(app: FastAPI, coro) -> None:
@@ -332,7 +344,7 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
         )
         saved = [(kind, content) for kind, content in notes]
         assistant = _assistant_name(app, convo.persona_id)
-        resumed_at = convo.reopened_at
+        extracted_until = convo.extracted_until_seq
         # 예전 형식 일지를 새 형식으로 '다시 정리'해 달라는 요청이면 노트는 이미 뽑았으므로
         # 다시 넣지 않는다(고친 노트가 되살아나거나 중복이 생기지 않게). 요청으로 시작한 이번만
         # 해당한다(늦게 온 턴 때문에 다시 도는 정리는 새 말의 노트를 뽑아야 한다)
@@ -346,7 +358,7 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
         return None
 
     sources = collect_sources(turns)
-    prompt = build_prompt(turns, assistant, saved, sources, resumed_at)
+    prompt = build_prompt(turns, assistant, saved, sources, extracted_until)
     result: Extraction | None = None
     for attempt in range(1, ATTEMPTS + 1):
         try:
@@ -370,8 +382,8 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
     async def save() -> None:
         async with app.state.session_factory() as db:
             convo = await db.get(ConversationSession, session_id)
-            if convo is None:
-                return
+            if convo is None or convo.status is not SessionStatus.ENDED:
+                return  # 정리하는 사이 지워졌거나 다시 열렸다(다시 끝낼 때 새로 정리한다)
             if not convo.title_edited:  # 사용자가 고친 제목은 두고 간다
                 convo.title = _one_line(result.title)
             # 요약은 줄 목록으로 저장하므로 항목 안의 줄바꿈은 한 칸으로 줄인다
@@ -411,6 +423,8 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
             )
             done = now_turns == len(turns)
             convo.extract_status = ExtractStatus.DONE if done else ExtractStatus.PENDING
+            if turns:
+                convo.extracted_until_seq = turns[-1].seq
             await db.commit()
 
     await _shielded(app, save())
@@ -419,10 +433,18 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
 
 
 async def _status(app: FastAPI, session_id: str) -> ExtractStatus | None:
+    """끝난 대화의 정리 상태. 끝나지 않은 대화는 None(정리할 차례가 아니다)."""
     async with app.state.session_factory() as db:
-        return await db.scalar(
-            select(ConversationSession.extract_status).where(ConversationSession.id == session_id)
-        )
+        row = (
+            await db.execute(
+                select(ConversationSession.status, ConversationSession.extract_status).where(
+                    ConversationSession.id == session_id
+                )
+            )
+        ).first()
+    if row is None or row.status is not SessionStatus.ENDED:
+        return None
+    return row.extract_status
 
 
 async def _guarded(app: FastAPI, session_id: str) -> Extraction | None:

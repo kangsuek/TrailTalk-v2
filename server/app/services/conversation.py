@@ -34,6 +34,7 @@ from app.api.events import (
 )
 from app.db.models import (
     ConversationSession,
+    ExtractStatus,
     SessionMode,
     SessionStatus,
     Turn,
@@ -135,6 +136,19 @@ async def _set_status(
         )
         query = query.where(~spoke_after)
     result = await db.execute(query.values(**values).execution_options(synchronize_session=False))
+    if status is SessionStatus.ENDED and result.rowcount:
+        # 같은 트랜잭션에서 정리 대기(pending)를 함께 쓴다. 정리 작업을 띄우기 전에 서버가 꺼져도
+        # 다음 시작 때 이어서 정리한다(app/jobs/extract.py resume_pending). 정리를 이미 마친
+        # (done·failed) 기록은 그대로 둔다(다시 연 대화는 다시 열 때 기록을 지운다)
+        await db.execute(
+            update(ConversationSession)
+            .where(
+                ConversationSession.id == session_id,
+                ConversationSession.extract_status.is_(None),
+            )
+            .values(extract_status=ExtractStatus.PENDING)
+            .execution_options(synchronize_session=False)
+        )
     return result.rowcount
 
 
