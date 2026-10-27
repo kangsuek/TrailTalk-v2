@@ -24,8 +24,8 @@
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: M2 묶음 A `m2-a-extract`(M2-01~05) 진행 중. M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
-다음 작업: 묶음 B `m2-b-journal-api`(M2-06~09)
+현재 작업: M2 묶음 B `m2-b-journal-api`(M2-06~09) 진행 중. 묶음 A `main` 병합: `ebd2e2e`. M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
+다음 작업: 묶음 C `m2-c-web-journal`(M2-10~13)
 
 ## 3. M0 기반
 
@@ -131,10 +131,10 @@ M1-01~M1-14 14개 작업을 모두 완료했다(2026-10-24 종료, 종료 커밋
 | M2-03 | A | 종료와 정리 연결 | 끝내기 API(최대 45초 대기, `journal_status`, `saved`), `end_session` 도구·무발화 종료가 정리를 띄움, 서버 시작 때 남은 정리 재개·종료 때 취소, client-contract 2.9의 "M2 전까지 `null`" 단서 제거. `journal_status`가 바뀌어 기존 M1 테스트(`test_sessions.py`의 끝내기 응답 등)를 고쳐야 하면 수정 전에 사용자 승인을 받는다 | - | 완료 |
 | M2-04 | A | 저장 도구 수락 규칙 | `save_note` 도구 설명·`rules.py` 도구 절에 "캐릭터가 제안하고 사용자가 받아들이지 않은 것은 저장하지 않는다"(Spec 5.5), 프롬프트 스냅샷 갱신·차이 검토, 톤 평가 재실행(실제 CLI) | - | 완료 |
 | M2-05 | A | 추출 평가 | `tests/extract_eval/`(v1 12건을 옮기되, v1의 수락하지 않은 제안 케이스는 `rejected-suggestion` 1건뿐이므로 침묵·화제 전환·'음' 응답 케이스를 2건 이상 새로 써서 교체한다. 교체 후보는 검색 출처가 M5 몫인 `web-search`. `RUN_REAL_CLI=1`), 기준은 아이디어·할 일 재현율 80% 이상(v1 기준)과 수락하지 않은 제안 미추출, 실제 CLI 1회 실행과 `docs/eval/extract-<날짜>.md` | - | 완료 |
-| M2-06 | B | 일지 API | `api/journal.py`: `GET /journal`(`from`·`to`, 기본 30일, `invalid_range`, 말 안 한 대화 제외, 진행 중 포함), `GET /journal/{id}`(`persona_name`, `notes`, `turns`(`merged_from`, 빈 `attachments`)), `PATCH`(제목), `DELETE`(`session_active`·`turn_in_progress`, 쉬는 중이면 CLI 정리, 정리 작업 중단), `POST /journal/{id}/retry`(202, `session_not_ended`) | - | 대기 |
-| M2-07 | B | 노트 API | `PATCH /notes/{id}`(`starred`·`done`·`content`, `note_not_found`), `GET /notes/open-ideas`(대화당 최근 아이디어 하나, `counts`) | - | 대기 |
-| M2-08 | B | 다시 열기 | `POST /sessions/{id}/reopen {mode}`: 저장한 전문을 프롬프트의 "이어서 하는 대화" 블록에 넣어 새 CLI(긴 전문은 정리 결과 + 최근 원문 약 4천 자), 호칭 없는 재개 인사말 턴, 진행 중 대화 이어받기, 실패 때 원래 상태 유지, 정리 중단. 기억 블록에서 자기 대화 제외, 스냅샷 추가. 다시 열 때 `extract_status`를 null로 지워 다시 끝낼 때 pending이 되게 한다(끝내기는 null일 때만 pending을 쓴다. 노트 추출 경계는 묶음 A의 `extracted_until_seq`). 이 블록은 다시 연 대화의 프롬프트에만 붙고 새 대화의 프롬프트(기존 스냅샷)는 그대로이므로, 새 대화로 채점하는 톤 평가는 다시 돌리지 않고 재개 대화의 말투는 M2-15 실제 대화 확인에 다시 열기 1회를 넣어 본다 | - | 대기 |
-| M2-09 | B | 계약·타입·화면 경로 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 3절·2.11과 오류 코드 표 정합, 정적 마운트가 클라이언트 경로(`/journal/…`) 새로고침에 `index.html`을 주게 함(8절 이월). `/api`·`/internal` 아래 없는 경로는 기존 JSON 404를 유지 | - | 대기 |
+| M2-06 | B | 일지 API | `api/journal.py`: `GET /journal`(`from`·`to`, 기본 30일, `invalid_range`, 말 안 한 대화 제외, 진행 중 포함), `GET /journal/{id}`(`persona_name`, `notes`, `turns`(`merged_from`, 빈 `attachments`)), `PATCH`(제목), `DELETE`(`session_active`·`turn_in_progress`, 쉬는 중이면 CLI 정리, 정리 작업 중단), `POST /journal/{id}/retry`(202, `session_not_ended`) | - | 진행 중 |
+| M2-07 | B | 노트 API | `PATCH /notes/{id}`(`starred`·`done`·`content`, `note_not_found`), `GET /notes/open-ideas`(대화당 최근 아이디어 하나, `counts`) | - | 진행 중 |
+| M2-08 | B | 다시 열기 | `POST /sessions/{id}/reopen {mode}`: 저장한 전문을 프롬프트의 "이어서 하는 대화" 블록에 넣어 새 CLI(긴 전문은 정리 결과 + 최근 원문 약 4천 자), 호칭 없는 재개 인사말 턴, 진행 중 대화 이어받기, 실패 때 원래 상태 유지, 정리 중단. 기억 블록에서 자기 대화 제외, 스냅샷 추가. 다시 열 때 `extract_status`를 null로 지워 다시 끝낼 때 pending이 되게 한다(끝내기는 null일 때만 pending을 쓴다. 노트 추출 경계는 묶음 A의 `extracted_until_seq`). 이 블록은 다시 연 대화의 프롬프트에만 붙고 새 대화의 프롬프트(기존 스냅샷)는 그대로이므로, 새 대화로 채점하는 톤 평가는 다시 돌리지 않고 재개 대화의 말투는 M2-15 실제 대화 확인에 다시 열기 1회를 넣어 본다 | - | 진행 중 |
+| M2-09 | B | 계약·타입·화면 경로 | `npm run gen:api`로 `schema.d.ts` 재생성, client-contract 3절·2.11과 오류 코드 표 정합, 정적 마운트가 클라이언트 경로(`/journal/…`) 새로고침에 `index.html`을 주게 함(8절 이월). `/api`·`/internal` 아래 없는 경로는 기존 JSON 404를 유지 | - | 진행 중 |
 | M2-10 | C | 화면 경로와 마크다운 | 의존성 없이 History API로 경로 라우팅(`/`, `/journal`, `/journal/:id`, `/settings`, 하단 탭과 연동), `src/core/markdown.ts`(굵게·기울임·링크·목록·인라인 코드 부분집합 파서, 원시 HTML 무시, `http`/`https` 링크만 `rel="noopener noreferrer" target="_blank"`)와 React 렌더러, 말풍선에 적용(목록 서식 이월분) | 대화 09 | 대기 |
 | M2-11 | C | 일지 목록 화면 | 날짜별 최신순 묶음, 항목의 제목·요약 첫 줄·`counts`, 상태 알약(대화 중·정리 중·실패), 진행 중 강조 테두리·누르면 대화 화면, 선택 삭제(고른 항목마다 차례로 `DELETE`, 404는 지운 것으로, 실패만 선택 유지. 막는 것은 진행 중 대화뿐이며, 시안 일지 02의 "정리 중이라 지울 수 없어요"는 계약 3.2(정리 중도 지우고 정리를 멈춘다)와 달라 따르지 않고 시안은 문서 커밋으로 따로 고친다), `pending` 3초 폴링(최대 약 2분) | 일지 01·02·06·07 | 대기 |
 | M2-12 | C | 일지 상세 화면 | 결론(굵게)·알게 된 것·확인할 것·노트(별표·완료·수정)·인용·태그·전문(화자 `persona_name`, 끊긴 답변 표시, `merged_from` 행은 한 말풍선), 요약·확인할 것·노트 내용에 M2-10 마크다운 렌더러 적용, 정리 중 상태(전문 보기)와 `pending` 3초 폴링, 제목 수정, "글로 이어서"(다른 대화 진행 중이면 막고 안내, 이 화면에서 지금 열려 있는 대화면 다시 열지 않고 대화 화면으로), 다시 정리, 삭제, 열려 있지 않은 진행 중 대화의 "대화 끝내기" | 일지 03·04·05·08 | 대기 |
