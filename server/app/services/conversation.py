@@ -79,7 +79,19 @@ class TurnBusy(AppError):
         super().__init__("turn_in_progress", "이전 답변이 아직 끝나지 않았습니다.", 409)
 
 
+class SessionActive(AppError):
+    def __init__(self) -> None:
+        super().__init__("session_active", "진행 중인 대화는 끝낸 뒤 지울 수 있습니다.", 409)
+
+
+class SessionNotEnded(AppError):
+    def __init__(self) -> None:
+        super().__init__("session_not_ended", "아직 끝나지 않은 대화입니다.", 409)
+
+
 _END_WAIT_S = 10.0  # 끝내기: 진행 중인 턴이 정리되길 기다리는 시간
+_LOCK_WAIT_S = 3.0  # 지우기·다시 열기: 답변 중인 턴이 끝나길 기다리는 시간(넘으면 turn_in_progress)
+_EXTRACT_STOP_S = 5.0  # 지우기·다시 열기: 멈춘 정리의 결과 쓰기를 기다리는 시간
 
 _LLM_PUBLIC_MESSAGES = {
     "llm_process_exited": "답변 도중 연결이 끊겼어요. 다시 말해 주세요.",
@@ -342,6 +354,59 @@ async def end_session(
         if locked:
             runtime.turn_lock.release()
     return True
+
+
+async def _lock_turns(app: FastAPI, session_id: str) -> ConversationRuntime:
+    """대화의 턴 잠금을 쥔다. 답변 중이면 잠깐 기다렸다가 그래도 안 끝나면 turn_in_progress.
+
+    런타임이 없어도(서버 재시작 뒤 쉬는 대화) 만들어서 그 잠금을 쥔다. 턴도 같은 잠금을 쓰므로
+    쥐는 동안 시작한 턴은 거절된다(TurnBusy)."""
+    runtime = app.state.runtimes.ensure(session_id)
+    try:
+        async with asyncio.timeout(_LOCK_WAIT_S):
+            await runtime.turn_lock.acquire()
+    except TimeoutError:
+        raise TurnBusy() from None
+    return runtime
+
+
+async def _reload(db: AsyncSession, session_id: str) -> ConversationSession | None:
+    """잠금을 기다리는 사이 바뀐 상태까지 DB에서 다시 읽는다."""
+    return await db.scalar(
+        select(ConversationSession)
+        .where(ConversationSession.id == session_id)
+        .execution_options(populate_existing=True)
+    )
+
+
+async def delete_session(app: FastAPI, db: AsyncSession, session_id: str) -> None:
+    """대화를 지운다(전문·노트는 외래 키 CASCADE). 진행 중이면 거절(session_active).
+
+    턴과 같은 잠금을 쥔 채 지워, 쉬는 중인 대화에 막 시작한 턴이 CLI를 다시 띄우거나 지운 대화에
+    턴을 쓰지 않게 한다. 돌던 일지 정리는 멈추고 그 결과 쓰기가 끝난 뒤 지운다.
+    보관한 녹음(M3)·첨부(M5)는 그 파일이 생기는 마일스톤에서 함께 지운다.
+    """
+    convo = await get_session(db, session_id)  # 없는 대화에 런타임을 만들지 않는다
+    if convo.status is SessionStatus.ACTIVE:
+        raise SessionActive()
+    runtime = await _lock_turns(app, session_id)
+    try:
+        convo = await _reload(db, session_id)
+        if convo is None:  # 같은 대화를 동시에 지웠다
+            app.state.runtimes.discard(session_id)
+            raise SessionNotFound()
+        if convo.status is SessionStatus.ACTIVE:  # 그사이 턴이 시작됐다(런타임은 그 턴이 쓴다)
+            raise SessionActive()
+        cli_session_id = convo.cli_session_id
+        await extract.cancel_extraction(app, session_id, _EXTRACT_STOP_S)
+        app.state.reformat_requests.discard(session_id)
+        await db.delete(convo)
+        await db.commit()
+        # 행을 먼저 지운 뒤 정리한다(그 뒤 오는 턴은 SessionNotFound라 CLI를 다시 띄우지 않는다).
+        # 끝난 대화도 부른다(멱등): 끝내기가 정리를 마치기 전에 지워도 CLI·기록 파일이 남지 않게
+        await teardown(app, session_id, cli_session_id)
+    finally:
+        runtime.turn_lock.release()
 
 
 def check_turn_allowed(app: FastAPI, convo: ConversationSession) -> None:
