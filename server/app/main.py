@@ -13,7 +13,7 @@ from app.config import Settings, settings
 from app.db.migrate import upgrade_to_head
 from app.db.session import create_engine_for, create_session_factory
 from app.errors import install_error_handlers
-from app.jobs import idle
+from app.jobs import extract, idle
 from app.llm.claude_cli import ClaudeCliBackend
 from app.llm.manager import LlmSessionManager
 from app.mcp.server import mount_mcp
@@ -67,6 +67,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app.state.settings = app_settings
     app.state.client_config = load_client_config(app_settings)  # 틀린 파일이면 시작하지 않는다
     app.state.runtimes = RuntimeRegistry()
+    extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)
     app.add_middleware(RequestContextMiddleware)
     install_error_handlers(app)
 
