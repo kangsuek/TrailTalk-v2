@@ -36,11 +36,10 @@ from app.db.models import (
     Turn,
     TurnRole,
 )
-from app.errors import AppError
 from app.jobs.dedupe import matches_saved, new_items
 from app.llm.backend import LlmError
 from app.llm.claude_cli import run_oneshot
-from app.persona.loader import load_persona
+from app.persona.loader import load_session_persona
 from app.persona.rules import EXTRACT_INSTRUCTION, EXTRACT_SAVED_SECTION, EXTRACT_SOURCES_SECTION
 
 logger = logging.getLogger("trailtalk.extract")
@@ -265,13 +264,10 @@ def build_prompt(
     )
 
 
-def _assistant_name(app: FastAPI, persona_id: str | None) -> str:
+def assistant_name(app: FastAPI, persona_id: str | None) -> str:
     """전문의 화자 이름은 그 대화가 시작한 페르소나를 따른다(파일이 사라졌으면 기본 페르소나)."""
     settings = app.state.settings
-    try:
-        loaded = load_persona(settings.persona_dir, persona_id or settings.default_persona)
-    except AppError:
-        loaded = load_persona(settings.persona_dir, settings.default_persona)
+    loaded = load_session_persona(settings.persona_dir, persona_id, settings.default_persona)
     return loaded.persona.name
 
 
@@ -343,7 +339,7 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
             .order_by(Note.created_at)
         )
         saved = [(kind, content) for kind, content in notes]
-        assistant = _assistant_name(app, convo.persona_id)
+        assistant = assistant_name(app, convo.persona_id)
         extracted_until = convo.extracted_until_seq
         # 예전 형식 일지를 새 형식으로 '다시 정리'해 달라는 요청이면 노트는 이미 뽑았으므로
         # 다시 넣지 않는다(고친 노트가 되살아나거나 중복이 생기지 않게). 요청으로 시작한 이번만

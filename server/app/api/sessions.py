@@ -13,9 +13,8 @@ from pydantic import BaseModel, Field
 from app.api.events import sse_response_doc
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
-from app.errors import AppError
 from app.jobs import extract
-from app.persona.loader import load_persona
+from app.persona.loader import load_session_persona
 from app.services import closing, conversation
 
 router = APIRouter(tags=["sessions"])
@@ -158,12 +157,8 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
     journal_status = convo.extract_status.value if convo.extract_status else None
     if journal_status is None and session_id in app.state.extractions:
         journal_status = "pending"  # 정리 작업이 막 떠서 아직 상태를 쓰지 않았다
-    # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도).
-    # 그 파일이 사라졌거나 깨졌어도 이미 끝난 세션의 응답이 실패하지 않게 기본 페르소나로 대신한다
-    try:
-        loaded = load_persona(settings.persona_dir, convo.persona_id or settings.default_persona)
-    except AppError:
-        loaded = load_persona(settings.persona_dir, settings.default_persona)
+    # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도)
+    loaded = load_session_persona(settings.persona_dir, convo.persona_id, settings.default_persona)
     return SessionClosed(
         session=SessionOut.of(convo),
         closing=closing.closing_message(loaded.persona, counts),
