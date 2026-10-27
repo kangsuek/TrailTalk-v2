@@ -151,7 +151,9 @@ def build_mcp_server(app) -> MCPServer:
     ) -> str:
         """아이디어(idea)·할 일(todo)·메모(memo)를 저장한다.
 
-        사용자가 저장을 요청했거나 기억해 둘 만한 내용이 나왔을 때 쓴다.
+        사용자가 저장을 요청했거나 기억해 둘 만한 내용이 나왔을 때 쓴다. 사용자가 직접 말했거나
+        네 제안을 분명히 받아들인 것만 저장한다(거절·무응답·화제 전환·맞장구만 친 제안은 저장하지
+        않는다).
         """
         runtime = runtime_of(ctx)
         content = content.strip()
