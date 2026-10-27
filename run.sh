@@ -72,6 +72,7 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 
 node_major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
+case "$node_major" in '' | *[!0-9]*) node_major=0 ;; esac # 고장 난 shim의 엉뚱한 출력은 낮은 버전으로 본다
 if [ "$node_major" -lt 24 ]; then
   echo "Node.js 24 이상이 필요합니다(현재 $(node -v 2>/dev/null || echo '알 수 없음'))." >&2
   install_hint node >&2
