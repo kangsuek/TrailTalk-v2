@@ -252,6 +252,8 @@ describe('ConversationScreen', () => {
     render(<ConversationScreen />)
     await startConversation()
     await userEvent.click(screen.getByRole('button', { name: '대화종료' }))
+    // 종료 확인 창(대화 11)에서 끝내고 정리하기를 고른다
+    await userEvent.click(screen.getByRole('button', { name: '끝내고 정리하기' }))
     expect(await screen.findByText('오늘 아이디어 1개 저장했어요!')).toBeInTheDocument()
     expect(screen.getByText('대화 끝남')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: '새 대화 시작' }))

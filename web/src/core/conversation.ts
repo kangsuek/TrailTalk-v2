@@ -95,7 +95,14 @@ export interface ConversationState {
 export type ConversationAction =
   | { type: 'start' }
   // 서버에 있는 대화를 그대로 이어 간다(다시 열기 응답, 같은 기기의 새로고침 복원). turns는 전문이다
-  | { type: 'resumed'; sessionId: string; personaName: string; turns: Turn[] }
+  | {
+      type: 'resumed'
+      sessionId: string
+      personaName: string
+      turns: Turn[]
+      // 서버에 있는 상태(쉬는 중이면 paused). 없으면 active
+      status?: 'active' | 'paused'
+    }
   | {
       type: 'started'
       sessionId: string
@@ -224,7 +231,7 @@ export function conversationReducer(
     case 'resumed':
       return {
         ...initialConversation,
-        status: 'active',
+        status: action.status ?? 'active',
         sessionId: action.sessionId,
         personaName: action.personaName,
         messages: messagesFromTurns(action.turns),

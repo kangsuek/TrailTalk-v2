@@ -266,3 +266,10 @@ export const isSafeUrl = (url: string): boolean => /^https?:\/\/[^\s<>"]+$/i.tes
 /** 제목 수정 입력의 길이(서버는 공백을 줄인 뒤 1~200자를 본다). */
 export const TITLE_MAX = 200
 export const titleOf = (input: string): string => input.split(/\s+/).filter(Boolean).join(' ')
+
+/** 기기 시각으로 '10월 22일'. */
+export function monthDayLabel(iso: string): string {
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return ''
+  return `${at.getMonth() + 1}월 ${at.getDate()}일`
+}

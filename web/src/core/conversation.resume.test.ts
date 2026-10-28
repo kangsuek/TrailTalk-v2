@@ -61,3 +61,16 @@ describe('resumed', () => {
     expect(state.messages).toHaveLength(1)
   })
 })
+
+describe('resumed 상태', () => {
+  it('서버가 쉬는 중이라 한 대화는 paused로 이어 간다', () => {
+    const state = conversationReducer(initialConversation, {
+      type: 'resumed',
+      sessionId: 's1',
+      personaName: '제니',
+      turns: [],
+      status: 'paused',
+    })
+    expect(state.status).toBe('paused')
+  })
+})

@@ -1,7 +1,9 @@
 import { useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import CountPills from '../components/CountPills.tsx'
 import Header from '../components/Header.tsx'
 import Markdown from '../components/Markdown.tsx'
-import { joinSentences } from '../core/markdown.ts'
+import { monthDayLabel, type JournalStatus, type NoteCounts } from '../core/journal.ts'
+import { joinSentences, plainText } from '../core/markdown.ts'
 import type { Connection } from '../core/connection.ts'
 import {
   ApiError,
@@ -10,6 +12,7 @@ import {
   startSession,
   type SessionReopened,
 } from '../api/conversation.ts'
+import { getJournal, listOpenIdeas, type OpenIdea } from '../api/journal.ts'
 import {
   conversationReducer,
   initialConversation,
@@ -27,6 +30,21 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
   active: '글 대화',
   paused: '쉬는 중',
   ended: '대화 끝남',
+}
+
+/** 끝낸 대화의 정리 결과. saved가 null이면 서버가 알려 주지 못했다(그만 기다렸거나 불러오지 못함) */
+interface Summary {
+  sessionId: string
+  saved: NoteCounts | null
+  journalStatus: JournalStatus
+}
+
+function Spinner() {
+  return (
+    <svg className="ic j-spin" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </svg>
+  )
 }
 
 function errorMessage(error: unknown): string {
@@ -65,6 +83,8 @@ export default function ConversationScreen({
   onSessionChange,
   resume = null,
   onResumed,
+  restoreId = null,
+  onOpenJournal,
 }: {
   connection?: Connection
   /** 진행 중인 대화가 생기거나 끝났을 때(끝나면 null) 알린다 */
@@ -73,18 +93,100 @@ export default function ConversationScreen({
   resume?: SessionReopened | null
   /** resume을 받아 화면에 올렸다 */
   onResumed?: () => void
+  /** 이 기기에서 진행 중이던 대화(새로고침 뒤). 일지 상세의 전문으로 화면을 채우고 이어 간다 */
+  restoreId?: string | null
+  /** 일지 상세를 연다(시작 화면의 아이디어 카드, 끝난 화면의 "일지에서 보기") */
+  onOpenJournal?: (sessionId: string) => void
 }) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
   const aborter = useRef<AbortController | null>(null)
   const counter = useRef(0)
   const listRef = useRef<HTMLOListElement>(null)
+  const [restoring, setRestoring] = useState(restoreId !== null)
+  const [ideas, setIdeas] = useState<OpenIdea[]>([])
+  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const onSessionChangeRef = useRef(onSessionChange)
+  useEffect(() => {
+    onSessionChangeRef.current = onSessionChange
+  })
+  const reported = useRef(false) // 진행 중인 대화를 알린 적이 있다(끝났을 때만 null을 알린다)
+  const finalized = useRef<string | null>(null) // 마무리(끝내기 응답)를 이미 받았거나 받는 대화
 
   const openSessionId =
     state.status === 'active' || state.status === 'paused' ? state.sessionId : null
   useEffect(() => {
-    onSessionChange?.(openSessionId)
+    if (openSessionId) {
+      reported.current = true
+      onSessionChange?.(openSessionId)
+    } else if (reported.current) {
+      reported.current = false
+      onSessionChange?.(null)
+    }
   }, [openSessionId, onSessionChange])
+
+  // 새로고침 뒤 복원: 같은 기기에서 기억한 진행 중 대화는 reopen 없이 상세의 전문으로 화면을 채우고
+  // 같은 세션에 턴을 이어 보낸다(규약 2.11). 이미 끝났거나 없으면 기억을 지우고 시작 화면이다.
+  // 서버에 닿지 못한 경우는 기억을 남겨 둔다(다음 새로고침에 다시 시도)
+  useEffect(() => {
+    if (!restoreId) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const detail = await getJournal(restoreId, controller.signal)
+        if (controller.signal.aborted) return
+        if (detail.session.status === 'ended') onSessionChangeRef.current?.(null)
+        else {
+          dispatch({
+            type: 'resumed',
+            sessionId: restoreId,
+            personaName: detail.persona_name,
+            turns: detail.turns,
+            status: detail.session.status,
+          })
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return
+        if (error instanceof ApiError && error.status === 404) onSessionChangeRef.current?.(null)
+      } finally {
+        if (!controller.signal.aborted) setRestoring(false)
+      }
+    })()
+    return () => controller.abort()
+  }, [restoreId])
+
+  // 시작 화면이 보일 때마다 "지난 아이디어 이어 가기" 목록을 다시 불러온다(없거나 못 불러오면 숨긴다)
+  useEffect(() => {
+    if (state.status !== 'idle' || restoring) return
+    const controller = new AbortController()
+    listOpenIdeas(5, controller.signal)
+      .then(setIdeas)
+      .catch(() => {
+        if (!controller.signal.aborted) setIdeas([])
+      })
+    return () => controller.abort()
+  }, [state.status, restoring])
+
+  // 끝내기 도구·서버의 무발화 종료로 끝난 대화는 끝내기 API를 불러 마무리 멘트와 저장 개수를 받는다
+  // (규약 2.9). 끝내기 버튼으로 끝낸 대화는 그 응답으로 이미 마무리했다
+  useEffect(() => {
+    const sessionId = state.sessionId
+    if (state.status !== 'ended' || !sessionId || state.ending) return
+    if (finalized.current === sessionId) return
+    finalized.current = sessionId
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const closed = await endSession(sessionId, controller.signal)
+        dispatch({ type: 'ended', closing: closed.closing })
+        setSummary({ sessionId, saved: closed.saved, journalStatus: closed.journal_status })
+      } catch {
+        if (!controller.signal.aborted) setSummary({ sessionId, saved: null, journalStatus: null })
+      }
+    })()
+    return () => controller.abort()
+  }, [state.status, state.sessionId, state.ending])
 
   useEffect(() => {
     if (!resume) return
@@ -177,18 +279,32 @@ export default function ConversationScreen({
   }
 
   async function end() {
-    if (!state.sessionId || state.ending) return
+    const sessionId = state.sessionId
+    if (!sessionId || state.ending) return
+    setConfirmEnd(false)
+    finalized.current = sessionId // 이 요청의 응답으로 마무리한다
     aborter.current?.abort() // 받는 중인 답변은 받은 데까지 끊는다
     const controller = (aborter.current = new AbortController())
     setDraft('') // 끝낸 대화를 다시 열어도 쓰던 글이 남아 있지 않게
     dispatch({ type: 'ending' })
     try {
-      const closed = await endSession(state.sessionId, controller.signal)
+      const closed = await endSession(sessionId, controller.signal)
       dispatch({ type: 'ended', closing: closed.closing })
+      setSummary({ sessionId, saved: closed.saved, journalStatus: closed.journal_status })
     } catch (error) {
       if (controller.signal.aborted) return
+      finalized.current = null
       dispatch({ type: 'failed', message: errorMessage(error) })
     }
+  }
+
+  // 정리를 기다리다 그만둔다. 대화는 서버에서 이미 끝났고 정리는 서버가 계속한다
+  function stopWaiting() {
+    const sessionId = state.sessionId
+    if (!sessionId || !state.ending) return
+    aborter.current?.abort()
+    dispatch({ type: 'ended' })
+    setSummary({ sessionId, saved: null, journalStatus: 'pending' })
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -196,6 +312,19 @@ export default function ConversationScreen({
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
     event.preventDefault()
     void send()
+  }
+
+  if (restoring) {
+    return (
+      <section className="chat chat-start" aria-label="대화 불러오는 중">
+        <Header initial="T" name="TrailTalk" sub="대화 불러오는 중" heading connection={connection} />
+        <div className="chat-start-body">
+          <p className="chat-start-sub" role="status">
+            하던 대화를 불러오고 있어요…
+          </p>
+        </div>
+      </section>
+    )
   }
 
   if (state.status === 'idle' || state.status === 'starting') {
@@ -209,6 +338,23 @@ export default function ConversationScreen({
             <p className="chat-error" role="alert">
               {state.error}
             </p>
+          )}
+          {ideas.length > 0 && (
+            <section className="ideas" aria-label="지난 아이디어 이어 가기">
+              <h2 className="sh">지난 아이디어 이어 가기</h2>
+              {ideas.map((idea) => (
+                <button
+                  key={idea.id}
+                  type="button"
+                  className="idea-card"
+                  onClick={() => onOpenJournal?.(idea.session_id)}
+                >
+                  <span className="j-meta">{monthDayLabel(idea.created_at)}</span>
+                  <span className="idea-text">{plainText(idea.content)}</span>
+                  <CountPills counts={idea.counts} />
+                </button>
+              ))}
+            </section>
           )}
         </div>
         <div className="dock">
@@ -226,6 +372,7 @@ export default function ConversationScreen({
   }
 
   const ended = state.status === 'ended'
+  const sum = summary?.sessionId === state.sessionId ? summary : null
   const initial = state.personaName?.slice(0, 1) ?? ''
   return (
     <section className="chat" aria-label="대화">
@@ -248,8 +395,57 @@ export default function ConversationScreen({
       )}
       {ended ? (
         <div className="composer composer-ended">
+          <section className="closing-card" aria-label="오늘의 정리">
+            {sum?.saved && (
+              <>
+                <div className="sh">오늘 저장한 것</div>
+                <CountPills counts={sum.saved} all />
+              </>
+            )}
+            {(sum === null || sum.journalStatus === 'pending') && (
+              <p className="closing-row">
+                <Spinner />
+                <span>
+                  <strong>일지를 정리하고 있어요</strong>
+                  <span className="closing-sub">끝나면 일지에서 볼 수 있어요.</span>
+                </span>
+              </p>
+            )}
+            {sum?.journalStatus === 'failed' && (
+              <p className="closing-sub">
+                일지를 정리하지 못했어요. 일지에서 다시 정리할 수 있어요.
+              </p>
+            )}
+            {state.sessionId && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => onOpenJournal?.(state.sessionId!)}
+              >
+                일지에서 보기
+              </button>
+            )}
+          </section>
           <button type="button" className="btn btn-primary" onClick={() => void start()}>
             새 대화 시작
+          </button>
+        </div>
+      ) : state.ending ? (
+        <div className="composer composer-ended">
+          <section className="closing-card" role="status" aria-label="정리 중">
+            <p className="closing-row">
+              <Spinner />
+              <span>
+                <strong>일지를 정리하고 있어요</strong>
+                <span className="closing-sub">요약과 할 일을 모으는 중이에요. 최대 45초.</span>
+              </span>
+            </p>
+            <div className="bar-track bar-track-primary" aria-hidden="true">
+              <i />
+            </div>
+          </section>
+          <button type="button" className="link-btn" onClick={stopWaiting}>
+            그만 기다리기
           </button>
         </div>
       ) : (
@@ -282,13 +478,37 @@ export default function ConversationScreen({
               type="button"
               className="btn btn-ghost"
               disabled={state.ending}
-              onClick={() => void end()}
+              onClick={() => setConfirmEnd(true)}
             >
               <svg className="ic" viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
               대화종료
             </button>
+          </div>
+        </div>
+      )}
+      {confirmEnd && (
+        <div className="dialog-back dialog-back-float">
+          <div
+            className="dialog dialog-float"
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="대화 종료 확인"
+            aria-describedby="end-desc"
+          >
+            <h2>대화를 끝낼까요?</h2>
+            <p id="end-desc">
+              지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수 있어요.
+            </p>
+            <div className="dialog-stack">
+              <button type="button" className="btn btn-primary" onClick={() => void end()}>
+                끝내고 정리하기
+              </button>
+              <button type="button" className="btn" autoFocus onClick={() => setConfirmEnd(false)}>
+                계속 대화하기
+              </button>
+            </div>
           </div>
         </div>
       )}

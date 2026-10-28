@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import CountPills from '../components/CountPills.tsx'
 import { ApiError } from '../api/http.ts'
 import { deleteJournal, listJournal, retryJournal } from '../api/journal.ts'
 import {
   TITLE_FALLBACK,
   cardKind,
-  countPills,
   groupByDate,
   hasPending,
   isDeletable,
@@ -26,20 +26,6 @@ interface Props {
 const errorText = (error: unknown): string =>
   error instanceof ApiError ? error.message : '문제가 생겼어요. 다시 해 주세요.'
 
-function Pills({ item }: { item: JournalItem }) {
-  const pills = countPills(item.counts)
-  if (pills.length === 0) return null
-  return (
-    <span className="j-pills">
-      {pills.map((pill) => (
-        <span key={pill.kind} className={`pill pill-${pill.kind}`}>
-          {pill.text}
-        </span>
-      ))}
-    </span>
-  )
-}
-
 function Spinner() {
   return (
     <svg className="ic ic-sm j-spin" viewBox="0 0 24 24" aria-hidden="true">
@@ -57,7 +43,7 @@ function CardBody({ item }: { item: JournalItem }) {
       <span className="j-meta">{metaLine(item)}</span>
       <span className="j-title">{item.title ?? TITLE_FALLBACK}</span>
       {preview && <span className="j-preview">{preview}</span>}
-      {kind === 'done' && <Pills item={item} />}
+      {kind === 'done' && <CountPills counts={item.counts} />}
       {kind === 'pending' && (
         <span className="j-note j-note-amber">
           <Spinner />

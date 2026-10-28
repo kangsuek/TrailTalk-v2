@@ -256,3 +256,13 @@ describe('그 밖의 도우미', () => {
     expect(titleOf('   ')).toBe('')
   })
 })
+
+import { monthDayLabel } from './journal.ts'
+
+describe('monthDayLabel', () => {
+  it('기기 날짜를 월·일로 보인다', () => {
+    expect(monthDayLabel(new Date(2026, 9, 22, 23, 30).toISOString())).toBe('10월 22일')
+    expect(monthDayLabel(new Date(2026, 0, 3, 0, 5).toISOString())).toBe('1월 3일')
+    expect(monthDayLabel('아님')).toBe('')
+  })
+})
