@@ -1,6 +1,6 @@
-"""대화 세션 API(client-contract 2절): 시작(인사말), 글 턴(SSE), 종료(마무리 멘트).
+"""대화 세션 API(client-contract 2절): 시작(인사말), 글 턴(SSE), 종료(마무리 멘트), 다시 열기.
 
-음성 턴·다시 열기·미리 띄우기는 해당 마일스톤(M2~M4)에서 더한다.
+음성 턴·미리 띄우기는 해당 마일스톤(M3~M4)에서 더한다.
 """
 
 from datetime import datetime
@@ -11,11 +11,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.events import sse_response_doc
+from app.api.journal import TurnOut
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
-from app.errors import AppError
 from app.jobs import extract
-from app.persona.loader import load_persona
+from app.persona.loader import LoadedPersona, load_session_persona
 from app.services import closing, conversation
 
 router = APIRouter(tags=["sessions"])
@@ -103,8 +103,30 @@ class SessionStarted(BaseModel):
     persona: PersonaOut
 
 
+class SessionReopen(BaseModel):
+    mode: Literal["text", "voice"] = "text"  # 이번에 쓸 방식(처음과 달라도 된다)
+
+
+class SessionReopened(BaseModel):
+    """다시 열기 응답. greeting은 전문 끝에 새로 남긴 재개 인사말(호칭 없음), turns는 그 인사말까지
+    포함한 전체 전문(일지 상세의 turns와 같은 형식)이다."""
+
+    session: SessionOut
+    greeting: GreetingOut
+    persona: PersonaOut
+    turns: list[TurnOut]
+
+
 class TurnCreate(BaseModel):
     text: Annotated[str, Field(min_length=1, max_length=4000, pattern=r"\S")]
+
+
+def _persona_out(loaded: LoadedPersona) -> PersonaOut:
+    return PersonaOut(
+        id=loaded.persona.id,
+        name=loaded.persona.name,
+        ack=[AckOut(text=text, audio=None) for text in loaded.persona.ack],
+    )
 
 
 @router.post("/sessions", status_code=201)
@@ -115,11 +137,25 @@ async def create_session(body: SessionCreate, request: Request, db: DbSession) -
     return SessionStarted(
         session=SessionOut.of(convo),
         greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
-        persona=PersonaOut(
-            id=loaded.persona.id,
-            name=loaded.persona.name,
-            ack=[AckOut(text=text, audio=None) for text in loaded.persona.ack],
-        ),
+        persona=_persona_out(loaded),
+    )
+
+
+@router.post("/sessions/{session_id}/reopen")
+async def reopen_session(
+    session_id: str, request: Request, db: DbSession, body: SessionReopen | None = None
+) -> SessionReopened:
+    """끝난 대화(또는 열려 있지 않은 진행 중 대화)를 같은 세션으로 다시 열어 이어서 대화한다.
+    답변 중이면 409 turn_in_progress, 재개 인사말을 받지 못하면 시작 실패와 같은 오류이고 대화는
+    원래 상태로 남는다."""
+    convo, greeting, turns, loaded = await conversation.reopen_session(
+        request.app, db, session_id, SessionMode((body or SessionReopen()).mode)
+    )
+    return SessionReopened(
+        session=SessionOut.of(convo),
+        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
+        persona=_persona_out(loaded),
+        turns=[TurnOut.of(t) for t in turns],
     )
 
 
@@ -153,17 +189,15 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
     await conversation.end_session(app, db, convo)
     await db.commit()
     await extract.wait_extraction(app, session_id, settings.extract_wait_s)
-    await db.refresh(convo)
+    # 기다리는 사이 지워졌으면 404. get은 지운 것을 모르는 메모리 속 객체를 돌려주므로
+    # DB에서 다시 읽는다
+    convo = await conversation.reload_session(db, session_id)
     counts = await closing.count_notes(db, session_id, since=convo.reopened_at)
     journal_status = convo.extract_status.value if convo.extract_status else None
     if journal_status is None and session_id in app.state.extractions:
         journal_status = "pending"  # 정리 작업이 막 떠서 아직 상태를 쓰지 않았다
-    # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도).
-    # 그 파일이 사라졌거나 깨졌어도 이미 끝난 세션의 응답이 실패하지 않게 기본 페르소나로 대신한다
-    try:
-        loaded = load_persona(settings.persona_dir, convo.persona_id or settings.default_persona)
-    except AppError:
-        loaded = load_persona(settings.persona_dir, settings.default_persona)
+    # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도)
+    loaded = load_session_persona(settings.persona_dir, convo.persona_id, settings.default_persona)
     return SessionClosed(
         session=SessionOut.of(convo),
         closing=closing.closing_message(loaded.persona, counts),

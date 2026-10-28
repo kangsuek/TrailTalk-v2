@@ -65,3 +65,14 @@ def load_persona(persona_dir: Path, persona_id: str) -> LoadedPersona:
     loaded = LoadedPersona(persona, version, path)
     _cache[path] = loaded
     return loaded
+
+
+def load_session_persona(
+    persona_dir: Path, persona_id: str | None, fallback_id: str
+) -> LoadedPersona:
+    """그 대화를 시작한 페르소나. 기록이 없거나 그 파일이 사라졌거나 깨졌으면 fallback_id로 대신한다
+    (이미 있는 대화의 응답·정리가 페르소나 파일 때문에 실패하지 않게)."""
+    try:
+        return load_persona(persona_dir, persona_id or fallback_id)
+    except AppError:
+        return load_persona(persona_dir, fallback_id)

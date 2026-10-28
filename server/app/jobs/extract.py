@@ -36,11 +36,10 @@ from app.db.models import (
     Turn,
     TurnRole,
 )
-from app.errors import AppError
 from app.jobs.dedupe import matches_saved, new_items
 from app.llm.backend import LlmError
 from app.llm.claude_cli import run_oneshot
-from app.persona.loader import load_persona
+from app.persona.loader import load_session_persona
 from app.persona.rules import EXTRACT_INSTRUCTION, EXTRACT_SAVED_SECTION, EXTRACT_SOURCES_SECTION
 
 logger = logging.getLogger("trailtalk.extract")
@@ -265,13 +264,10 @@ def build_prompt(
     )
 
 
-def _assistant_name(app: FastAPI, persona_id: str | None) -> str:
+def assistant_name(app: FastAPI, persona_id: str | None) -> str:
     """전문의 화자 이름은 그 대화가 시작한 페르소나를 따른다(파일이 사라졌으면 기본 페르소나)."""
     settings = app.state.settings
-    try:
-        loaded = load_persona(settings.persona_dir, persona_id or settings.default_persona)
-    except AppError:
-        loaded = load_persona(settings.persona_dir, settings.default_persona)
+    loaded = load_session_persona(settings.persona_dir, persona_id, settings.default_persona)
     return loaded.persona.name
 
 
@@ -343,13 +339,26 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
             .order_by(Note.created_at)
         )
         saved = [(kind, content) for kind, content in notes]
-        assistant = _assistant_name(app, convo.persona_id)
+        assistant = assistant_name(app, convo.persona_id)
         extracted_until = convo.extracted_until_seq
         # 예전 형식 일지를 새 형식으로 '다시 정리'해 달라는 요청이면 노트는 이미 뽑았으므로
         # 다시 넣지 않는다(고친 노트가 되살아나거나 중복이 생기지 않게). 요청으로 시작한 이번만
-        # 해당한다(늦게 온 턴 때문에 다시 도는 정리는 새 말의 노트를 뽑아야 한다)
+        # 해당한다(늦게 온 턴 때문에 다시 도는 정리는 새 말의 노트를 뽑아야 한다). 앞서 정리한 뒤로
+        # 이어 간 말이 있으면(다시 열어 이어 간 뒤 정리가 실패한 일지) 그 말의 노트를 뽑아야 하므로
+        # 다시 정리로 보지 않는다
         requests: set[str] = app.state.reformat_requests
-        reformat = session_id in requests and convo.checks is None and bool(convo.summary)
+        # 정리 경계가 생기기 전에 정리한 일지(extracted_until NULL)는 다시 연 적이 있으면 이어 간
+        # 말이 있는 것으로 본다(다시 열면 재개 인사말 턴이 생긴다)
+        if extracted_until is None:
+            said_after = convo.reopened_at is not None
+        else:
+            said_after = any(t.seq > extracted_until for t in turns)
+        reformat = (
+            session_id in requests
+            and convo.checks is None
+            and bool(convo.summary)
+            and not said_after
+        )
         requests.discard(session_id)
         await db.commit()
     if not any(t.role is TurnRole.USER for t in turns):
