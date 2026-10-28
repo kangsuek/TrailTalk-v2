@@ -130,6 +130,15 @@ export function parseInline(src: string): Inline[] {
   return out
 }
 
+/** 서식 표시를 뺀 글자만(목록 미리보기처럼 링크·굵게를 쓸 수 없는 자리). */
+export function plainText(src: string): string {
+  const flat = (nodes: Inline[]): string =>
+    nodes
+      .map((node) => (node.type === 'text' || node.type === 'code' ? node.text : flat(node.children)))
+      .join('')
+  return flat(parseInline(src))
+}
+
 const BULLET = /^\s{0,3}[-*+]\s+(.*)$/
 const ORDERED = /^\s{0,3}\d{1,3}[.)]\s+(.*)$/
 

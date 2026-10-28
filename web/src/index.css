@@ -16,6 +16,29 @@
   --ghost-bg: #ffffff;
   --on-primary: #ffffff;
   --tab-on: #1d5b43;
+  /* 일지 시안(JList·JDetail)에서 읽은 값 */
+  --pill-idea-bg: #dcebe2;
+  --pill-idea-fg: #14452f;
+  --pill-todo-bg: #f7e6c4;
+  --pill-todo-fg: #6e3b00;
+  --pill-memo-bg: #e6e2d6;
+  --pill-memo-fg: #2f3a34;
+  --pill-fail-bg: #f6ddd7;
+  --pill-fail-fg: #6e1e10;
+  --card-live-bg: #f1f7f3;
+  --card-fail-bg: #fff8f6;
+  --card-fail-line: #e5b9ae;
+  --amber-bg: #f7e6c4;
+  --amber-bar: #ebcf95;
+  --amber-ink: #4e2a00;
+  --amber-sub: #5b3300;
+  --danger-bg: #f6ddd7;
+  --danger-ink: #5a160a;
+  --danger-sub: #6e1e10;
+  --concl-bg: #e3efe7;
+  --concl-ink: #14452f;
+  --skel: #e6e2d6;
+  --cb-line: #9aa59e;
   --header-h: 60px;
   --tabbar-h: 64px;
   font-family: 'Noto Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
@@ -41,6 +64,28 @@
     --ghost-bg: #1f2d26;
     --on-primary: #0a1410;
     --tab-on: #6bd0a4;
+    --pill-idea-bg: #1f3a2e;
+    --pill-idea-fg: #9adbb9;
+    --pill-todo-bg: #3a2e14;
+    --pill-todo-fg: #f0c26a;
+    --pill-memo-bg: #2a3a32;
+    --pill-memo-fg: #cbd5ce;
+    --pill-fail-bg: #3a1e18;
+    --pill-fail-fg: #f5b9ab;
+    --card-live-bg: #1a2d24;
+    --card-fail-bg: #2a1713;
+    --card-fail-line: #5a2e25;
+    --amber-bg: #3a2e14;
+    --amber-bar: #5a4620;
+    --amber-ink: #f0c26a;
+    --amber-sub: #e3c88d;
+    --danger-bg: #3a1e18;
+    --danger-ink: #f5b9ab;
+    --danger-sub: #f0c4b9;
+    --concl-bg: #1a2d24;
+    --concl-ink: #9adbb9;
+    --skel: #2b3e34;
+    --cb-line: #6b7c72;
     color-scheme: dark;
   }
 }
@@ -61,6 +106,28 @@
   --ghost-bg: #1f2d26;
   --on-primary: #0a1410;
   --tab-on: #6bd0a4;
+  --pill-idea-bg: #1f3a2e;
+  --pill-idea-fg: #9adbb9;
+  --pill-todo-bg: #3a2e14;
+  --pill-todo-fg: #f0c26a;
+  --pill-memo-bg: #2a3a32;
+  --pill-memo-fg: #cbd5ce;
+  --pill-fail-bg: #3a1e18;
+  --pill-fail-fg: #f5b9ab;
+  --card-live-bg: #1a2d24;
+  --card-fail-bg: #2a1713;
+  --card-fail-line: #5a2e25;
+  --amber-bg: #3a2e14;
+  --amber-bar: #5a4620;
+  --amber-ink: #f0c26a;
+  --amber-sub: #e3c88d;
+  --danger-bg: #3a1e18;
+  --danger-ink: #f5b9ab;
+  --danger-sub: #f0c4b9;
+  --concl-bg: #1a2d24;
+  --concl-ink: #9adbb9;
+  --skel: #2b3e34;
+  --cb-line: #6b7c72;
   color-scheme: dark;
 }
 
@@ -520,4 +587,412 @@ ul.md-list {
 
 ol.md-list {
   list-style-type: decimal;
+}
+
+/* 일지(시안 JList·JSelect·JDetail) */
+.journal {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.hd2 {
+  display: flex;
+  height: var(--header-h);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ttl {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.ttl-sm {
+  font-size: 17px;
+}
+
+.tbtn {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--tab-on);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tbtn-plain {
+  padding-left: 0;
+  color: var(--text);
+}
+
+.tbtn:focus-visible,
+.ib:focus-visible,
+.jcard-btn:focus-visible,
+.j-main:focus-visible,
+.j-row:focus-visible,
+.btn-retry:focus-visible,
+.btn-danger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.j-list {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px 16px;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.j-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.j-date {
+  margin: 0;
+  padding: 6px 2px 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.j-empty {
+  margin: 24px 0;
+  color: var(--text-sub);
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.jcard {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--bubble-line);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.jcard-btn {
+  cursor: pointer;
+}
+
+.jcard[data-kind='active'] {
+  border: 2px solid var(--primary);
+  background: var(--card-live-bg);
+}
+
+.jcard[data-kind='failed'] {
+  border-color: var(--card-fail-line);
+  background: var(--card-fail-bg);
+}
+
+.jcard[data-selected='true'] {
+  border: 2px solid var(--primary);
+  background: var(--card-live-bg);
+}
+
+.j-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.j-meta {
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.j-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.j-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-sub);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.j-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.pill-idea {
+  background: var(--pill-idea-bg);
+  color: var(--pill-idea-fg);
+}
+
+.pill-todo {
+  background: var(--pill-todo-bg);
+  color: var(--pill-todo-fg);
+}
+
+.pill-memo {
+  background: var(--pill-memo-bg);
+  color: var(--pill-memo-fg);
+}
+
+.pill-fail {
+  background: var(--pill-fail-bg);
+  color: var(--pill-fail-fg);
+}
+
+.pill-live {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.j-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.j-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--tab-on);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.j-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.j-note-amber {
+  color: var(--pill-todo-fg);
+}
+
+.ic-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.ic-check {
+  width: 18px;
+  height: 18px;
+  stroke-width: 3;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .j-spin {
+    animation: j-rotate 1.2s linear infinite;
+  }
+}
+
+@keyframes j-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-retry {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--brick);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--brick);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-retry:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-danger {
+  display: inline-flex;
+  min-height: 52px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--brick);
+  color: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+:root[data-theme='dark'] .btn-danger {
+  color: #1a0b07;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .btn-danger {
+    color: #1a0b07;
+  }
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 선택 모드 */
+.j-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.j-row:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.j-row .jcard {
+  flex: 1;
+  min-width: 0;
+}
+
+.cb {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--cb-line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--on-primary);
+}
+
+.cb[data-on='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.j-bar {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* 확인 창 */
+.dialog-back {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 480px;
+  padding: 22px 20px 20px;
+  border-radius: 24px 24px 0 0;
+  background: var(--surface);
+}
+
+.dialog h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.dialog p {
+  margin: 0 0 18px;
+  color: var(--text-sub);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.dialog-actions .btn {
+  min-height: 52px;
+  flex: 1;
+  border-radius: 16px;
 }

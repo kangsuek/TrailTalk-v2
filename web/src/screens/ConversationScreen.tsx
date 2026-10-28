@@ -56,14 +56,23 @@ function MessageItem({ message }: { message: Message }) {
 
 export default function ConversationScreen({
   connection = 'checking',
+  onSessionChange,
 }: {
   connection?: Connection
+  /** 진행 중인 대화가 생기거나 끝났을 때(끝나면 null) 알린다 */
+  onSessionChange?: (sessionId: string | null) => void
 }) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
   const aborter = useRef<AbortController | null>(null)
   const counter = useRef(0)
   const listRef = useRef<HTMLOListElement>(null)
+
+  const openSessionId =
+    state.status === 'active' || state.status === 'paused' ? state.sessionId : null
+  useEffect(() => {
+    onSessionChange?.(openSessionId)
+  }, [openSessionId, onSessionChange])
 
   // 화면이 사라지면 진행 중인 요청을 끊는다(서버가 턴을 멈춘다)
   useEffect(() => () => aborter.current?.abort(), [])
