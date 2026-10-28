@@ -35,6 +35,7 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
 /** 끝낸 대화의 정리 결과. saved가 null이면 서버가 알려 주지 못했다(그만 기다렸거나 불러오지 못함) */
 interface Summary {
   sessionId: string
+  epoch: number
   saved: NoteCounts | null
   journalStatus: JournalStatus
 }
@@ -113,6 +114,9 @@ export default function ConversationScreen({
   })
   const reported = useRef(false) // 진행 중인 대화를 알린 적이 있다(끝났을 때만 null을 알린다)
   const finalized = useRef<string | null>(null) // 마무리(끝내기 응답)를 이미 받았거나 받는 대화
+  // 대화를 다시 열 때마다 올린다(그 전 끝내기의 요약을 보이지 않게). 렌더는 상태, 비동기 쓰기는 ref를 본다
+  const epoch = useRef(0)
+  const [epochShown, bumpEpoch] = useReducer((n: number) => n + 1, 0)
 
   const openSessionId =
     state.status === 'active' || state.status === 'paused' ? state.sessionId : null
@@ -180,9 +184,16 @@ export default function ConversationScreen({
       try {
         const closed = await endSession(sessionId, controller.signal)
         dispatch({ type: 'ended', closing: closed.closing })
-        setSummary({ sessionId, saved: closed.saved, journalStatus: closed.journal_status })
+        setSummary({
+          sessionId,
+          epoch: epoch.current,
+          saved: closed.saved,
+          journalStatus: closed.journal_status,
+        })
       } catch {
-        if (!controller.signal.aborted) setSummary({ sessionId, saved: null, journalStatus: null })
+        if (!controller.signal.aborted) {
+          setSummary({ sessionId, epoch: epoch.current, saved: null, journalStatus: null })
+        }
       }
     })()
     return () => controller.abort()
@@ -191,6 +202,10 @@ export default function ConversationScreen({
   useEffect(() => {
     if (!resume) return
     aborter.current?.abort()
+    // 다시 연 대화는 새로 끝나므로 앞서 끝낸 기록(마무리 호출·요약)을 잊는다
+    finalized.current = null
+    epoch.current += 1
+    bumpEpoch()
     dispatch({
       type: 'resumed',
       sessionId: resume.session.id,
@@ -290,7 +305,12 @@ export default function ConversationScreen({
     try {
       const closed = await endSession(sessionId, controller.signal)
       dispatch({ type: 'ended', closing: closed.closing })
-      setSummary({ sessionId, saved: closed.saved, journalStatus: closed.journal_status })
+      setSummary({
+        sessionId,
+        epoch: epoch.current,
+        saved: closed.saved,
+        journalStatus: closed.journal_status,
+      })
     } catch (error) {
       if (controller.signal.aborted) return
       finalized.current = null
@@ -304,7 +324,7 @@ export default function ConversationScreen({
     if (!sessionId || !state.ending) return
     aborter.current?.abort()
     dispatch({ type: 'ended' })
-    setSummary({ sessionId, saved: null, journalStatus: 'pending' })
+    setSummary({ sessionId, epoch: epoch.current, saved: null, journalStatus: 'pending' })
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -372,7 +392,8 @@ export default function ConversationScreen({
   }
 
   const ended = state.status === 'ended'
-  const sum = summary?.sessionId === state.sessionId ? summary : null
+  const sum =
+    summary?.sessionId === state.sessionId && summary.epoch === epochShown ? summary : null
   const initial = state.personaName?.slice(0, 1) ?? ''
   return (
     <section className="chat" aria-label="대화">
@@ -489,7 +510,10 @@ export default function ConversationScreen({
         </div>
       )}
       {confirmEnd && (
-        <div className="dialog-back dialog-back-float">
+        <div
+          className="dialog-back dialog-back-float"
+          onKeyDown={(event) => event.key === 'Escape' && setConfirmEnd(false)}
+        >
           <div
             className="dialog dialog-float"
             role="alertdialog"

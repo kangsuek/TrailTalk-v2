@@ -37,7 +37,7 @@ interface Props {
   onBack: () => void
   onOpenChat: () => void
   /** 다시 열기가 끝났다. 호출한 쪽이 대화 화면으로 넘어간다 */
-  onResume: (reopened: SessionReopened) => void
+  onResume: (reopened: SessionReopened, options?: { navigate?: boolean }) => void
   onDeleted: () => void
 }
 
@@ -246,6 +246,13 @@ export default function JournalDetailScreen({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState<boolean | null>(null)
   const aborter = useRef<AbortController | null>(null)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   const load = useCallback(
     async (silent: boolean) => {
@@ -315,7 +322,8 @@ export default function JournalDetailScreen({
     try {
       apply(await updateNote(note.id, patch))
     } catch (caught) {
-      apply(note) // 서버에 반영되지 못했으니 되돌린다
+      // 서버에 반영되지 못한 필드만 되돌린다(그사이 보낸 다른 변경은 건드리지 않는다)
+      apply(Object.fromEntries(Object.keys(patch).map((key) => [key, note[key as keyof Note]])))
       setNotice(errorText(caught))
     }
   }
@@ -347,7 +355,8 @@ export default function JournalDetailScreen({
 
   const resume = () =>
     run('reopen', async () => {
-      onResume(await reopenSession(id, 'text'))
+      // 기다리는 사이 화면을 떠났어도 서버에서 이미 다시 열렸으니 대화 화면에 넘기되 갑자기 이동하지 않는다
+      onResume(await reopenSession(id, 'text'), { navigate: mounted.current })
     })
 
   const endNow = () =>
@@ -386,7 +395,8 @@ export default function JournalDetailScreen({
   }
 
   const showTranscript = transcriptOpen ?? (kind === 'failed' || kind === 'unorganized')
-  const canDelete = !!session && session.status !== 'active'
+  // 진행 중이거나 이 앱이 열고 있는 대화는 끝낸 뒤 지운다(열고 있는 대화를 지우면 화면이 지워진 세션을 든다)
+  const canDelete = !!session && session.status !== 'active' && !isOpenHere
   const pills = session ? countPills(session.counts) : []
   const hasNotes = !!detail && detail.notes.length > 0
 
@@ -691,7 +701,10 @@ export default function JournalDetailScreen({
       )}
 
       {titleOpen && (
-        <div className="dialog-back">
+        <div
+          className="dialog-back"
+          onKeyDown={(event) => event.key === 'Escape' && setTitleOpen(false)}
+        >
           <div className="dialog sheet" role="dialog" aria-modal="true" aria-label="제목 수정">
             <div className="sheet-grip" aria-hidden="true" />
             <h2>제목 수정</h2>
@@ -738,7 +751,10 @@ export default function JournalDetailScreen({
       )}
 
       {confirmDelete && (
-        <div className="dialog-back">
+        <div
+          className="dialog-back"
+          onKeyDown={(event) => event.key === 'Escape' && setConfirmDelete(false)}
+        >
           <div
             className="dialog"
             role="alertdialog"

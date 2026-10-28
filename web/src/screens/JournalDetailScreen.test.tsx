@@ -345,7 +345,7 @@ describe('JournalDetailScreen 이어서 하기', () => {
     })
     const { onResume } = renderDetail()
     await userEvent.click(await screen.findByRole('button', { name: '글로 이어서' }))
-    await waitFor(() => expect(onResume).toHaveBeenCalledWith(reopened))
+    await waitFor(() => expect(onResume).toHaveBeenCalledWith(reopened, { navigate: true }))
     expect(bodyOf(fetchMock, 'POST', '/api/sessions/s1/reopen')).toEqual({ mode: 'text' })
   })
 

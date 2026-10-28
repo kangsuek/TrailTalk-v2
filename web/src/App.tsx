@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { fetchHealth } from './api/health.ts'
 import Header from './components/Header.tsx'
 import ConversationScreen from './screens/ConversationScreen.tsx'
@@ -7,7 +7,11 @@ import JournalListScreen from './screens/JournalListScreen.tsx'
 import type { SessionReopened } from './api/conversation.ts'
 import { HEALTH_INTERVAL_MS, nextConnection, type Connection } from './core/connection.ts'
 import { CHAT_ROUTE, TAB_ROUTE, tabOf, type Tab } from './core/route.ts'
-import { readRememberedSession, writeRememberedSession } from './hooks/rememberedSession.ts'
+import {
+  forgetRememberedSession,
+  readRememberedSession,
+  writeRememberedSession,
+} from './hooks/rememberedSession.ts'
 import { useRoute } from './hooks/useRoute.ts'
 
 const TABS: { tab: Tab; name: string }[] = [
@@ -63,10 +67,22 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   // 새로고침 뒤에도 이 기기의 진행 중 대화를 이어 가도록 ID를 기억한다(처음 읽은 값만 복원에 쓴다)
   const [restoreId] = useState(readRememberedSession)
-  const onSessionChange = useCallback((sessionId: string | null) => {
-    setActiveSessionId(sessionId)
-    writeRememberedSession(sessionId)
-  }, [])
+  const lastSessionId = useRef<string | null>(null)
+  const onSessionChange = useCallback(
+    (sessionId: string | null) => {
+      setActiveSessionId(sessionId)
+      if (sessionId) {
+        lastSessionId.current = sessionId
+        writeRememberedSession(sessionId)
+      } else {
+        // 다른 탭이 기억한 다른 대화는 지우지 않는다(내가 들고 있던 대화일 때만)
+        const mine = lastSessionId.current ?? restoreId
+        if (mine) forgetRememberedSession(mine)
+        lastSessionId.current = null
+      }
+    },
+    [restoreId],
+  )
   // 일지 상세에서 다시 연 대화. 대화 화면이 받아 이어 간다
   const [resume, setResume] = useState<SessionReopened | null>(null)
 
@@ -102,9 +118,9 @@ export default function App() {
             activeSessionId={activeSessionId}
             onBack={() => navigate(TAB_ROUTE.journal)}
             onOpenChat={() => navigate(CHAT_ROUTE)}
-            onResume={(reopened) => {
+            onResume={(reopened, options) => {
               setResume(reopened)
-              navigate(CHAT_ROUTE)
+              if (options?.navigate !== false) navigate(CHAT_ROUTE)
             }}
             onDeleted={() => navigate(TAB_ROUTE.journal, { replace: true })}
           />

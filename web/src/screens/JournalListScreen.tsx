@@ -139,6 +139,8 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
 
   const deletable = (items ?? []).filter(isDeletable)
   const allSelected = deletable.length > 0 && deletable.every((item) => selected.has(item.id))
+  // 목록이 갱신돼 사라진 항목은 선택에서 뺀다(개수·지우기 대상이 실제 목록과 어긋나지 않게)
+  const count = (items ?? []).filter((item) => selected.has(item.id)).length
 
   // 고른 항목마다 차례로 지운다(동시에 보내지 않는다). 404는 이미 지워진 것으로 보고, 실패한 항목만
   // 선택된 채 남긴다(client-contract 3.2)
@@ -182,7 +184,7 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
       <button type="button" className="tbtn tbtn-plain" onClick={stopSelecting}>
         취소
       </button>
-      <h1 className="ttl ttl-sm">{selected.size > 0 ? `${selected.size}개 선택됨` : '항목 선택'}</h1>
+      <h1 className="ttl ttl-sm">{count > 0 ? `${count}개 선택됨` : '항목 선택'}</h1>
       <button
         type="button"
         className="tbtn"
@@ -302,7 +304,7 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
         )}
       </div>
 
-      {selecting && selected.size > 0 && (
+      {selecting && count > 0 && (
         <div className="j-bar">
           <button
             type="button"
@@ -313,13 +315,13 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
             <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" />
             </svg>
-            {deleting ? '지우는 중…' : `${selected.size}개 지우기`}
+            {deleting ? '지우는 중…' : `${count}개 지우기`}
           </button>
         </div>
       )}
 
       {confirming && (
-        <div className="dialog-back">
+        <div className="dialog-back" onKeyDown={(event) => event.key === 'Escape' && setConfirming(false)}>
           <div
             className="dialog"
             role="alertdialog"
@@ -327,7 +329,7 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
             aria-labelledby="del-title"
             aria-describedby="del-desc"
           >
-            <h2 id="del-title">{selected.size}개 대화를 지울까요?</h2>
+            <h2 id="del-title">{count}개 대화를 지울까요?</h2>
             <p id="del-desc">대화 전문과 저장한 노트가 모두 사라지고 되돌릴 수 없어요.</p>
             <div className="dialog-actions">
               <button type="button" className="btn" autoFocus onClick={() => setConfirming(false)}>

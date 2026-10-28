@@ -18,3 +18,8 @@ export function writeRememberedSession(sessionId: string | null): void {
     // 저장소를 쓸 수 없으면 복원만 못 한다
   }
 }
+
+/** 기억한 값이 이 세션일 때만 지운다(다른 탭이 기억한 다른 세션은 지우지 않는다). */
+export function forgetRememberedSession(sessionId: string): void {
+  if (readRememberedSession() === sessionId) writeRememberedSession(null)
+}
