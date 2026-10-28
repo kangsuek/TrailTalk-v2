@@ -347,7 +347,12 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
         # 이어 간 말이 있으면(다시 열어 이어 간 뒤 정리가 실패한 일지) 그 말의 노트를 뽑아야 하므로
         # 다시 정리로 보지 않는다
         requests: set[str] = app.state.reformat_requests
-        said_after = extracted_until is not None and any(t.seq > extracted_until for t in turns)
+        # 정리 경계가 생기기 전에 정리한 일지(extracted_until NULL)는 다시 연 적이 있으면 이어 간
+        # 말이 있는 것으로 본다(다시 열면 재개 인사말 턴이 생긴다)
+        if extracted_until is None:
+            said_after = convo.reopened_at is not None
+        else:
+            said_after = any(t.seq > extracted_until for t in turns)
         reformat = (
             session_id in requests
             and convo.checks is None

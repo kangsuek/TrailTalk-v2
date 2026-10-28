@@ -398,6 +398,14 @@ async def _lock_turns(app: FastAPI, session_id: str) -> ConversationRuntime:
     return runtime
 
 
+async def reload_session(db: AsyncSession, session_id: str) -> ConversationSession:
+    """DB에서 다시 읽는다. 그사이 지워졌으면 session_not_found."""
+    convo = await _reload(db, session_id)
+    if convo is None:
+        raise SessionNotFound()
+    return convo
+
+
 async def _reload(db: AsyncSession, session_id: str) -> ConversationSession | None:
     """잠금을 기다리는 사이 바뀐 상태까지 DB에서 다시 읽는다."""
     return await db.scalar(
@@ -528,6 +536,7 @@ async def reopen_session(
         if not taking_over:
             # 멈춘 뒤 다른 요청(retry)이 정리를 다시 띄웠으면 멈춘다(다시 연 대화는 저장하지 않는다)
             await extract.cancel_extraction(app, session_id, _EXTRACT_STOP_S)
+            app.state.reformat_requests.discard(session_id)
         session, _ = await open_llm(app, db, convo)
         text, cli_session_id = await _receive_greeting(
             session,

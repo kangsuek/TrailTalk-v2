@@ -33,10 +33,13 @@ def cli_file(root: Path, cli_session_id: str) -> Path:
     return path
 
 
-def test_retry_after_reopen_keeps_new_notes(api, oneshot):  # noqa: F811
-    """예전 형식 일지를 다시 열어 이어 간 뒤 정리가 실패했으면 retry는 새 말의 노트를 뽑는다."""
+@pytest.mark.parametrize("legacy", [False, True])
+def test_retry_after_reopen_keeps_new_notes(api, oneshot, legacy):  # noqa: F811
+    """예전 형식 일지를 다시 열어 이어 간 뒤 정리가 실패했으면 retry는 새 말의 노트를 뽑는다.
+    legacy: 정리 경계(extracted_until_seq)가 생기기 전에 정리한 일지(NULL)."""
     session_id = talk_and_end(api)
-    set_session(api, session_id, checks=None)  # 예전 형식으로 정리를 마친 일지
+    values = {"extracted_until_seq": None} if legacy else {}
+    set_session(api, session_id, checks=None, **values)  # 예전 형식으로 정리를 마친 일지
     before = {n.id for n in notes_of(api, session_id)}
     assert reopen(api, session_id).status_code == 200
     turn(api, session_id, "__say__:벤치 지도도 좋겠어요.")
@@ -214,3 +217,54 @@ def test_server_path_variants_keep_json_404(make_settings, tmp_path, path):
         response = client.get("http://testserver" + path)
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "not_found"
+
+
+def test_end_api_of_session_deleted_while_waiting_is_404(api, monkeypatch):  # noqa: F811
+    """끝내기 응답이 정리를 기다리는 사이 다른 기기가 지웠으면 500이 아니라 404다."""
+    session_id = talk(api)
+    from app.jobs import extract
+    from app.services import conversation
+
+    real_wait = extract.wait_extraction
+
+    async def wait_then_delete(app, sid, timeout_s):
+        await real_wait(app, sid, timeout_s)
+        async with app.state.session_factory() as db:
+            await conversation.delete_session(app, db, sid)
+
+    monkeypatch.setattr(extract, "wait_extraction", wait_then_delete)
+    response = api.post(f"/api/sessions/{session_id}/end")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "session_not_found"
+
+
+def test_reopen_clears_reformat_request_made_meanwhile(api, monkeypatch):  # noqa: F811
+    """다시 여는 동안 온 retry가 남긴 예전 형식 다시 정리 요청은 지운다(이어 간 말의 노트를 버리지
+    않게)."""
+    session_id = talk_and_end(api)
+    from app.services import conversation
+
+    original = conversation.load_memory
+
+    async def retry_meanwhile(db, *args, **kwargs):
+        api.app.state.reformat_requests.add(session_id)
+        return await original(db, *args, **kwargs)
+
+    monkeypatch.setattr(conversation, "load_memory", retry_meanwhile)
+    assert reopen(api, session_id).status_code == 200
+    assert session_id not in api.app.state.reformat_requests
+
+
+def test_reopen_ended_session_closes_leftover_cli(api, monkeypatch):  # noqa: F811
+    """끝난 대화도 매니저에 남은 CLI를 닫고 새로 띄운다(예전 기록으로 --resume하지 않게)."""
+    session_id = talk_and_end(api)
+    closed: list[str] = []
+    real_close = api.app.state.llm.close
+
+    async def record_close(key):
+        closed.append(key)
+        await real_close(key)
+
+    monkeypatch.setattr(api.app.state.llm, "close", record_close)
+    assert reopen(api, session_id).status_code == 200
+    assert session_id in closed

@@ -189,8 +189,9 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
     await conversation.end_session(app, db, convo)
     await db.commit()
     await extract.wait_extraction(app, session_id, settings.extract_wait_s)
-    convo = await conversation.get_session(db, session_id)  # 기다리는 사이 지워졌으면 404
-    await db.refresh(convo)
+    # 기다리는 사이 지워졌으면 404. get은 지운 것을 모르는 메모리 속 객체를 돌려주므로
+    # DB에서 다시 읽는다
+    convo = await conversation.reload_session(db, session_id)
     counts = await closing.count_notes(db, session_id, since=convo.reopened_at)
     journal_status = convo.extract_status.value if convo.extract_status else None
     if journal_status is None and session_id in app.state.extractions:
