@@ -64,8 +64,11 @@ test.describe('글 대화', () => {
     await expect(page.locator('.bubble-assistant').last()).toContainText('첫 문장입니다.')
     const sessionId = latestSession().id
     await page.reload()
-    // 새로고침하면 화면은 처음으로 돌아가지만(대화 복원은 M2 일지) 서버 기록은 남는다
-    await expect(page.getByRole('button', { name: '글로 대화 시작' })).toBeVisible()
+    // 새로고침하면 같은 기기에서 진행 중이던 대화가 일지 상세의 전문으로 복원된다(규약 2.11).
+    // 서버 기록은 그대로 남는다
+    const restored = page.getByRole('list', { name: '대화 내용' })
+    await expect(restored).toContainText('첫 문장입니다.')
+    await expect(page.getByRole('button', { name: '글로 대화 시작' })).toHaveCount(0)
     await expect
       .poll(() => turnsOf(sessionId).at(-1), { timeout: 15_000 })
       .toMatchObject({ role: 'assistant', interrupted: 1 })
@@ -91,7 +94,7 @@ test.describe('글 대화', () => {
     await expect(page.getByRole('list', { name: '대화 내용' })).toContainText('탭을 옮겨도 남아요.')
     const nav = page.getByRole('navigation', { name: '메인 메뉴' })
     await nav.getByRole('button', { name: '일지' }).click()
-    await expect(page.getByText('일지 화면은 준비 중입니다.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '일지', level: 1 })).toBeVisible()
     await expect(page.getByRole('list', { name: '대화 내용' })).toBeHidden()
     await nav.getByRole('button', { name: '대화' }).click()
     await expect(page.getByRole('list', { name: '대화 내용' })).toContainText('탭을 옮겨도 남아요.')
@@ -103,6 +106,8 @@ test.describe('글 대화', () => {
     await startConversation(page)
     const sessionId = latestSession().id
     await page.getByRole('button', { name: '대화종료' }).click()
+    // 종료 확인 창(대화 11): 끝내고 정리하기를 고른다
+    await page.getByRole('button', { name: '끝내고 정리하기' }).click()
     await expect(page.getByText('대화 끝남')).toBeVisible()
     const messages = page.getByRole('list', { name: '대화 내용' })
     await expect(messages.getByRole('listitem')).toHaveCount(2) // 인사말 + 마무리 멘트

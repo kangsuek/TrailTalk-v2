@@ -9,6 +9,7 @@ export { ApiError }
 export type SessionStarted = components['schemas']['SessionStarted']
 export type SessionOut = components['schemas']['SessionOut']
 export type SessionClosed = components['schemas']['SessionClosed']
+export type SessionReopened = components['schemas']['SessionReopened']
 
 // core의 StreamEvent가 서버 스키마와 어긋나면(필드 추가·삭제) 여기서 타입 오류가 난다
 type GeneratedStreamEvent = components['schemas']['StreamEvent']
@@ -24,6 +25,18 @@ export async function startSession(
   signal?: AbortSignal,
 ): Promise<SessionStarted> {
   return (await post('/api/sessions', { mode }, signal)).json()
+}
+
+/**
+ * 끝난(또는 열려 있지 않은 진행 중) 대화를 같은 세션으로 다시 열어 이어서 대화한다(규약 2.11).
+ * 재개 인사말까지 포함한 전문(turns)을 돌려준다. 다시 연 동안 서버가 일지 정리를 멈춘다.
+ */
+export async function reopenSession(
+  sessionId: string,
+  mode: 'text' | 'voice' = 'text',
+  signal?: AbortSignal,
+): Promise<SessionReopened> {
+  return (await post(`/api/sessions/${encodeURIComponent(sessionId)}/reopen`, { mode }, signal)).json()
 }
 
 /** 대화를 끝낸다. 서버가 마무리 멘트와 저장 개수를 준다(여러 번 불러도 같다). */

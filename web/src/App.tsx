@@ -1,17 +1,30 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { fetchHealth } from './api/health.ts'
 import Header from './components/Header.tsx'
 import ConversationScreen from './screens/ConversationScreen.tsx'
+import JournalDetailScreen from './screens/JournalDetailScreen.tsx'
+import JournalListScreen from './screens/JournalListScreen.tsx'
+import type { SessionReopened } from './api/conversation.ts'
 import { HEALTH_INTERVAL_MS, nextConnection, type Connection } from './core/connection.ts'
+import { CHAT_ROUTE, TAB_ROUTE, tabOf, type Tab } from './core/route.ts'
+import {
+  forgetRememberedSession,
+  readRememberedSession,
+  writeRememberedSession,
+} from './hooks/rememberedSession.ts'
+import { useRoute } from './hooks/useRoute.ts'
 
-const TABS = ['대화', '일지', '설정'] as const
-type Tab = (typeof TABS)[number]
+const TABS: { tab: Tab; name: string }[] = [
+  { tab: 'chat', name: '대화' },
+  { tab: 'journal', name: '일지' },
+  { tab: 'settings', name: '설정' },
+]
 
 // 시안의 하단 탭 아이콘(24px 선 그림)
 const TAB_ICONS: Record<Tab, ReactNode> = {
-  대화: <path d="M4 5h16v11H9l-5 4z" />,
-  일지: <path d="M6 3h12v18H6zM9 8h6M9 12h6" />,
-  설정: (
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
+  journal: <path d="M6 3h12v18H6zM9 8h6M9 12h6" />,
+  settings: (
     <>
       <circle cx="12" cy="12" r="3" />
       <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
@@ -46,34 +59,86 @@ function useConnection(): Connection {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('대화')
+  const [route, navigate] = useRoute()
+  const tab = tabOf(route)
   const connection = useConnection()
+  const label = TABS.find((item) => item.tab === tab)?.name ?? ''
+  // 이 화면(대화 화면)이 지금 들고 있는 진행 중 대화. 일지 목록이 "대화로 돌아가기"를 정한다
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  // 새로고침 뒤에도 이 기기의 진행 중 대화를 이어 가도록 ID를 기억한다(처음 읽은 값만 복원에 쓴다)
+  const [restoreId] = useState(readRememberedSession)
+  const lastSessionId = useRef<string | null>(null)
+  const onSessionChange = useCallback(
+    (sessionId: string | null) => {
+      setActiveSessionId(sessionId)
+      if (sessionId) {
+        lastSessionId.current = sessionId
+        writeRememberedSession(sessionId)
+      } else {
+        // 다른 탭이 기억한 다른 대화는 지우지 않는다(내가 들고 있던 대화일 때만)
+        const mine = lastSessionId.current ?? restoreId
+        if (mine) forgetRememberedSession(mine)
+        lastSessionId.current = null
+      }
+    },
+    [restoreId],
+  )
+  // 일지 상세에서 다시 연 대화. 대화 화면이 받아 이어 간다
+  const [resume, setResume] = useState<SessionReopened | null>(null)
 
   return (
     <div className="app">
       {/* 대화 화면은 페르소나 이름·상태를 담은 자기 헤더를 그린다 */}
-      {tab !== '대화' && (
-        <Header initial={tab.slice(0, 1)} name={tab} heading connection={connection} />
+      {tab === 'settings' && (
+        <Header initial={label.slice(0, 1)} name={label} heading connection={connection} />
       )}
       <main className="app-main">
         {/* 탭을 바꿔도 진행 중인 대화가 사라지지 않게 숨기기만 한다 */}
-        <div className="screen" hidden={tab !== '대화'}>
-          <ConversationScreen connection={connection} />
+        <div className="screen" hidden={tab !== 'chat'}>
+          <ConversationScreen
+            connection={connection}
+            onSessionChange={onSessionChange}
+            resume={resume}
+            onResumed={() => setResume(null)}
+            restoreId={restoreId}
+            onOpenJournal={(id) => navigate({ name: 'journalDetail', id })}
+          />
         </div>
-        {tab !== '대화' && <p className="placeholder">{tab} 화면은 준비 중입니다.</p>}
+        {route.name === 'journal' && (
+          <JournalListScreen
+            activeSessionId={activeSessionId}
+            onOpenChat={() => navigate(CHAT_ROUTE)}
+            onOpen={(id) => navigate({ name: 'journalDetail', id })}
+          />
+        )}
+        {route.name === 'journalDetail' && (
+          <JournalDetailScreen
+            key={route.id}
+            id={route.id}
+            activeSessionId={activeSessionId}
+            onBack={() => navigate(TAB_ROUTE.journal)}
+            onOpenChat={() => navigate(CHAT_ROUTE)}
+            onResume={(reopened, options) => {
+              setResume(reopened)
+              if (options?.navigate !== false) navigate(CHAT_ROUTE)
+            }}
+            onDeleted={() => navigate(TAB_ROUTE.journal, { replace: true })}
+          />
+        )}
+        {tab === 'settings' && <p className="placeholder">{label} 화면은 준비 중입니다.</p>}
       </main>
       <nav className="tabs" aria-label="메인 메뉴">
-        {TABS.map((name) => (
+        {TABS.map((item) => (
           <button
-            key={name}
+            key={item.tab}
             className="tab"
-            aria-current={name === tab ? 'page' : undefined}
-            onClick={() => setTab(name)}
+            aria-current={item.tab === tab ? 'page' : undefined}
+            onClick={() => navigate(TAB_ROUTE[item.tab])}
           >
             <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-              {TAB_ICONS[name]}
+              {TAB_ICONS[item.tab]}
             </svg>
-            {name}
+            {item.name}
           </button>
         ))}
       </nav>

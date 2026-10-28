@@ -15,6 +15,9 @@ for (const scheme of ['light', 'dark'] as const) {
     )
     const context = await browser.newContext({ colorScheme: scheme })
     const page = await context.newPage()
+    // 앞선 시험이 DB에 남긴 아이디어가 시작 화면의 "지난 아이디어" 카드로 보여 기준 이미지가 흔들리지
+    // 않게 빈 목록으로 고정한다(카드가 있는 화면의 기준 이미지는 M2-14에서 더한다)
+    await page.route('**/api/notes/open-ideas*', (route) => route.fulfill({ json: [] }))
     await page.goto('/')
     await expect(page.getByRole('status')).toHaveText(/연결됨/)
     await expect(page).toHaveScreenshot(`app-${scheme}.png`, { maxDiffPixels: 100 })
