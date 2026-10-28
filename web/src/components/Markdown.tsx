@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { parseMarkdown, type Inline } from '../core/markdown.ts'
+import { parseInline, parseMarkdown, type Inline } from '../core/markdown.ts'
 
 function renderInline(nodes: Inline[]): ReactNode[] {
   return nodes.map((node, index) => {
@@ -21,6 +21,12 @@ function renderInline(nodes: Inline[]): ReactNode[] {
         return node.text
     }
   })
+}
+
+/** 한 줄 안의 서식만 그린다(요약 줄·노트처럼 문단 요소가 필요 없는 자리). 줄바꿈은 그대로 둔다. */
+export function InlineMarkdown({ text }: { text: string }) {
+  const nodes = useMemo(() => parseInline(text), [text])
+  return <>{renderInline(nodes)}</>
 }
 
 /** 마크다운 부분집합(굵게·기울임·링크·목록·인라인 코드)을 그린다. HTML 문자열을 만들지 않는다. */

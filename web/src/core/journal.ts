@@ -130,3 +130,139 @@ export const hasPending = (items: readonly JournalItem[]): boolean =>
 
 /** 진행 중(active)인 대화는 지울 수 없다. 쉬는 중·정리 중은 지운다(정리를 멈춘다, 규약 3.2). */
 export const isDeletable = (item: Pick<JournalItem, 'status'>): boolean => item.status !== 'active'
+
+// --- 일지 상세(client-contract 3.2) ---
+
+export interface Attachment {
+  id: string
+  name: string
+  mime: string
+  size: number
+  thumb: boolean
+}
+
+export interface Turn {
+  id: string
+  seq: number
+  role: 'user' | 'assistant'
+  text: string
+  interrupted: boolean
+  merged_from: string | null
+  created_at: string
+  attachments: Attachment[]
+}
+
+export interface Note {
+  id: string
+  kind: 'idea' | 'todo' | 'memo'
+  content: string
+  starred: boolean
+  done: boolean
+  created_at: string
+  cites: number[]
+}
+
+export interface Citation {
+  n: number
+  title: string
+  url: string
+}
+
+export interface JournalDetail {
+  session: JournalItem
+  summary_cites: number[][]
+  citations: Citation[]
+  checks: string[] | null
+  persona_name: string
+  notes: Note[]
+  turns: Turn[]
+}
+
+export interface CitedLine {
+  text: string
+  cites: number[]
+}
+
+export interface Sections {
+  /** 새 형식이면 요약 첫 줄(굵게) */
+  conclusion: CitedLine | null
+  /** 새 형식의 "알게 된 것" 또는 예전 형식의 요약 줄 */
+  findings: CitedLine[]
+  /** 새 형식의 "확인할 것" */
+  checks: string[]
+  /** 예전 형식(checks가 null인 요약)이다. 끝난 대화면 다시 정리해 새 형식으로 바꿀 수 있다 */
+  legacy: boolean
+}
+
+/** 요약 줄을 결론·알게 된 것으로 나눈다(규약 3.2 "표시 형식"). */
+export function sectionsOf(detail: Pick<JournalDetail, 'session' | 'summary_cites' | 'checks'>): Sections {
+  const lines: CitedLine[] = detail.session.summary.map((text, i) => ({
+    text,
+    cites: detail.summary_cites[i] ?? [],
+  }))
+  if (detail.checks === null) {
+    return { conclusion: null, findings: lines, checks: [], legacy: lines.length > 0 }
+  }
+  return { conclusion: lines[0] ?? null, findings: lines.slice(1), checks: detail.checks, legacy: false }
+}
+
+/** 예전 형식으로 정리가 끝난 일지만 다시 정리로 새 형식이 된다. */
+export const canReformat = (detail: Pick<JournalDetail, 'session' | 'summary_cites' | 'checks'>): boolean =>
+  detail.session.status === 'ended' &&
+  detail.session.journal_status === 'done' &&
+  sectionsOf(detail).legacy
+
+export interface TranscriptBubble {
+  id: string
+  role: 'user' | 'assistant'
+  /** 병합된 뒷말은 같은 말풍선 안의 다음 조각이다 */
+  texts: string[]
+  interrupted: boolean
+  attachments: Attachment[]
+  turnIds: string[]
+}
+
+/** 전문을 말풍선으로. `merged_from`이 가리키는 앞말과 같은 화자의 뒷말은 한 말풍선으로 합친다. */
+export function groupTurns(turns: readonly Turn[]): TranscriptBubble[] {
+  const bubbles: TranscriptBubble[] = []
+  for (const turn of turns) {
+    if (!turn.text.trim() && turn.attachments.length === 0) continue
+    const target =
+      turn.merged_from === null
+        ? undefined
+        : bubbles.findLast((b) => b.role === turn.role && b.turnIds.includes(turn.merged_from!))
+    if (target) {
+      if (turn.text.trim()) target.texts.push(turn.text)
+      target.attachments.push(...turn.attachments)
+      target.turnIds.push(turn.id)
+      target.interrupted = turn.interrupted
+    } else {
+      bubbles.push({
+        id: turn.id,
+        role: turn.role,
+        texts: turn.text.trim() ? [turn.text] : [],
+        interrupted: turn.interrupted,
+        attachments: [...turn.attachments],
+        turnIds: [turn.id],
+      })
+    }
+  }
+  return bubbles
+}
+
+/** 한 종류의 노트를 보일 차례로. 안 끝난 것이 먼저, 그 안에서 별표가 먼저, 나머지는 만든 차례다. */
+export function orderNotes(notes: readonly Note[], kind: Note['kind']): Note[] {
+  const rank = (note: Note) => (note.done ? 2 : 0) + (note.starred ? 0 : 1)
+  return notes
+    .map((note, index) => ({ note, index }))
+    .filter(({ note }) => note.kind === kind)
+    .sort((a, b) => rank(a.note) - rank(b.note) || a.index - b.index)
+    .map(({ note }) => note)
+}
+
+/** 인용 주소가 링크가 될 수 있는지(http·https만, 규약 3.2). */
+export const isSafeUrl = (url: string): boolean => /^https?:\/\/[^\s<>"]+$/i.test(url)
+
+/** 제목 수정 입력의 길이(서버는 공백을 줄인 뒤 1~200자를 본다). */
+export const TITLE_MAX = 200
+export const titleOf = (input: string): string => input.split(/\s+/).filter(Boolean).join(' ')

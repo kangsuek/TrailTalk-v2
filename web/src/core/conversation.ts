@@ -2,6 +2,8 @@
 // 서버 SSE 이벤트(docs/client-contract.md 2.4)를 말풍선 목록으로 바꾼다. 문장 분할·요약은 서버가 하고
 // 여기서는 받은 그대로 쌓기만 한다. UI·브라우저 API에 의존하지 않는다.
 
+import { groupTurns, type Turn } from './journal.ts'
+
 // 서버 SSE 이벤트(app/api/events.py, 규약 2.4). core는 api 폴더를 가져오지 않으므로 필요한 모양을
 // 여기에 적고, 생성 타입(schema.d.ts)과 같은지는 api/conversation.ts가 타입으로 확인한다.
 export interface TurnEvent {
@@ -92,6 +94,8 @@ export interface ConversationState {
 
 export type ConversationAction =
   | { type: 'start' }
+  // 서버에 있는 대화를 그대로 이어 간다(다시 열기 응답, 같은 기기의 새로고침 복원). turns는 전문이다
+  | { type: 'resumed'; sessionId: string; personaName: string; turns: Turn[] }
   | {
       type: 'started'
       sessionId: string
@@ -217,6 +221,14 @@ export function conversationReducer(
   switch (action.type) {
     case 'start':
       return { ...initialConversation, status: 'starting' }
+    case 'resumed':
+      return {
+        ...initialConversation,
+        status: 'active',
+        sessionId: action.sessionId,
+        personaName: action.personaName,
+        messages: messagesFromTurns(action.turns),
+      }
     case 'started':
       return {
         ...state,
@@ -302,6 +314,26 @@ export function conversationReducer(
     default:
       return state
   }
+}
+
+/**
+ * 저장된 전문을 말풍선으로. 병합된 뒷말은 앞말과 한 말풍선이다(내 말은 줄을 바꿔 잇고, 답변은 한
+ * 문단으로 잇는다). 끝까지 말하지 못한 답변은 interrupted로 남는다.
+ */
+export function messagesFromTurns(turns: readonly Turn[]): Message[] {
+  return groupTurns(turns).map((bubble): Message => {
+    if (bubble.role === 'user') {
+      return { role: 'user', id: bubble.id, text: bubble.texts.join('\n') }
+    }
+    return {
+      role: 'assistant',
+      id: bubble.id,
+      sentences: [bubble.texts.join(' ')],
+      tools: [],
+      status: 'done',
+      interrupted: bubble.interrupted,
+    }
+  })
 }
 
 function text(value: unknown): string | null {

@@ -3,7 +3,13 @@ import Header from '../components/Header.tsx'
 import Markdown from '../components/Markdown.tsx'
 import { joinSentences } from '../core/markdown.ts'
 import type { Connection } from '../core/connection.ts'
-import { ApiError, endSession, sendTurn, startSession } from '../api/conversation.ts'
+import {
+  ApiError,
+  endSession,
+  sendTurn,
+  startSession,
+  type SessionReopened,
+} from '../api/conversation.ts'
 import {
   conversationReducer,
   initialConversation,
@@ -57,10 +63,16 @@ function MessageItem({ message }: { message: Message }) {
 export default function ConversationScreen({
   connection = 'checking',
   onSessionChange,
+  resume = null,
+  onResumed,
 }: {
   connection?: Connection
   /** 진행 중인 대화가 생기거나 끝났을 때(끝나면 null) 알린다 */
   onSessionChange?: (sessionId: string | null) => void
+  /** 일지 상세에서 다시 연 대화(재개 인사말까지 포함한 전문). 받으면 이어서 대화한다 */
+  resume?: SessionReopened | null
+  /** resume을 받아 화면에 올렸다 */
+  onResumed?: () => void
 }) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
@@ -73,6 +85,18 @@ export default function ConversationScreen({
   useEffect(() => {
     onSessionChange?.(openSessionId)
   }, [openSessionId, onSessionChange])
+
+  useEffect(() => {
+    if (!resume) return
+    aborter.current?.abort()
+    dispatch({
+      type: 'resumed',
+      sessionId: resume.session.id,
+      personaName: resume.persona.name,
+      turns: resume.turns,
+    })
+    onResumed?.()
+  }, [resume, onResumed])
 
   // 화면이 사라지면 진행 중인 요청을 끊는다(서버가 턴을 멈춘다)
   useEffect(() => () => aborter.current?.abort(), [])
@@ -156,6 +180,7 @@ export default function ConversationScreen({
     if (!state.sessionId || state.ending) return
     aborter.current?.abort() // 받는 중인 답변은 받은 데까지 끊는다
     const controller = (aborter.current = new AbortController())
+    setDraft('') // 끝낸 대화를 다시 열어도 쓰던 글이 남아 있지 않게
     dispatch({ type: 'ending' })
     try {
       const closed = await endSession(state.sessionId, controller.signal)
