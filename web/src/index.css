@@ -474,3 +474,50 @@ body {
 .composer-ended {
   align-items: stretch;
 }
+
+/* 마크다운(src/components/Markdown.tsx) */
+.md-p {
+  white-space: pre-wrap;
+}
+
+.md-p + .md-p,
+.md-p + .md-list,
+.md-list + .md-p,
+.md-list + .md-list {
+  margin-top: 8px;
+}
+
+.md-list {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.md-list li + li {
+  margin-top: 2px;
+}
+
+.bubble a,
+.md-p a,
+.md-list a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bubble code,
+.md-p code,
+.md-list code {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgb(127 127 127 / 18%);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.92em;
+}
+
+ul.md-list {
+  list-style-type: disc;
+}
+
+ol.md-list {
+  list-style-type: decimal;
+}

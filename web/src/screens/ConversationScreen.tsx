@@ -1,5 +1,7 @@
 import { useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
 import Header from '../components/Header.tsx'
+import Markdown from '../components/Markdown.tsx'
+import { joinSentences } from '../core/markdown.ts'
 import type { Connection } from '../core/connection.ts'
 import { ApiError, endSession, sendTurn, startSession } from '../api/conversation.ts'
 import {
@@ -32,7 +34,7 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   const waiting = message.status === 'streaming' && message.sentences.length === 0
   return (
     <li className="bubble bubble-assistant" data-status={message.status}>
-      {message.sentences.length > 0 && <p>{message.sentences.join(' ')}</p>}
+      {message.sentences.length > 0 && <Markdown text={joinSentences(message.sentences)} />}
       {waiting && <p className="bubble-wait">생각하는 중…</p>}
       {notices.map(({ tool, text }) => (
         <p key={tool.id} className="tool-note" data-error={tool.isError}>
