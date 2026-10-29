@@ -133,6 +133,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await mockApi(page)
       await page.goto(url)
       await ready(page)
+      if (url === '/') await expect(page.getByRole('status')).toHaveText(/연결됨/)
       await page.evaluate('document.fonts.ready')
       await expect(page).toHaveScreenshot(`${name}-${scheme}.png`, { maxDiffPixels: 150 })
       await context.close()

@@ -142,6 +142,7 @@ def scenario_a(report: Report) -> None:
     assert status == 201, body
     sid = body["session"]["id"]
     report.add(f"- 인사말: {body['greeting']['text']}")
+    report.check(NICKNAME in body["greeting"]["text"], "첫 인사말에는 호칭이 있다(호칭 주입 확인)")
     converse(
         report,
         sid,
@@ -247,8 +248,8 @@ def scenario_c(report: Report) -> None:
     )
     new_ideas = [c for i, c in second_notes.items() if i not in first_notes]
     report.check(
-        any("시간" in c for c in new_ideas) or len(second_notes) > len(first_notes),
-        "새 노트가 더해졌다",
+        any("시간" in c for c in new_ideas),
+        "다시 연 뒤 말한 아이디어가 새 노트로 더해졌다",
         str(new_ideas),
     )
     after = assistant_turns_after_greeting(second)
@@ -258,6 +259,13 @@ def scenario_c(report: Report) -> None:
 def main() -> int:
     if os.environ.get("RUN_REAL_CLI") != "1":
         print("실제 Claude CLI를 쓰므로 RUN_REAL_CLI=1 이 필요합니다.", file=sys.stderr)
+        return 2
+    try:
+        call("GET", "/api/health", timeout=2)
+    except OSError:
+        pass
+    else:
+        print(f"포트 {PORT}에 이미 서버가 떠 있습니다. 끄고 다시 실행하세요.", file=sys.stderr)
         return 2
     report = Report()
     started = time.monotonic()
@@ -290,6 +298,8 @@ def main() -> int:
         )
         try:
             for _ in range(60):
+                if server.poll() is not None:
+                    raise RuntimeError("격리 서버가 바로 종료됐습니다")
                 try:
                     if call("GET", "/api/health")[0] == 200:
                         break
@@ -313,7 +323,12 @@ def main() -> int:
                 report.add()
         finally:
             server.terminate()
-            server.wait(timeout=15)
+            try:
+                server.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait()
+            server_log.close()
     report.add(
         f"## 결과\n\n실패 {len(report.failures)}건, 걸린 시간 {time.monotonic() - started:.0f}초."
     )

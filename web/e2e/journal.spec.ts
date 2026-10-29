@@ -52,9 +52,9 @@ test.describe('일지', () => {
     const card = page.getByRole('button', { name: new RegExp(EXTRACT_TITLE) }).first()
     await expect(card).toContainText('아이디어')
     await expect(card).toContainText('할 일 1')
+    // 가장 최근 대화가 맨 위이므로 이 대화의 카드다
     await card.click()
-    await expect(page).toHaveURL(/\/journal\/[\w-]+$/)
-    expect(sessionId).toBeTruthy()
+    await expect(page).toHaveURL(new RegExp(`/journal/${sessionId}$`))
   })
 
   test('노트를 고쳐 저장하면 새로고침해도 남는다', async ({ page }) => {
@@ -74,11 +74,12 @@ test.describe('일지', () => {
     await page.getByRole('button', { name: '더 보기' }).click()
     await page.getByRole('menuitem', { name: '제목 수정' }).click()
     const field = page.getByRole('textbox', { name: '대화 제목' })
-    await field.fill('쓰레기통 지도 구상')
+    const newTitle = `쓰레기통 지도 구상 ${Date.now()}`
+    await field.fill(newTitle)
     await page.getByRole('button', { name: '저장', exact: true }).click()
     await expect(page.getByRole('dialog', { name: '제목 수정' })).toHaveCount(0)
     await page.getByRole('button', { name: '목록으로' }).click()
-    await expect(page.getByRole('button', { name: /쓰레기통 지도 구상/ }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(newTitle) })).toHaveCount(1)
   })
 
   test('대화를 지우면 목록에서 사라지고 상세는 없는 대화로 안내한다', async ({ page }) => {
