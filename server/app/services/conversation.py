@@ -746,6 +746,12 @@ async def _run_turn(
             if convo.status is SessionStatus.ENDED:
                 raise SessionEnded()
             session, _ = await open_llm(app, db, convo)
+            # 종료 API가 CLI를 닫은 뒤 이 턴이 CLI를 다시 띄웠을 수 있다(위 검사와 여기
+            # 사이에 끝났다). 보내지 않고 닫아, 종료 API가 이 턴을 오래 기다리지 않게 한다
+            await db.refresh(convo)
+            if convo.status is SessionStatus.ENDED:
+                await app.state.llm.close(session_id)
+                raise SessionEnded()
             style = None
             if convo.mode is SessionMode.VOICE:  # 음성 세션이면 문장마다 소리를 만든다
                 profile, loaded = await _profile(app, db)
