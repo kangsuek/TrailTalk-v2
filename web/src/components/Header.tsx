@@ -9,11 +9,13 @@ interface Props {
   /** 이름을 제목(h1)으로 쓸지. 화면에 제목이 하나만 있어야 한다 */
   heading?: boolean
   connection: Connection
+  /** 상태 줄의 색(음성 대화: 듣기·처리 중·말하기). 없으면 기본 색 */
+  tone?: string
 }
 
 // 시안의 헤더: 왼쪽에 아바타·이름·상태, 오른쪽에 서버 연결 상태.
 // 오른쪽은 시안에서 남은 토큰 막대 자리이고, 막대는 M5에서 더한다.
-export default function Header({ initial, name, sub, heading, connection }: Props) {
+export default function Header({ initial, name, sub, heading, connection, tone }: Props) {
   const label = CONNECTION_LABEL[connection]
   return (
     <header className="app-header">
@@ -27,7 +29,11 @@ export default function Header({ initial, name, sub, heading, connection }: Prop
           ) : (
             <div className="app-title chat-name">{name}</div>
           )}
-          {sub && <div className="chat-status">{sub}</div>}
+          {sub && (
+            <div className="chat-status" data-tone={tone}>
+              {sub}
+            </div>
+          )}
         </div>
       </div>
       <span className="conn" data-state={connection} role="status">

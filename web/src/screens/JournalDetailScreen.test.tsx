@@ -349,6 +349,35 @@ describe('JournalDetailScreen 이어서 하기', () => {
     expect(bodyOf(fetchMock, 'POST', '/api/sessions/s1/reopen')).toEqual({ mode: 'text' })
   })
 
+  it('음성으로 이어서는 음성 방식으로 다시 열고 그 결과를 넘긴다', async () => {
+    const voiceReopened = { ...reopened, session: { ...reopened.session, mode: 'voice' } }
+    const fetchMock = mockServer({
+      ...get(detail()),
+      'POST /api/sessions/s1/reopen': () => Response.json(voiceReopened),
+    })
+    const { onResume } = renderDetail()
+    await userEvent.click(await screen.findByRole('button', { name: '음성으로 이어서' }))
+    await waitFor(() => expect(onResume).toHaveBeenCalledWith(voiceReopened, { navigate: true }))
+    expect(bodyOf(fetchMock, 'POST', '/api/sessions/s1/reopen')).toEqual({ mode: 'voice' })
+  })
+
+  it('다시 여는 동안은 누른 쪽 버튼만 "여는 중…"이고 둘 다 잠긴다', async () => {
+    let finish: () => void = () => {}
+    mockServer({
+      ...get(detail()),
+      'POST /api/sessions/s1/reopen': () =>
+        new Promise<Response>((resolve) => {
+          finish = () => resolve(Response.json(reopened))
+        }),
+    })
+    renderDetail()
+    await userEvent.click(await screen.findByRole('button', { name: '음성으로 이어서' }))
+    expect(await screen.findByRole('button', { name: '여는 중…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '글로 이어서' })).toBeDisabled()
+    finish()
+    await waitFor(() => expect(screen.getByRole('button', { name: '음성으로 이어서' })).toBeEnabled())
+  })
+
   it('다시 열기가 실패하면 오류를 보이고 다시 누를 수 있다', async () => {
     mockServer({
       ...get(detail()),
@@ -366,6 +395,7 @@ describe('JournalDetailScreen 이어서 하기', () => {
     mockServer(get(detail()))
     renderDetail({ activeSessionId: 'other' })
     expect(await screen.findByRole('button', { name: '글로 이어서' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '음성으로 이어서' })).toBeDisabled()
     expect(screen.getByText('진행 중인 대화를 끝낸 뒤 이어서 할 수 있어요.')).toBeInTheDocument()
   })
 

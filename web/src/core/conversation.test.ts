@@ -155,7 +155,8 @@ describe('conversationReducer', () => {
 
   it('모르는 이벤트·액션은 상태를 그대로 둔다', () => {
     const state = reduce(started)
-    const unknownEvent = { type: 'event', event: { type: 'transcript', text: '음성' } } as unknown
+    // transcript는 M3부터 정식 이벤트다. 서버가 먼저 추가한 새 이벤트를 예로 든다
+    const unknownEvent = { type: 'event', event: { type: 'future_event', text: '새 이벤트' } } as unknown
     expect(conversationReducer(state, unknownEvent as ConversationAction)).toBe(state)
     expect(conversationReducer(state, { type: 'nope' } as unknown as ConversationAction)).toBe(
       state,
@@ -311,5 +312,42 @@ describe('toolNotice', () => {
     [{ name: 'mcp__maps' }, null],
   ])('%o → %s', (patch, expected) => {
     expect(toolNotice({ ...base, ...patch })).toBe(expected)
+  })
+})
+
+describe('음성 턴(M3)', () => {
+  it('transcript 이벤트가 인식한 글을 내 말풍선으로 만든다', () => {
+    const state = reduce([...started, { type: 'event', event: { type: 'transcript', text: '음성으로 말했어' } }])
+    const last = state.messages.at(-1)
+    expect(last).toMatchObject({ role: 'user', text: '음성으로 말했어' })
+    expect(state.sending).toBe(true)
+  })
+
+  it('끼어들기: 다 들려준 문장까지만 남기고 끊긴 답변으로 표시한다', () => {
+    const state = reduce([
+      ...started,
+      { type: 'event', event: { type: 'turn', turn_id: 'a1' } },
+      { type: 'event', event: { type: 'sentence', index: 0, text: '첫 문장.', audio: null, speech_text: null } },
+      { type: 'event', event: { type: 'sentence', index: 1, text: '둘째 문장.', audio: null, speech_text: null } },
+      { type: 'interrupt', turnId: 'a1', lastPlayed: 0 },
+    ])
+    expect(state.messages.at(-1)).toMatchObject({
+      id: 'a1',
+      sentences: ['첫 문장.'],
+      interrupted: true,
+      status: 'done',
+    })
+    expect(state.sending).toBe(false)
+  })
+
+  it('끼어들기: 들려준 문장이 없으면 말풍선을 뺀다(다른 말풍선은 그대로)', () => {
+    const state = reduce([
+      ...started,
+      { type: 'event', event: { type: 'turn', turn_id: 'a1' } },
+      { type: 'event', event: { type: 'sentence', index: 0, text: '첫 문장.', audio: null, speech_text: null } },
+      { type: 'interrupt', turnId: 'a1', lastPlayed: -1 },
+    ])
+    expect(state.messages).toHaveLength(1) // 인사말 말풍선만 남는다
+    expect(state.messages.some((m) => m.id === 'a1')).toBe(false)
   })
 })

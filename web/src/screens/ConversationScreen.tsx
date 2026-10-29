@@ -1,7 +1,9 @@
-import { useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
 import CountPills from '../components/CountPills.tsx'
 import Header from '../components/Header.tsx'
 import Markdown from '../components/Markdown.tsx'
+import ModeToggle from '../components/ModeToggle.tsx'
+import { readMode, rememberMode, type InputMode } from '../hooks/inputMode.ts'
 import { monthDayLabel, type JournalStatus, type NoteCounts } from '../core/journal.ts'
 import { joinSentences, plainText } from '../core/markdown.ts'
 import type { Connection } from '../core/connection.ts'
@@ -21,6 +23,10 @@ import {
   type Message,
   type SessionStatus,
 } from '../core/conversation.ts'
+import type { SessionStateName } from '../core/index.ts'
+import { useVoiceConversation } from './useVoiceConversation.ts'
+import type { VoiceClosed, VoiceDeps } from './voiceController.ts'
+import VoiceDock from './VoiceDock.tsx'
 
 const MAX_LENGTH = 4000
 
@@ -31,6 +37,19 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
   paused: '쉬는 중',
   ended: '대화 끝남',
 }
+
+// 음성 대화 중 헤더 이름 아래 한 줄(상태 머신의 상태)
+const VOICE_STATUS_LABEL: Record<SessionStateName, string> = {
+  idle: '',
+  listening: '듣고 있어요',
+  processing: '생각하는 중',
+  speaking: '말하는 중',
+  paused: '쉬는 중',
+  offline: '연결이 끊겼어요',
+  closing: '정리 중…',
+}
+
+const VOICE_FAILED = '음성 기능을 불러오지 못했어요. 글로 대화해 주세요.'
 
 /** 끝낸 대화의 정리 결과. saved가 null이면 서버가 알려 주지 못했다(그만 기다렸거나 불러오지 못함) */
 interface Summary {
@@ -72,6 +91,20 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   )
 }
 
+// 내가 말하는 동안 보이는 말풍선(시안 대화 02): 파형과 "말하는 중"
+function SpeakingBubble() {
+  return (
+    <li className="bubble bubble-user bubble-speaking">
+      <span className="wave" aria-hidden="true">
+        {[10, 20, 28, 16, 24, 12, 6].map((height, i) => (
+          <i key={i} style={{ height }} />
+        ))}
+      </span>
+      <span>말하는 중</span>
+    </li>
+  )
+}
+
 function MessageItem({ message }: { message: Message }) {
   if (message.role === 'user') {
     return <li className="bubble bubble-user">{message.text}</li>
@@ -86,6 +119,7 @@ export default function ConversationScreen({
   onResumed,
   restoreId = null,
   onOpenJournal,
+  voiceDeps,
 }: {
   connection?: Connection
   /** 진행 중인 대화가 생기거나 끝났을 때(끝나면 null) 알린다 */
@@ -98,6 +132,8 @@ export default function ConversationScreen({
   restoreId?: string | null
   /** 일지 상세를 연다(시작 화면의 아이디어 카드, 끝난 화면의 "일지에서 보기") */
   onOpenJournal?: (sessionId: string) => void
+  /** 음성 대화의 마이크·재생·서버 호출(시험에서 가짜로 바꾼다) */
+  voiceDeps?: Partial<VoiceDeps>
 }) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
@@ -117,6 +153,23 @@ export default function ConversationScreen({
   // 대화를 다시 열 때마다 올린다(그 전 끝내기의 요약을 보이지 않게). 렌더는 상태, 비동기 쓰기는 ref를 본다
   const epoch = useRef(0)
   const [epochShown, bumpEpoch] = useReducer((n: number) => n + 1, 0)
+  const [mode, setMode] = useState<InputMode>(readMode) // 시작할 방식(기기에 기억한다)
+  // 음성 대화 중 보이는 조작 영역(음성/글). 대화마다 음성에서 시작하므로 어느 대화에서 골랐는지 함께 둔다
+  const [panelChoice, setPanelChoice] = useState<{ sessionId: string | null; panel: InputMode }>({
+    sessionId: null,
+    panel: 'voice',
+  })
+  // 음성 대화가 끝내기 응답을 받았다: 컨트롤러가 이미 마무리했으므로 화면이 다시 부르지 않는다.
+  // finalized를 여기서 동기로 먼저 세워 두어야 아래 마무리 효과가 같은 대화를 다시 끝내지 않는다(순서 의존)
+  const handleClosed = useCallback((sessionId: string, closed: VoiceClosed) => {
+    finalized.current = sessionId
+    setSummary({ sessionId, epoch: epoch.current, saved: closed.saved, journalStatus: closed.journalStatus })
+  }, [])
+  const voice = useVoiceConversation(dispatch, handleClosed, state.personaName, voiceDeps)
+  const voiceActive = voice.machine.name !== 'idle' // 음성 대화(인사말 재생부터 정리까지)
+  const voiceFailed = voice.ready === false // 음성 모듈을 불러오지 못했다
+  const startMode: InputMode = mode === 'voice' && !voiceFailed ? 'voice' : 'text'
+  const panel: InputMode = panelChoice.sessionId === state.sessionId ? panelChoice.panel : 'voice'
 
   const openSessionId =
     state.status === 'active' || state.status === 'paused' ? state.sessionId : null
@@ -177,7 +230,7 @@ export default function ConversationScreen({
   useEffect(() => {
     const sessionId = state.sessionId
     if (state.status !== 'ended' || !sessionId || state.ending) return
-    if (finalized.current === sessionId) return
+    if (finalized.current === sessionId || voiceActive) return // 음성 대화는 컨트롤러가 마무리한다
     finalized.current = sessionId
     const controller = new AbortController()
     void (async () => {
@@ -197,8 +250,9 @@ export default function ConversationScreen({
       }
     })()
     return () => controller.abort()
-  }, [state.status, state.sessionId, state.ending])
+  }, [state.status, state.sessionId, state.ending, voiceActive])
 
+  const voiceResume = voice.resume
   useEffect(() => {
     if (!resume) return
     aborter.current?.abort()
@@ -206,6 +260,11 @@ export default function ConversationScreen({
     finalized.current = null
     epoch.current += 1
     bumpEpoch()
+    // 음성으로 다시 연 대화는 컨트롤러가 재개 인사말을 들려주며 이어 간다
+    if (resume.session.mode === 'voice' && voiceResume(resume)) {
+      onResumed?.()
+      return
+    }
     dispatch({
       type: 'resumed',
       sessionId: resume.session.id,
@@ -213,7 +272,7 @@ export default function ConversationScreen({
       turns: resume.turns,
     })
     onResumed?.()
-  }, [resume, onResumed])
+  }, [resume, onResumed, voiceResume])
 
   // 화면이 사라지면 진행 중인 요청을 끊는다(서버가 턴을 멈춘다)
   useEffect(() => () => aborter.current?.abort(), [])
@@ -221,7 +280,7 @@ export default function ConversationScreen({
   useEffect(() => {
     const list = listRef.current
     if (list) list.scrollTop = list.scrollHeight
-  }, [state.messages])
+  }, [state.messages, voice.machine.userSpeaking])
 
   async function start() {
     aborter.current?.abort()
@@ -253,6 +312,11 @@ export default function ConversationScreen({
   async function send() {
     const text = draft.trim()
     if (!text || state.sending || !state.sessionId || state.status === 'ended') return
+    if (voiceActive) {
+      // 음성 대화 중 글: 듣는 중에만 받는다(컨트롤러가 말풍선과 전송을 맡는다)
+      if (voice.sendText(text, restoreDraft)) setDraft('')
+      return
+    }
     const id = `u-${(counter.current += 1)}`
     const controller = (aborter.current = new AbortController())
     let gotTurn = false // turn 이벤트 전의 오류는 서버가 메시지를 받지 못한 것이다(규약 2.10)
@@ -323,8 +387,30 @@ export default function ConversationScreen({
     const sessionId = state.sessionId
     if (!sessionId || !state.ending) return
     aborter.current?.abort()
+    if (voiceActive) voice.longPress() // 컨트롤러가 요청을 끊고 대기로 간다("그만 기다리기")
     dispatch({ type: 'ended' })
     setSummary({ sessionId, epoch: epoch.current, saved: null, journalStatus: 'pending' })
+  }
+
+  // 시작 화면의 방식 선택. 고른 방식은 기기에 기억한다
+  function changeMode(next: InputMode) {
+    setMode(next)
+    rememberMode(next)
+  }
+
+  // 음성 대화 중의 조작 영역 전환(대화는 그대로 이어진다)
+  function changePanel(next: InputMode) {
+    setPanelChoice({ sessionId: state.sessionId, panel: next })
+  }
+
+  function startVoice() {
+    setDraft('')
+    voice.tap()
+  }
+
+  function cancelEndConfirm() {
+    if (voice.machine.endConfirmOpen) voice.cancelEnd()
+    setConfirmEnd(false)
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -352,8 +438,24 @@ export default function ConversationScreen({
       <section className="chat chat-start" aria-label="대화 시작">
         <Header initial="T" name="TrailTalk" sub="대화 전" heading connection={connection} />
         <div className="chat-start-body">
-          <h2 className="chat-start-title">글로 이야기해 볼까요?</h2>
-          <p className="chat-start-sub">버튼을 누르면 대화가 시작돼요.</p>
+          {startMode === 'voice' ? (
+            <>
+              <h2 className="chat-start-title">걸으면서 이야기해요</h2>
+              <p className="chat-start-sub">
+                버튼을 한 번 누르면 이어폰으로 대화가 시작돼요. 그 뒤로는 화면을 만지지 않아도 돼요.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="chat-start-title">글로 이야기해 볼까요?</h2>
+              <p className="chat-start-sub">버튼을 누르면 대화가 시작돼요.</p>
+            </>
+          )}
+          {voiceFailed && mode === 'voice' && (
+            <p className="chat-error" role="status">
+              {VOICE_FAILED}
+            </p>
+          )}
           {state.error && (
             <p className="chat-error" role="alert">
               {state.error}
@@ -377,16 +479,23 @@ export default function ConversationScreen({
             </section>
           )}
         </div>
-        <div className="dock">
-          <button
-            type="button"
-            className="btn btn-primary btn-big"
-            disabled={state.status === 'starting'}
-            onClick={() => void start()}
-          >
-            {state.status === 'starting' ? '시작하는 중…' : '글로 대화 시작'}
-          </button>
-        </div>
+        {startMode === 'voice' ? (
+          <VoiceDock state={state.status === 'starting' ? 'starting' : 'idle'} onTap={startVoice}>
+            <ModeToggle mode={startMode} onChange={changeMode} voiceDisabled={voice.ready !== true} disabled={state.status === 'starting'} />
+          </VoiceDock>
+        ) : (
+          <div className="dock">
+            <ModeToggle mode={startMode} onChange={changeMode} voiceDisabled={voice.ready !== true} disabled={state.status === 'starting'} />
+            <button
+              type="button"
+              className="btn btn-primary btn-big"
+              disabled={state.status === 'starting'}
+              onClick={() => void start()}
+            >
+              {state.status === 'starting' ? '시작하는 중…' : '글로 대화 시작'}
+            </button>
+          </div>
+        )}
       </section>
     )
   }
@@ -400,7 +509,14 @@ export default function ConversationScreen({
       <Header
         initial={initial}
         name={state.personaName ?? ''}
-        sub={state.ending ? '정리 중…' : STATUS_LABEL[state.status]}
+        sub={
+          state.ending
+            ? '정리 중…'
+            : voiceActive
+              ? VOICE_STATUS_LABEL[voice.machine.name]
+              : STATUS_LABEL[state.status]
+        }
+        tone={voiceActive && !state.ending ? voice.machine.name : undefined}
         heading
         connection={connection}
       />
@@ -408,6 +524,7 @@ export default function ConversationScreen({
         {state.messages.map((message) => (
           <MessageItem key={message.id} message={message} />
         ))}
+        {voiceActive && voice.machine.userSpeaking && <SpeakingBubble />}
       </ol>
       {state.error && (
         <p className="chat-error" role="alert">
@@ -447,7 +564,11 @@ export default function ConversationScreen({
               </button>
             )}
           </section>
-          <button type="button" className="btn btn-primary" onClick={() => void start()}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => (startMode === 'voice' ? startVoice() : void start())}
+          >
             새 대화 시작
           </button>
         </div>
@@ -469,8 +590,18 @@ export default function ConversationScreen({
             그만 기다리기
           </button>
         </div>
+      ) : voiceActive && panel === 'voice' ? (
+        <VoiceDock
+          state={voice.machine.name}
+          onTap={voice.tap}
+          onLongPress={voice.longPress}
+          onEnd={voice.requestEnd}
+        >
+          <ModeToggle mode={panel} onChange={changePanel} />
+        </VoiceDock>
       ) : (
         <div className="composer">
+          {voiceActive && <ModeToggle mode={panel} onChange={changePanel} />}
           <div className="composer-row">
             <textarea
               aria-label="메시지"
@@ -486,7 +617,11 @@ export default function ConversationScreen({
               type="button"
               className="send"
               aria-label="보내기"
-              disabled={!draft.trim() || state.sending}
+              disabled={
+                !draft.trim() ||
+                state.sending ||
+                (voiceActive && (voice.machine.name !== 'listening' || voice.machine.queued > 0))
+              }
               onClick={() => void send()}
             >
               <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
@@ -499,7 +634,7 @@ export default function ConversationScreen({
               type="button"
               className="btn btn-ghost"
               disabled={state.ending}
-              onClick={() => setConfirmEnd(true)}
+              onClick={() => (voiceActive ? voice.requestEnd() : setConfirmEnd(true))}
             >
               <svg className="ic" viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -509,10 +644,10 @@ export default function ConversationScreen({
           </div>
         </div>
       )}
-      {confirmEnd && (
+      {(confirmEnd || voice.machine.endConfirmOpen) && (
         <div
           className="dialog-back dialog-back-float"
-          onKeyDown={(event) => event.key === 'Escape' && setConfirmEnd(false)}
+          onKeyDown={(event) => event.key === 'Escape' && cancelEndConfirm()}
         >
           <div
             className="dialog dialog-float"
@@ -526,10 +661,14 @@ export default function ConversationScreen({
               지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수 있어요.
             </p>
             <div className="dialog-stack">
-              <button type="button" className="btn btn-primary" onClick={() => void end()}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => (voiceActive ? voice.confirmEnd() : void end())}
+              >
                 끝내고 정리하기
               </button>
-              <button type="button" className="btn" autoFocus onClick={() => setConfirmEnd(false)}>
+              <button type="button" className="btn" autoFocus onClick={cancelEndConfirm}>
                 계속 대화하기
               </button>
             </div>
