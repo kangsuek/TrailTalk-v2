@@ -2,6 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import httpx2
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
@@ -22,6 +23,7 @@ from app.llm.manager import LlmSessionManager
 from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
 from app.services.runtime import RuntimeRegistry
+from app.voice import build_voice
 
 # 웹 앱이 맡지 않는 경로. 없는 경로도 index.html이 아니라 라우터의 JSON 404·405가 나간다
 _SERVER_PREFIXES = ("/api", "/internal")
@@ -78,6 +80,10 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         )
         await llm.start()
         app.state.llm = llm
+        # 음성 인식·합성(키가 없어도 서버는 뜨고 음성 호출만 voice_unavailable이다)
+        http = httpx2.AsyncClient()
+        app.state.http = http
+        app.state.stt, app.state.tts_backend, app.state.tts = build_voice(app_settings, http)
         try:  # 정리 도중 서버가 꺼진 대화를 다시 정리한다. 실패해도 서버는 뜬다
             await extract.resume_pending(app)
         except Exception:
@@ -91,6 +97,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
             await asyncio.wait([idle_watch])
             await extract.cancel_all(app)  # 남은 정리는 pending으로 남아 다음 시작 때 다시 돈다
             await llm.shutdown()
+            await http.aclose()
             await engine.dispose()
 
     app = FastAPI(title="TrailTalk", lifespan=lifespan)
