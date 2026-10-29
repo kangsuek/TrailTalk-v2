@@ -11,7 +11,15 @@ from app.db.migrate import alembic_config, upgrade_to_head
 from app.db.session import create_engine_for
 from app.main import create_app
 
-TABLES = {"persona", "user_profile", "conversation_session", "turn", "note"}
+TABLES = {
+    "persona",
+    "user_profile",
+    "conversation_session",
+    "turn",
+    "note",
+    "turn_latency",  # M3: 음성 턴 지연
+    "turn_tts",  # M3: 문장별 합성 모델·폴백
+}
 
 
 async def table_names(url: str) -> set[str]:

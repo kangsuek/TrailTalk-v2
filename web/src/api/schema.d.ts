@@ -92,6 +92,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{session_id}/turns/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Audio Turn
+         * @description 말 한 번의 오디오 바이트(multipart 아님)를 인식해 턴을 시작한다. SSE를 열기 전에 인식하므로
+         *     오디오·인식 오류와 말 없음은 JSON 오류이고 사용자 메시지를 만들지 않는다.
+         */
+        post: operations["create_audio_turn_api_sessions__session_id__turns_audio_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{session_id}/end": {
         parameters: {
             query?: never;
@@ -227,6 +248,40 @@ export interface paths {
          * @description 별표·완료·내용 중 보낸 필드만 바꾼다. 보낸 필드에 null은 쓸 수 없다.
          */
         patch: operations["update_note_api_notes__note_id__patch"];
+        trace?: never;
+    };
+    "/api/sessions/{session_id}/turns/{turn_id}/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report Latency */
+        post: operations["report_latency_api_sessions__session_id__turns__turn_id__latency_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Latency */
+        get: operations["get_latency_api_latency_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -365,6 +420,82 @@ export interface components {
         JournalPatch: {
             /** Title */
             title: string;
+        };
+        /** LatencyOut */
+        LatencyOut: {
+            /** Turns */
+            turns: components["schemas"]["LatencyTurn"][];
+            summary: components["schemas"]["LatencySummary"];
+        };
+        /**
+         * LatencyReport
+         * @description 클라이언트가 턴마다 한 번 보고하는 값(0~600000ms).
+         */
+        LatencyReport: {
+            /** Speech To Request Ms */
+            speech_to_request_ms: number;
+            /** Request To Playback Ms */
+            request_to_playback_ms: number;
+            /**
+             * First Sound Notice
+             * @default false
+             */
+            first_sound_notice: boolean;
+            /** Ack Ms */
+            ack_ms?: number | null;
+        };
+        /** LatencySummary */
+        LatencySummary: {
+            /** Count */
+            count: number;
+            total_ms: components["schemas"]["Stat"] | null;
+            total_ms_reply: components["schemas"]["Stat"] | null;
+            /** Stages */
+            stages: {
+                [key: string]: number;
+            };
+            ack_ms: components["schemas"]["Stat"] | null;
+            search: components["schemas"]["TotalStats"];
+            tts: components["schemas"]["TtsStats"];
+        };
+        /** LatencyTurn */
+        LatencyTurn: {
+            /** Turn Id */
+            turn_id: string;
+            /** Upload Ms */
+            upload_ms: number | null;
+            /** Stt Ms */
+            stt_ms: number | null;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /** First Queued Ms */
+            first_queued_ms: number | null;
+            /** First Synth Ms */
+            first_synth_ms: number | null;
+            /** Synth Wait Ms */
+            synth_wait_ms: number | null;
+            /** First Sentence Ms */
+            first_sentence_ms: number | null;
+            /** Done Ms */
+            done_ms: number | null;
+            /** Audio Bytes */
+            audio_bytes: number | null;
+            /** Cli Age Ms */
+            cli_age_ms: number | null;
+            /** Reply Chars */
+            reply_chars: number | null;
+            /** Searched */
+            searched: boolean;
+            /** Speech To Request Ms */
+            speech_to_request_ms: number | null;
+            /** Request To Playback Ms */
+            request_to_playback_ms: number | null;
+            /** First Sound Notice */
+            first_sound_notice: boolean | null;
+            /** Ack Ms */
+            ack_ms: number | null;
+            /** Total Ms */
+            total_ms: number | null;
         };
         /** NoteCounts */
         NoteCounts: {
@@ -577,6 +708,29 @@ export interface components {
             session: components["schemas"]["SessionOut"];
             greeting: components["schemas"]["GreetingOut"];
             persona: components["schemas"]["PersonaOut"];
+        };
+        /** Stat */
+        Stat: {
+            /** Median */
+            median: number;
+            /** P90 */
+            p90: number;
+        };
+        /** TotalStats */
+        TotalStats: {
+            /** Count */
+            count: number;
+            total_ms: components["schemas"]["Stat"] | null;
+            total_ms_reply: components["schemas"]["Stat"] | null;
+        };
+        /** TtsStats */
+        TtsStats: {
+            /** Models */
+            models: {
+                [key: string]: number;
+            };
+            /** Fallback Ratio */
+            fallback_ratio: number;
         };
         /**
          * TurnConfig
@@ -797,6 +951,19 @@ export interface components {
             result: unknown;
         };
         /**
+         * TranscriptEvent
+         * @description 음성 턴에서만 `turn` 바로 앞에 오는 첫 이벤트. 인식한 글(사용자 메시지로 저장된 글)이다.
+         */
+        TranscriptEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "transcript";
+            /** Text */
+            text: string;
+        };
+        /**
          * TurnEvent
          * @description 스트림의 첫 이벤트. turn_id는 이번 답변(assistant 턴)의 ID로 끼어들기(M4)에 쓴다.
          */
@@ -819,7 +986,7 @@ export interface components {
             /** Audio */
             audio: string | null;
         };
-        StreamEvent: components["schemas"]["TurnEvent"] | components["schemas"]["SentenceEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["DoneEvent"] | components["schemas"]["ErrorEvent"];
+        StreamEvent: components["schemas"]["TranscriptEvent"] | components["schemas"]["TurnEvent"] | components["schemas"]["SentenceEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["DoneEvent"] | components["schemas"]["ErrorEvent"];
     };
     responses: never;
     parameters: never;
@@ -986,6 +1153,37 @@ export interface operations {
         };
         responses: {
             /** @description 턴 이벤트 스트림(turn → sentence·tool → done 또는 error) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["StreamEvent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_audio_turn_api_sessions__session_id__turns_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 음성 턴 이벤트 스트림(transcript → turn → sentence·tool → done 또는 error) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1247,6 +1445,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_latency_api_sessions__session_id__turns__turn_id__latency_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                turn_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LatencyReport"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latency_api_latency_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatencyOut"];
                 };
             };
             /** @description Validation Error */

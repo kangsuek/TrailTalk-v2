@@ -6,6 +6,12 @@ import { groupTurns, type Turn } from './journal.ts'
 
 // 서버 SSE 이벤트(app/api/events.py, 규약 2.4). core는 api 폴더를 가져오지 않으므로 필요한 모양을
 // 여기에 적고, 생성 타입(schema.d.ts)과 같은지는 api/conversation.ts가 타입으로 확인한다.
+/** 음성 턴에서만 `turn` 바로 앞에 오는 첫 이벤트: 인식한 글(M3). */
+export interface TranscriptEvent {
+  type: 'transcript'
+  text: string
+}
+
 export interface TurnEvent {
   type: 'turn'
   turn_id: string
@@ -51,7 +57,13 @@ export interface ErrorEvent {
   message: string
 }
 
-export type StreamEvent = TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent
+export type StreamEvent =
+  | TranscriptEvent
+  | TurnEvent
+  | SentenceEvent
+  | ToolEvent
+  | DoneEvent
+  | ErrorEvent
 
 export interface ToolState {
   id: string
@@ -163,6 +175,8 @@ function applyTool(tools: ToolState[], event: ToolEvent): ToolState[] {
 
 function applyEvent(state: ConversationState, event: StreamEvent): ConversationState {
   switch (event.type) {
+    case 'transcript':
+      return state // 내 말풍선은 음성 연결(voiceController)이 인식 결과로 만든다(M3-13)
     case 'turn':
       return {
         ...state,

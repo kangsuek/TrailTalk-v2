@@ -10,7 +10,7 @@ from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
-from app.api import health, journal, profile, sessions
+from app.api import health, journal, latency, profile, sessions
 from app.api.events import register_event_schemas
 from app.client_config import load_client_config
 from app.config import Settings, settings
@@ -113,6 +113,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     api.include_router(profile.router)
     api.include_router(sessions.router)
     api.include_router(journal.router)
+    api.include_router(latency.router)
     app.include_router(api)
     register_event_schemas(app)  # SSE 이벤트 스키마를 OpenAPI에 넣는다(웹 타입 생성)
     mcp = mount_mcp(app)  # 앱 도구 서버(/internal/mcp). 정적 마운트보다 먼저 붙인다

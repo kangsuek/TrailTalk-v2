@@ -1,8 +1,10 @@
-"""대화 세션 API(client-contract 2절): 시작(인사말), 글 턴(SSE), 종료(마무리 멘트), 다시 열기.
+"""대화 세션 API(client-contract 2절): 시작(인사말), 글·음성 턴(SSE), 종료(마무리 멘트), 다시 열기.
 
-음성 턴·미리 띄우기는 해당 마일스톤(M3~M4)에서 더한다.
+음성 세션이면 인사말·마무리 멘트·재개 인사말과 답변 문장에 소리(MP3 base64)를 싣는다(M3).
+미리 띄우기는 M4에서 더한다.
 """
 
+import time
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -14,9 +16,12 @@ from app.api.events import sse_response_doc
 from app.api.journal import TurnOut
 from app.db.models import ConversationSession, SessionMode
 from app.db.session import DbSession
+from app.errors import AppError
 from app.jobs import extract
 from app.persona.loader import LoadedPersona, load_session_persona
 from app.services import closing, conversation
+from app.services.voice import VoiceTurn, speak
+from app.voice.audio import prepare_for_stt
 
 router = APIRouter(tags=["sessions"])
 
@@ -131,12 +136,15 @@ def _persona_out(loaded: LoadedPersona) -> PersonaOut:
 
 @router.post("/sessions", status_code=201)
 async def create_session(body: SessionCreate, request: Request, db: DbSession) -> SessionStarted:
-    convo, greeting, loaded = await conversation.start_session(
-        request.app, db, SessionMode(body.mode)
-    )
+    mode = SessionMode(body.mode)
+    convo, greeting, loaded = await conversation.start_session(request.app, db, mode)
+    audio = None
+    if mode is SessionMode.VOICE:
+        style = await conversation.session_voice_style(request.app, db, loaded.persona)
+        audio = await speak(request.app, greeting.text, style)
     return SessionStarted(
         session=SessionOut.of(convo),
-        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
+        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=audio),
         persona=_persona_out(loaded),
     )
 
@@ -148,12 +156,17 @@ async def reopen_session(
     """끝난 대화(또는 열려 있지 않은 진행 중 대화)를 같은 세션으로 다시 열어 이어서 대화한다.
     답변 중이면 409 turn_in_progress, 재개 인사말을 받지 못하면 시작 실패와 같은 오류이고 대화는
     원래 상태로 남는다."""
+    mode = SessionMode((body or SessionReopen()).mode)
     convo, greeting, turns, loaded = await conversation.reopen_session(
-        request.app, db, session_id, SessionMode((body or SessionReopen()).mode)
+        request.app, db, session_id, mode
     )
+    audio = None
+    if mode is SessionMode.VOICE:
+        style = await conversation.session_voice_style(request.app, db, loaded.persona)
+        audio = await speak(request.app, greeting.text, style)
     return SessionReopened(
         session=SessionOut.of(convo),
-        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=None),
+        greeting=GreetingOut(turn_id=greeting.id, text=greeting.text, audio=audio),
         persona=_persona_out(loaded),
         turns=[TurnOut.of(t) for t in turns],
     )
@@ -179,6 +192,49 @@ async def create_turn(
     )
 
 
+@router.post(
+    "/sessions/{session_id}/turns/audio",
+    response_class=StreamingResponse,
+    responses=sse_response_doc(
+        "음성 턴 이벤트 스트림(transcript → turn → sentence·tool → done 또는 error)"
+    ),
+)
+async def create_audio_turn(session_id: str, request: Request, db: DbSession) -> StreamingResponse:
+    """말 한 번의 오디오 바이트(multipart 아님)를 인식해 턴을 시작한다. SSE를 열기 전에 인식하므로
+    오디오·인식 오류와 말 없음은 JSON 오류이고 사용자 메시지를 만들지 않는다."""
+    started = time.monotonic()
+    app = request.app
+    settings = app.state.settings
+    convo = await conversation.get_session(db, session_id)
+    conversation.check_turn_allowed(app, convo)
+    data = await request.body()
+    uploaded = time.monotonic()
+    audio = await prepare_for_stt(
+        data,
+        request.headers.get("content-type"),
+        max_bytes=settings.stt_max_bytes,
+        ffmpeg_path=settings.ffmpeg_path,
+        timeout_s=settings.ffmpeg_timeout_s,
+    )
+    text = (await app.state.stt.transcribe(audio)).strip()
+    if not text:
+        raise AppError("no_speech", "말소리가 들리지 않았어요.", 422)
+    recognized = time.monotonic()
+    await db.close()  # 스트림은 자기 세션을 따로 연다(글 턴과 같다)
+    voice = VoiceTurn(
+        started=started,
+        transcript=text,
+        upload_ms=round((uploaded - started) * 1000),
+        stt_ms=round((recognized - uploaded) * 1000),
+        audio_bytes=len(data),
+    )
+    return EventStreamResponse(
+        conversation.stream_turn(app, session_id, text, voice),
+        media_type="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
+
 @router.post("/sessions/{session_id}/end")
 async def end_session(session_id: str, request: Request, db: DbSession) -> SessionClosed:
     """세션을 끝내고 일지 정리를 띄워 최대 extract_wait_s 기다린 뒤 마무리 멘트를 준다(멱등).
@@ -198,10 +254,15 @@ async def end_session(session_id: str, request: Request, db: DbSession) -> Sessi
         journal_status = "pending"  # 정리 작업이 막 떠서 아직 상태를 쓰지 않았다
     # 마무리 멘트는 그 대화가 시작한 페르소나를 따른다(대화 중에 프로필을 바꿔도)
     loaded = load_session_persona(settings.persona_dir, convo.persona_id, settings.default_persona)
+    closing_text = closing.closing_message(loaded.persona, counts)
+    closing_audio = None
+    if convo.mode is SessionMode.VOICE:
+        style = await conversation.session_voice_style(app, db, loaded.persona)
+        closing_audio = await speak(app, closing_text, style)
     return SessionClosed(
         session=SessionOut.of(convo),
-        closing=closing.closing_message(loaded.persona, counts),
-        closing_audio=None,
+        closing=closing_text,
+        closing_audio=closing_audio,
         saved=SavedCounts(**{kind.value: count for kind, count in counts.items()}),
         journal_status=journal_status,
     )
