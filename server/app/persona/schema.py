@@ -29,6 +29,8 @@ class VoiceStyle(_Strict):
     instructions: Text  # 말투·톤·빠르기 지시(gpt-4o-mini-tts)
     # 아무 말 없이 웹 검색을 시작할 때 서버가 대신 들려주는 안내(음성 세션)
     search_notice: Text
+    # 설정 화면에서 보이스를 미리 들을 때 읽는 고정 문장(M3, 규약 4.2)
+    sample: Text = "안녕하세요! 이 목소리로 같이 이야기해요."
 
 
 SAVED_PLACEHOLDER = "{저장}"

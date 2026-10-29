@@ -1,7 +1,7 @@
 """턴 SSE 이벤트(client-contract 2.4).
 
 `POST /api/sessions/{id}/turns`는 text/event-stream으로 아래 이벤트를 보낸다. 첫 이벤트는
-turn(turn_id)이고 마지막은 done 또는 error 하나다(음성 업로드의 transcript는 M3).
+turn(turn_id)이고(음성 턴은 그 앞에 transcript) 마지막은 done 또는 error 하나다.
 각 메시지는 `event: <type>` 줄과 `data: <JSON>` 줄로 이뤄지고 JSON에도 type이 들어 있다.
 자체 도구의 이름은 `mcp__trailtalk__` 접두사를 떼어 보내고, 접두사가 있는 이름은 외부 MCP
 도구(M5)다(2.5).
@@ -19,6 +19,13 @@ SessionStatusValue = Literal["active", "paused", "ended"]
 class _Event(BaseModel):
     # 기본값이 있는 필드도 항상 보내므로 스키마에서 required로 표시한다(생성 타입의 type 좁히기)
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class TranscriptEvent(_Event):
+    """음성 턴에서만 `turn` 바로 앞에 오는 첫 이벤트. 인식한 글(사용자 메시지로 저장된 글)이다."""
+
+    type: Literal["transcript"] = "transcript"
+    text: str
 
 
 class TurnEvent(_Event):
@@ -90,11 +97,11 @@ class ErrorEvent(_Event):
 
 
 StreamEvent = Annotated[
-    TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent,
+    TranscriptEvent | TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent,
     Field(discriminator="type"),
 ]
 _STREAM_EVENT = TypeAdapter(StreamEvent)
-AnyEvent = TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent
+AnyEvent = TranscriptEvent | TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent
 
 _OWN_PREFIX = "mcp__trailtalk__"
 

@@ -1,8 +1,8 @@
 """서버 DB 모델 (Spec 6절).
 
 ID는 UUID 문자열, 시각은 UTC다. 열거값은 SQLite에서도 CHECK 제약으로 막는다.
-persona·user_profile(M0), conversation_session·turn·note(M1). 나머지 테이블(attachment,
-turn_latency, briefing 등)은 쓰는 마일스톤에서 리비전으로 더한다.
+persona·user_profile(M0), conversation_session·turn·note(M1), turn_latency·turn_tts(M3).
+나머지 테이블(attachment, briefing 등)은 쓰는 마일스톤에서 리비전으로 더한다.
 """
 
 from datetime import datetime
@@ -172,3 +172,53 @@ class Note(Base):
     starred: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class TurnLatency(Base):
+    """음성 턴 하나의 지연 기록(Spec 5.1, 규약 2.15). 서버 단계 값은 턴을 처리하며 쓰고,
+    클라이언트 보고(`speech_to_request_ms` 등)는 `POST …/latency`가 덮어쓴다.
+
+    turn_id는 답변 턴(`turn` 이벤트의 ID)이다. 첫 문장 전에 끊겨 답변 행이 없어도 기록은 남으므로
+    turn 테이블 외래 키를 걸지 않고, 세션을 지우면 함께 지운다."""
+
+    __tablename__ = "turn_latency"
+
+    turn_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("conversation_session.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # 서버가 잰 단계(ms). 요청 처리를 시작한 때가 기준이다
+    upload_ms: Mapped[int | None] = mapped_column(Integer)
+    stt_ms: Mapped[int | None] = mapped_column(Integer)
+    first_token_ms: Mapped[int | None] = mapped_column(Integer)
+    first_queued_ms: Mapped[int | None] = mapped_column(Integer)
+    first_synth_ms: Mapped[int | None] = mapped_column(Integer)
+    synth_wait_ms: Mapped[int | None] = mapped_column(Integer)
+    first_sentence_ms: Mapped[int | None] = mapped_column(Integer)
+    done_ms: Mapped[int | None] = mapped_column(Integer)
+    audio_bytes: Mapped[int | None] = mapped_column(Integer)
+    cli_age_ms: Mapped[int | None] = mapped_column(Integer)  # CLI 프로세스를 띄운 지 얼마나 됐는지
+    reply_chars: Mapped[int | None] = mapped_column(Integer)
+    searched: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # 클라이언트 보고
+    speech_to_request_ms: Mapped[int | None] = mapped_column(Integer)
+    request_to_playback_ms: Mapped[int | None] = mapped_column(Integer)
+    first_sound_notice: Mapped[bool | None] = mapped_column(Boolean)
+    ack_ms: Mapped[int | None] = mapped_column(Integer)
+
+
+class TurnTts(Base):
+    """답변 문장마다 쓴 합성 모델과 폴백 여부(Spec 5.2). 폴백 비율 집계에 쓴다."""
+
+    __tablename__ = "turn_tts"
+    __table_args__ = (UniqueConstraint("turn_id", "sentence_index", name="turn_sentence"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    turn_id: Mapped[str] = mapped_column(String(36), index=True)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("conversation_session.id", ondelete="CASCADE"), index=True
+    )
+    sentence_index: Mapped[int] = mapped_column(Integer)
+    model: Mapped[str | None] = mapped_column(String(100))  # 소리를 만든 모델, 소리 없으면 null
+    fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())

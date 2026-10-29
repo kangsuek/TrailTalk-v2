@@ -16,6 +16,7 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from datetime import datetime
@@ -30,6 +31,7 @@ from app.api.events import (
     ErrorEvent,
     SentenceEvent,
     ToolEvent,
+    TranscriptEvent,
     TurnEvent,
     encode_sse,
     public_tool_name,
@@ -70,8 +72,12 @@ from app.persona.prompt import (
     greeting_request,
 )
 from app.persona.rules import REOPEN_GREETING_INSTRUCTION
+from app.persona.schema import VoiceStyle
 from app.services.profile import profile_chat_model, profile_with_persona
 from app.services.runtime import ConversationRuntime
+from app.services.voice import LatencyTracker, VoiceTurn, voice_style
+from app.voice.speech import Synthesis
+from app.voice.text import speech_text
 
 logger = logging.getLogger("trailtalk.conversation")
 
@@ -201,6 +207,12 @@ async def _profile(app: FastAPI, db: AsyncSession):
     # 같은 시간에 MCP save_note 같은 다른 쓰기가 SQLite 잠금 대기 끝에 실패한다
     await db.commit()
     return profile, loaded
+
+
+async def session_voice_style(app: FastAPI, db: AsyncSession, persona) -> "VoiceStyle":
+    """이 대화의 캐릭터가 쓸 보이스(프로필의 보이스·속도가 있으면 그것, 없으면 페르소나 YAML)."""
+    profile, _ = await _profile(app, db)
+    return voice_style(persona, profile)
 
 
 async def _get_cli(
@@ -648,8 +660,11 @@ async def _next_seq(db: AsyncSession, session_id: str) -> int:
     return (last_seq if last_seq is not None else -1) + 1
 
 
-async def stream_turn(app: FastAPI, session_id: str, text: str) -> AsyncIterator[bytes]:
-    """사용자 메시지 한 턴을 처리하며 SSE 바이트를 낸다.
+async def stream_turn(
+    app: FastAPI, session_id: str, text: str, voice: VoiceTurn | None = None
+) -> AsyncIterator[bytes]:
+    """사용자 메시지 한 턴을 처리하며 SSE 바이트를 낸다. voice가 있으면 음성 업로드로 시작한 턴이다
+    (인식한 글을 `transcript` 이벤트로 먼저 알리고 지연을 기록한다).
 
     클라이언트가 끊기면 이 제너레이터가 닫히고 aclosing이 CLI 턴을 멈춘다. 이때 사용자 턴과
     보낸 문장까지의 답변(interrupted)이 남는다.
@@ -662,7 +677,7 @@ async def stream_turn(app: FastAPI, session_id: str, text: str) -> AsyncIterator
         db = app.state.session_factory()
         try:
             # 안쪽 제너레이터도 바로 닫아야 락을 풀기 전에 CLI 턴 정리(인터럽트)가 끝난다
-            turn = _run_turn(app, db, runtime, session_id, text)
+            turn = _run_turn(app, db, runtime, session_id, text, voice)
             async with aclosing(turn) as chunks:
                 async for chunk in chunks:
                     yield chunk
@@ -679,6 +694,7 @@ async def _run_turn(
     runtime: ConversationRuntime,
     session_id: str,
     text: str,
+    voice: VoiceTurn | None = None,
 ) -> AsyncIterator[bytes]:
     """턴 락을 잡은 상태에서 한 턴을 처리한다.
 
@@ -704,8 +720,24 @@ async def _run_turn(
         return
     user_turn_id = user_turn.id  # 아래 커밋·롤백 뒤에도 쓰도록 미리 꺼내 둔다
 
+    if voice is not None:
+        yield encode_sse(TranscriptEvent(text=voice.transcript))
     assistant_id = new_id()
     yield encode_sse(TurnEvent(turn_id=assistant_id))
+    turn_started = voice.started if voice is not None else time.monotonic()
+    tracker = (
+        LatencyTracker(
+            started=voice.started,
+            upload_ms=voice.upload_ms,
+            stt_ms=voice.stt_ms,
+            audio_bytes=voice.audio_bytes,
+        )
+        if voice is not None
+        else None
+    )
+    reply_chars = 0
+    latency_saved = False
+    tts_down = False  # 이 턴에서 합성이 최종 실패했으면 남은 문장은 바로 글로 보낸다
     runtime.requested_status = None
     runtime.current_user_turn_id = user_turn_id
     try:
@@ -714,6 +746,14 @@ async def _run_turn(
             if convo.status is SessionStatus.ENDED:
                 raise SessionEnded()
             session, _ = await open_llm(app, db, convo)
+            style = None
+            if convo.mode is SessionMode.VOICE:  # 음성 세션이면 문장마다 소리를 만든다
+                profile, loaded = await _profile(app, db)
+                style = voice_style(loaded.persona, profile)
+        if tracker is not None:
+            created_at = getattr(session, "created_at", None)
+            if created_at is not None:
+                tracker.cli_age_ms = round((time.monotonic() - created_at) * 1000)
         splitter = SentenceSplitter()
         index = 0
         parts: list[str] = []
@@ -725,15 +765,41 @@ async def _run_turn(
         async def sentence_chunk(item: str) -> bytes:
             """먼저 커밋하고 보낸다. 클라이언트가 받은 문장은 서버가 죽어도 남는다(보내기 직전에
             끊기면 못 받은 문장이 하나 더 남을 수 있다). 끝나기 전에는 interrupted로 둔다."""
-            nonlocal index, reply_saved
+            nonlocal index, reply_saved, tts_down
             sent.append(item)
+            audio = speech = None
+            if style is not None:
+                if tracker is not None and index == 0:
+                    tracker.mark("first_queued_ms")
+                if tts_down:
+                    made = Synthesis(None, None, True)
+                elif index == 0:
+                    left = app.state.settings.tts_first_deadline_s - (
+                        time.monotonic() - turn_started
+                    )
+                    made = await app.state.tts.first(item, style, deadline_s=left)
+                else:
+                    made = await app.state.tts.follow(item, style)
+                if made.audio is None and made.fallback:
+                    tts_down = True
+                audio = made.audio
+                if audio is None:  # 소리가 없으면 클라이언트가 글을 기기 TTS로 읽는다
+                    speech = speech_text(item) or None
+                if tracker is not None:
+                    if index == 0:
+                        tracker.mark("first_synth_ms")
+                    tracker.tts.append((index, made.model, made.fallback))
             with anyio.CancelScope(shield=True):
                 await _save_reply(
                     db, assistant_id, session_id, seq + 1, " ".join(sent), True, reply_saved
                 )
                 await db.commit()
             reply_saved = True
-            chunk = encode_sse(SentenceEvent(index=index, text=item))
+            chunk = encode_sse(
+                SentenceEvent(index=index, text=item, audio=audio, speech_text=speech)
+            )
+            if tracker is not None and index == 0:
+                tracker.mark("first_sentence_ms")
             index += 1
             return chunk
 
@@ -750,6 +816,8 @@ async def _run_turn(
                             with anyio.CancelScope(shield=True):
                                 await db.commit()
                     elif isinstance(event, TextDelta):
+                        if tracker is not None:
+                            tracker.mark("first_token_ms")
                         parts.append(event.text)
                         for item in splitter.feed(event.text):
                             yield await sentence_chunk(item)
@@ -761,6 +829,8 @@ async def _run_turn(
                             parts.append("\n\n")
                         name = public_tool_name(event.name)
                         tool_names[event.tool_use_id] = name
+                        if tracker is not None and name == "web_search":
+                            tracker.searched = True
                         yield encode_sse(
                             ToolEvent(phase="start", tool_use_id=event.tool_use_id, name=name)
                         )
@@ -802,6 +872,7 @@ async def _run_turn(
             yield _error(await _settle_after_error(app, db, runtime, session_id, error))
             return  # 보낸 문장은 끊긴 답변으로 남는다
         reply = "".join(parts).strip() or finished.text
+        reply_chars = len(reply)
         with anyio.CancelScope(shield=True):
             await _save_reply(
                 db, assistant_id, session_id, seq + 1, reply, finished.interrupted, reply_saved
@@ -814,6 +885,9 @@ async def _run_turn(
             if requested is SessionStatus.ENDED:
                 await teardown(app, session_id, convo.cli_session_id)
                 extract.ensure_extraction(app, session_id)
+        if tracker is not None:  # 클라이언트가 done 직후 보고해도 행이 있도록 done 전에 쓴다
+            await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
+            latency_saved = True
         yield encode_sse(
             DoneEvent(
                 turn_id=assistant_id,
@@ -831,6 +905,8 @@ async def _run_turn(
         yield _error(await _settle_after_error(app, db, runtime, session_id, error))
     finally:
         runtime.current_user_turn_id = None
+        if tracker is not None and not latency_saved:
+            await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
         # 도구가 쉬기·끝내기를 요청한 뒤 턴이 오류나 연결 끊김으로 끝났어도 요청은 반영한다
         # (정상 종료면 위에서 이미 꺼냈다). 끊김으로 취소된 중에도 끝까지 처리한다
         leftover = runtime.pop_requested_status()

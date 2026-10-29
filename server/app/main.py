@@ -2,6 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import httpx2
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
@@ -9,7 +10,7 @@ from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
-from app.api import health, journal, profile, sessions
+from app.api import health, journal, latency, profile, sessions, voices
 from app.api.events import register_event_schemas
 from app.client_config import load_client_config
 from app.config import Settings, settings
@@ -22,6 +23,7 @@ from app.llm.manager import LlmSessionManager
 from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
 from app.services.runtime import RuntimeRegistry
+from app.voice import build_voice
 
 # 웹 앱이 맡지 않는 경로. 없는 경로도 index.html이 아니라 라우터의 JSON 404·405가 나간다
 _SERVER_PREFIXES = ("/api", "/internal")
@@ -78,6 +80,10 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         )
         await llm.start()
         app.state.llm = llm
+        # 음성 인식·합성(키가 없어도 서버는 뜨고 음성 호출만 voice_unavailable이다)
+        http = httpx2.AsyncClient()
+        app.state.http = http
+        app.state.stt, app.state.tts_backend, app.state.tts = build_voice(app_settings, http)
         try:  # 정리 도중 서버가 꺼진 대화를 다시 정리한다. 실패해도 서버는 뜬다
             await extract.resume_pending(app)
         except Exception:
@@ -91,6 +97,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
             await asyncio.wait([idle_watch])
             await extract.cancel_all(app)  # 남은 정리는 pending으로 남아 다음 시작 때 다시 돈다
             await llm.shutdown()
+            await http.aclose()
             await engine.dispose()
 
     app = FastAPI(title="TrailTalk", lifespan=lifespan)
@@ -106,6 +113,8 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     api.include_router(profile.router)
     api.include_router(sessions.router)
     api.include_router(journal.router)
+    api.include_router(latency.router)
+    api.include_router(voices.router)
     app.include_router(api)
     register_event_schemas(app)  # SSE 이벤트 스키마를 OpenAPI에 넣는다(웹 타입 생성)
     mcp = mount_mcp(app)  # 앱 도구 서버(/internal/mcp). 정적 마운트보다 먼저 붙인다

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1229,6 +1229,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "mcp" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
@@ -1238,7 +1239,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -1249,6 +1249,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "alembic", specifier = ">=1.20.0" },
     { name = "fastapi", specifier = ">=0.143.0" },
+    { name = "httpx2", specifier = ">=2.13.1" },
     { name = "mcp", specifier = ">=2" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -1258,7 +1259,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx2", specifier = ">=2.13.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "ruff", specifier = ">=0.17.0" },

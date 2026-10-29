@@ -19,7 +19,7 @@ docs/     문서
 
 ## 필요 도구
 
-[uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
+[uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 음성 대화에는 OpenAI 키(`OPENAI_API_KEY`)가 필요하다. ogg 등 변환이 필요한 오디오를 받으려면 ffmpeg도 있어야 한다(`brew install ffmpeg`, 없어도 웹이 보내는 webm·wav는 동작한다). 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
 
 ## 실행
 
@@ -27,6 +27,7 @@ docs/     문서
 ./run.sh            # 서버(8000)와 웹(5173)을 띄우고 브라우저를 연다. DB는 server/data/trailtalk.db
 ./run.sh --tmp      # 임시 데이터(.run/tmp)로 실행(실제 DB를 건드리지 않는 확인용)
 ./run.sh --no-open  # 브라우저를 열지 않는다
+./run.sh --fake     # 음성 인식·합성을 과금 없는 가짜로(OpenAI 키 없이 음성 화면 확인)
 ./stop.sh           # 다른 터미널에서 끄기(이 저장소의 run.sh만 종료). Ctrl+C로도 끌 수 있다
 ```
 

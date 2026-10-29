@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parent.parent
@@ -13,7 +13,7 @@ REPO_DIR = SERVER_DIR.parent
 class Settings(BaseSettings):
     """서버 설정. 값은 환경 변수 또는 저장소 루트의 .env에서 읽는다.
 
-    M0 항목과 M1의 LLM·CLI 항목이 있다. 음성·검색·메일 항목은 쓰는 마일스톤에서 추가한다.
+    M0 항목, M1의 LLM·CLI 항목, M3의 음성 항목이 있다. 검색·메일 항목은 쓰는 마일스톤에서 추가한다.
     """
 
     model_config = SettingsConfigDict(
@@ -65,6 +65,32 @@ class Settings(BaseSettings):
     # CLI 자식 프로세스에 넘길 환경 변수 이름(끝의 *는 접두사 일치). 쉼표로 구분한다
     cli_env_passthrough: Annotated[tuple[str, ...], NoDecode] = ()
 
+    # 음성 인식·합성(OpenAI, Spec 5.2). 키가 없어도 서버는 시작하고
+    # 음성 호출만 voice_unavailable이다
+    openai_api_key: SecretStr | None = None
+    openai_base_url: str = "https://api.openai.com/v1"
+    stt_model: str = "gpt-transcribe"
+    stt_language: str = "ko"
+    stt_timeout_s: float = Field(default=15, gt=0)
+    stt_max_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
+    # 합성: 기본 모델은 말투 지시를 받는다. 대체 모델(tts-1)은 받지 않는다(Spec 5.2)
+    tts_model: str = "gpt-4o-mini-tts"
+    tts_fallback_model: str = "tts-1"
+    # 첫 문장: 이 시간 안에 소리가 없으면 같은 요청을 한 번 더 보내고(헤징), 더 지나면
+    # 대체 모델 요청을 더하며, 요청 시작(턴 시작)부터 tts_first_deadline_s가 지나면 글만 보낸다
+    tts_first_hedge_s: float = Field(default=3, gt=0)
+    tts_first_fallback_s: float = Field(default=5, gt=0)
+    tts_first_deadline_s: float = Field(default=12, gt=0)
+    # 둘째 문장부터: 한 번 시도의 제한 시간(시도 → 재시도 → 대체 모델 순)
+    tts_sentence_timeout_s: float = Field(default=6, gt=0)
+    # openai: 실제 API, fake: 가짜(app/voice/fake.py, run.sh --fake·E2E용, 과금 없음)
+    voice_backend: Literal["openai", "fake"] = "openai"
+    # 가짜 음성 인식이 돌려줄 문장(업로드가 b"FAKE_STT:"로 시작하면 그 뒤 글을 쓴다)
+    fake_stt_text: str = "오늘 산책하면서 생각난 아이디어가 있어"
+    # 업로드 오디오 변환(app/voice/audio.py). 없으면 변환이 필요한 형식만 voice_unavailable이다
+    ffmpeg_path: str = "ffmpeg"
+    ffmpeg_timeout_s: float = Field(default=10, gt=0)
+
     @field_validator("log_level")
     @classmethod
     def _valid_log_level(cls, value: str) -> str:
@@ -87,6 +113,21 @@ class Settings(BaseSettings):
     @field_validator("claude_code_oauth_token", mode="before")
     @classmethod
     def _blank_token_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @model_validator(mode="after")
+    def _tts_first_sentence_times_are_ordered(self) -> "Settings":
+        if not self.tts_first_hedge_s < self.tts_first_fallback_s < self.tts_first_deadline_s:
+            raise ValueError(
+                "tts_first_hedge_s < tts_first_fallback_s < tts_first_deadline_s여야 합니다"
+            )
+        return self
+
+    @field_validator("openai_api_key", mode="before")
+    @classmethod
+    def _blank_openai_key_is_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
             return None
         return value
