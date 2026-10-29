@@ -76,6 +76,7 @@ from app.persona.schema import VoiceStyle
 from app.services.profile import profile_chat_model, profile_with_persona
 from app.services.runtime import ConversationRuntime
 from app.services.voice import LatencyTracker, VoiceTurn, voice_style
+from app.voice.speech import Synthesis
 from app.voice.text import speech_text
 
 logger = logging.getLogger("trailtalk.conversation")
@@ -735,6 +736,8 @@ async def _run_turn(
         else None
     )
     reply_chars = 0
+    latency_saved = False
+    tts_down = False  # 이 턴에서 합성이 최종 실패했으면 남은 문장은 바로 글로 보낸다
     runtime.requested_status = None
     runtime.current_user_turn_id = user_turn_id
     try:
@@ -762,19 +765,23 @@ async def _run_turn(
         async def sentence_chunk(item: str) -> bytes:
             """먼저 커밋하고 보낸다. 클라이언트가 받은 문장은 서버가 죽어도 남는다(보내기 직전에
             끊기면 못 받은 문장이 하나 더 남을 수 있다). 끝나기 전에는 interrupted로 둔다."""
-            nonlocal index, reply_saved
+            nonlocal index, reply_saved, tts_down
             sent.append(item)
             audio = speech = None
             if style is not None:
                 if tracker is not None and index == 0:
                     tracker.mark("first_queued_ms")
-                if index == 0:
+                if tts_down:
+                    made = Synthesis(None, None, True)
+                elif index == 0:
                     left = app.state.settings.tts_first_deadline_s - (
                         time.monotonic() - turn_started
                     )
-                    made = await app.state.tts.first(item, style, deadline_s=max(left, 0.001))
+                    made = await app.state.tts.first(item, style, deadline_s=left)
                 else:
                     made = await app.state.tts.follow(item, style)
+                if made.audio is None and made.fallback:
+                    tts_down = True
                 audio = made.audio
                 if audio is None:  # 소리가 없으면 클라이언트가 글을 기기 TTS로 읽는다
                     speech = speech_text(item) or None
@@ -878,6 +885,9 @@ async def _run_turn(
             if requested is SessionStatus.ENDED:
                 await teardown(app, session_id, convo.cli_session_id)
                 extract.ensure_extraction(app, session_id)
+        if tracker is not None:  # 클라이언트가 done 직후 보고해도 행이 있도록 done 전에 쓴다
+            await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
+            latency_saved = True
         yield encode_sse(
             DoneEvent(
                 turn_id=assistant_id,
@@ -895,7 +905,7 @@ async def _run_turn(
         yield _error(await _settle_after_error(app, db, runtime, session_id, error))
     finally:
         runtime.current_user_turn_id = None
-        if tracker is not None:
+        if tracker is not None and not latency_saved:
             await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
         # 도구가 쉬기·끝내기를 요청한 뒤 턴이 오류나 연결 끊김으로 끝났어도 요청은 반영한다
         # (정상 종료면 위에서 이미 꺼냈다). 끊김으로 취소된 중에도 끝까지 처리한다

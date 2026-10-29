@@ -58,6 +58,8 @@ async def voice_sample(
     _, loaded = await profile_with_persona(db, app.state.settings)
     await db.commit()
     base = loaded.persona.voice
+    if rate is not None:
+        rate = round(rate * 20) / 20  # 0.05 단위로 맞춰 합성·캐시 종류를 줄인다
     style = voice_style(loaded.persona, None).model_copy(
         update={"tts_voice": voice, "speaking_rate": rate or _clamp_rate(base.speaking_rate)}
     )

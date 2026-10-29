@@ -192,6 +192,22 @@ async def create_turn(
     )
 
 
+async def _read_upload(request: Request, max_bytes: int) -> bytes:
+    """업로드 본문을 한도 안에서만 읽는다. Content-Length가 한도를 넘으면 읽지 않고 413, 헤더가
+    없거나 거짓이면 읽는 도중 한도를 넘는 순간 끊는다."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_bytes:
+        raise AppError("audio_invalid", "오디오가 너무 큽니다.", 413)
+    chunks: list[bytes] = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > max_bytes:
+            raise AppError("audio_invalid", "오디오가 너무 큽니다.", 413)
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post(
     "/sessions/{session_id}/turns/audio",
     response_class=StreamingResponse,
@@ -207,7 +223,7 @@ async def create_audio_turn(session_id: str, request: Request, db: DbSession) ->
     settings = app.state.settings
     convo = await conversation.get_session(db, session_id)
     conversation.check_turn_allowed(app, convo)
-    data = await request.body()
+    data = await _read_upload(request, settings.stt_max_bytes)
     uploaded = time.monotonic()
     audio = await prepare_for_stt(
         data,

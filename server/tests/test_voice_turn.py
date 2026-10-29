@@ -1,5 +1,7 @@
 """음성 세션·음성 턴·지연 API(M3-04·05·07). 가짜 Claude CLI와 가짜 음성 백엔드(과금 없음)를 쓴다."""
 
+# ruff: noqa: F811  (테스트 인자의 픽스처 이름이 가져온 home 픽스처와 겹친다)
+
 import asyncio
 import base64
 
@@ -25,7 +27,7 @@ def make_api(fake_cli, monkeypatch, **overrides):
 
 
 @pytest.fixture
-def api(fake_cli, home, monkeypatch):  # noqa: F811
+def api(fake_cli, home, monkeypatch):
     with TestClient(make_api(fake_cli, monkeypatch)) as client:
         yield client
 
@@ -82,7 +84,7 @@ def test_no_speech_is_a_json_error_and_stores_nothing(api):
     assert rows(api, TurnLatency) == []
 
 
-def test_empty_and_too_large_audio_are_rejected(fake_cli, home, monkeypatch):  # noqa: F811
+def test_empty_and_too_large_audio_are_rejected(fake_cli, home, monkeypatch):
     with TestClient(make_api(fake_cli, monkeypatch, stt_max_bytes=64)) as api:
         session_id = start(api, "voice")["session"]["id"]
         empty = audio_turn(api, session_id, b"")
@@ -127,7 +129,7 @@ def test_failed_synthesis_sends_text_with_speech_text_and_the_session_continues(
     assert sentences and all(s.audio is None and s.speech_text for s in sentences)
 
 
-def test_first_sentence_over_deadline_goes_out_as_text(fake_cli, home, monkeypatch):  # noqa: F811
+def test_first_sentence_over_deadline_goes_out_as_text(fake_cli, home, monkeypatch):
     with TestClient(
         make_api(
             fake_cli,
@@ -247,3 +249,126 @@ def test_profile_voice_and_rate_are_used_for_synthesis(api):
     start(api, "voice")
     voice = load_persona(api.app.state.settings.persona_dir, "jenny").persona.voice
     assert set(seen) == {(voice.tts_voice, voice.speaking_rate)}  # 페르소나 YAML 값으로 돌아간다
+
+
+def test_oversized_upload_is_rejected_by_content_length_without_reading(
+    fake_cli,
+    home,
+    monkeypatch,
+):
+    with TestClient(make_api(fake_cli, monkeypatch, stt_max_bytes=64)) as api:
+        session_id = start(api, "voice")["session"]["id"]
+        response = api.post(
+            f"/api/sessions/{session_id}/turns/audio",
+            content=b"x" * 5000,
+            headers=UPLOAD,
+        )
+        assert response.status_code == 413 and response.json()["error"]["code"] == "audio_invalid"
+        assert [t for t in rows(api, Turn) if not t.greeting] == []
+
+
+def test_upload_without_content_length_is_cut_when_it_exceeds_the_limit(
+    fake_cli,
+    home,
+    monkeypatch,
+):
+    with TestClient(make_api(fake_cli, monkeypatch, stt_max_bytes=64)) as api:
+        session_id = start(api, "voice")["session"]["id"]
+
+        def chunks():  # 청크 업로드는 Content-Length가 없다
+            for _ in range(10):
+                yield b"y" * 30
+
+        response = api.post(
+            f"/api/sessions/{session_id}/turns/audio", content=chunks(), headers=UPLOAD
+        )
+        assert response.status_code == 413
+
+
+def test_after_a_final_synthesis_failure_the_rest_of_the_turn_goes_out_as_text(api):
+    calls = []
+
+    class Failing:
+        async def synthesize(self, text, voice, *, model=None):
+            calls.append(text)
+            raise RuntimeError("합성 실패")
+
+    session_id = start(api, "voice")["session"]["id"]
+    api.app.state.tts._backend = Failing()
+    events = events_of(audio_turn(api, session_id))
+    sentences = [e for e in events if e.type == "sentence"]
+    assert sentences and all(s.audio is None and s.speech_text for s in sentences)
+    # 첫 문장에서 모든 시도가 실패한 뒤에는 남은 문장을 합성하지 않는다(문장마다 막히지 않게)
+    first_sentence_calls = len(calls)
+    assert first_sentence_calls <= 3 and len(set(calls)) == 1
+    tts = api.get("/api/latency").json()["summary"]["tts"]
+    assert tts["fallback_ratio"] == 1.0
+
+
+def test_latency_row_exists_before_done_is_sent(fake_cli, home, monkeypatch):
+    from app.services import conversation
+    from app.services.voice import VoiceTurn
+
+    with TestClient(make_api(fake_cli, monkeypatch)) as api:
+        session_id = start(api, "voice")["session"]["id"]
+
+        async def scenario():
+            import time as _time
+
+            voice = VoiceTurn(_time.monotonic(), "안녕", 1, 1, 3)
+            gen = conversation.stream_turn(api.app, session_id, "안녕", voice)
+            before_done = None
+            async for chunk in gen:
+                if chunk.startswith(b"event: done"):
+                    # done 청크를 받은 순간(제너레이터가 더 나아가기 전)에 행이 이미 있어야 한다
+                    async with api.app.state.session_factory() as db:
+                        before_done = len(list(await db.scalars(select(TurnLatency))))
+            return before_done
+
+        assert api.portal.call(scenario) == 1
+
+
+def test_client_disconnect_during_synthesis_leaves_lock_free_and_latency_saved(
+    fake_cli,
+    home,
+    monkeypatch,
+):
+    from app.services import conversation
+    from app.services.voice import VoiceTurn
+
+    with TestClient(make_api(fake_cli, monkeypatch)) as api:
+        session_id = start(api, "voice")["session"]["id"]
+
+        class Slow:
+            async def synthesize(self, text, voice, *, model=None):
+                await asyncio.sleep(30)
+                return SILENCE_MP3
+
+        api.app.state.tts._backend = Slow()
+
+        async def scenario():
+            import time as _time
+
+            voice = VoiceTurn(
+                started=_time.monotonic(),
+                transcript="안녕",
+                upload_ms=1,
+                stt_ms=1,
+                audio_bytes=3,
+            )
+            gen = conversation.stream_turn(api.app, session_id, "안녕", voice)
+            assert (await gen.__anext__()).startswith(b"event: transcript")
+            assert (await gen.__anext__()).startswith(b"event: turn")
+            pending = asyncio.ensure_future(gen.__anext__())  # 첫 문장 합성을 기다리는 중
+            await asyncio.sleep(0.5)
+            pending.cancel()  # 클라이언트가 끊겼다
+            await asyncio.gather(pending, return_exceptions=True)
+            await gen.aclose()
+            runtime = api.app.state.runtimes.get(session_id)
+            return runtime.turn_lock.locked()
+
+        locked = api.portal.call(scenario)
+        assert locked is False  # 락이 풀렸다
+        [latency] = rows(api, TurnLatency)  # 끊겨도 지연 행은 남는다
+        assert latency.session_id == session_id and latency.first_sentence_ms is None
+        assert api.post(f"/api/sessions/{session_id}/end").status_code == 200

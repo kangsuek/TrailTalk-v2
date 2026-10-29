@@ -74,6 +74,8 @@ class TtsService:
         """첫 문장. deadline_s는 이 호출 시작부터 소리 없이 포기하기까지의 시간이다."""
         if not has_speech(speech_text(text)):
             return NO_SOUND
+        if deadline_s <= 0:  # 이미 기한이 지났다: 요청을 보내지 않고 글로 보낸다
+            return Synthesis(None, None, True)
         started = time.monotonic()
         schedule = [
             (self._hedge_at(), self.primary_model),

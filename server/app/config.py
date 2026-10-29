@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 SERVER_DIR = Path(__file__).resolve().parent.parent
@@ -116,6 +116,14 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @model_validator(mode="after")
+    def _tts_first_sentence_times_are_ordered(self) -> "Settings":
+        if not self.tts_first_hedge_s < self.tts_first_fallback_s < self.tts_first_deadline_s:
+            raise ValueError(
+                "tts_first_hedge_s < tts_first_fallback_s < tts_first_deadline_s여야 합니다"
+            )
+        return self
 
     @field_validator("openai_api_key", mode="before")
     @classmethod

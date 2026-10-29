@@ -207,7 +207,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 서버는 음성 턴마다 요청 처리를 시작한 때를 기준으로 단계 시간(ms)을 남긴다: `upload_ms`(세션 확인과 본문 다 받기까지), `stt_ms`(형식 변환과 인식), `first_token_ms`(CLI 첫 글자), `first_queued_ms`·`first_synth_ms`·`synth_wait_ms`(첫 문장 합성 구간), `first_sentence_ms`(첫 문장을 소리와 함께 보냄), `done_ms`(턴 끝), `audio_bytes`. `[v2]` 문장마다 쓴 합성 모델(`tts_model`)과 폴백 발동 여부도 남긴다.
 
-행은 음성 업로드로 시작한 턴(`turns/audio`)만 만든다(글 턴은 기록하지 않는다). 서버 기록은 턴이 끝난 뒤(오류·끊김 포함) 한 번 쓴다.
+행은 음성 업로드로 시작한 턴(`turns/audio`)만 만든다(글 턴은 기록하지 않는다). 서버 기록은 `done`을 보내기 전에 한 번 쓰고(오류·끊김이면 그 뒤에 쓴다), 그래서 클라이언트가 `done` 직후 보고해도 행이 있다. 첫 문장 전에 끊긴 턴처럼 `done`이 없는 턴은 보고하지 않는다. `reply_chars`는 정상으로 끝난 턴의 글자 수다(오류·끊김은 0).
 
 클라이언트는 한 번만 보고한다: `POST /api/sessions/{id}/turns/{turn_id}/latency {speech_to_request_ms, request_to_playback_ms, first_sound_notice, ack_ms}` → 204.
 

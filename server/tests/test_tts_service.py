@@ -163,3 +163,16 @@ def test_invalid_voice_settings_are_rejected():
         Settings(_env_file=None, voice_backend="nope")
     with pytest.raises(ValueError):
         Settings(_env_file=None, tts_first_deadline_s=0)
+
+
+async def test_first_with_no_time_left_sends_no_request():
+    backend = ScriptedBackend({PRIMARY: [0.01]})
+    result = await service(backend).first("안녕하세요!", VOICE, deadline_s=0)
+    assert result.audio is None and result.fallback and backend.calls == []
+
+
+def test_first_sentence_times_must_be_ordered():
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, tts_first_hedge_s=5, tts_first_fallback_s=3)
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, tts_first_fallback_s=13)  # 기한(12초)보다 늦다
