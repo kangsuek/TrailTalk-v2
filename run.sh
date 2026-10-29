@@ -4,6 +4,7 @@
 #   ./run.sh            실행(DB는 server/data/trailtalk.db)
 #   ./run.sh --tmp      임시 데이터(.run/tmp)로 실행. 실제 DB·첨부를 건드리지 않는 확인용
 #   ./run.sh --no-open  브라우저를 열지 않는다
+#   ./run.sh --fake     음성 인식·합성을 과금 없는 가짜로 바꾼다(키 없이 음성 화면 확인용)
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -16,13 +17,15 @@ RUN_DIR="$ROOT/.run"
 PID_FILE="$RUN_DIR/run.pid"
 TMP=0
 OPEN=1
+FAKE=0
 
 for arg in "$@"; do
   case "$arg" in
     --tmp) TMP=1 ;;
     --no-open) OPEN=0 ;;
+    --fake) FAKE=1 ;;
     -h | --help)
-      sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -108,6 +111,10 @@ if [ "$TMP" = 1 ]; then
   export AUDIO_DIR="$TMP_DIR/audio"
   export CLI_WORK_DIR="$TMP_DIR/cli"
   echo "임시 데이터 모드: $TMP_DIR (실제 DB·첨부를 쓰지 않습니다)"
+fi
+if [ "$FAKE" = 1 ]; then
+  export VOICE_BACKEND=fake
+  echo "가짜 음성 모드: 음성 인식·합성을 가짜로 바꿨습니다(과금 없음, 인식은 늘 같은 문장)."
 fi
 export VITE_API_TARGET="http://127.0.0.1:$API_PORT"  # 셸에 남은 다른 값을 쓰지 않게
 

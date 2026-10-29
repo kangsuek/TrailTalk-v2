@@ -18,7 +18,9 @@ from app.client_config import ClientConfig
 from app.config import Settings
 from app.db.models import ChatModel, UserProfile
 from app.db.session import DbSession
+from app.errors import AppError
 from app.services.profile import get_or_create_profile, update_profile
+from app.voice.text import OPENAI_VOICES
 
 router = APIRouter()
 
@@ -129,5 +131,8 @@ async def get_profile(request: Request, db: DbSession) -> ProfileResponse:
 @router.put("/profile")
 async def put_profile(request: Request, body: ProfileUpdate, db: DbSession) -> ProfileResponse:
     settings: Settings = request.app.state.settings
-    profile = await update_profile(db, settings.persona_dir, body.changes())
+    changes = body.changes()
+    if changes.get("voice") is not None and changes["voice"] not in OPENAI_VOICES:
+        raise AppError("validation_error", "지원하지 않는 보이스입니다.", 422)
+    profile = await update_profile(db, settings.persona_dir, changes)
     return _response(request, profile)

@@ -284,6 +284,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Voices */
+        get: operations["list_voices_api_voices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/voices/{voice}/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Voice Sample
+         * @description 고정 문장을 이 보이스·속도로 합성한 MP3. 보이스·속도별로 한 번만 합성한다.
+         */
+        get: operations["voice_sample_api_voices__voice__sample_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -824,6 +861,19 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VoicesOut */
+        VoicesOut: {
+            /** Voices */
+            voices: string[];
+            /** Default Voice */
+            default_voice: string;
+            /** Default Rate */
+            default_rate: number;
+            /** Min Rate */
+            min_rate: number;
+            /** Max Rate */
+            max_rate: number;
         };
         /**
          * DoneEvent
@@ -1510,6 +1560,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LatencyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_voices_api_voices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicesOut"];
+                };
+            };
+        };
+    };
+    voice_sample_api_voices__voice__sample_get: {
+        parameters: {
+            query?: {
+                rate?: number | null;
+            };
+            header?: never;
+            path: {
+                voice: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 미리 듣기 MP3 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mpeg": unknown;
                 };
             };
             /** @description Validation Error */

@@ -80,7 +80,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 - `greeting.audio`는 인사말 MP3(base64)로 음성 세션에서만 오고, 합성에 실패하면 `null`이어도 세션은 시작된다.
 - 화면의 캐릭터 이름은 `persona.name`을 쓰고 코드에 넣지 않는다(NFR-08).
-- `[v2]` `persona.ack`은 맞장구 소리 목록이다(페르소나 YAML의 짧은 문구와 그 MP3(base64), 음성 세션에서만 `audio`가 오고 합성 실패면 `null`). 클라이언트는 이 중 하나를 골라 맞장구로 재생한다(6.4). 맞장구를 끈 사용자도 목록은 받는다.
+- `[v2]` `persona.ack`은 맞장구 소리 목록이다(페르소나 YAML의 짧은 문구와 그 MP3(base64), 음성 세션에서만 `audio`가 오고 합성 실패면 `null`). 클라이언트는 이 중 하나를 골라 맞장구로 재생한다(6.4). 맞장구를 끈 사용자도 목록은 받는다. M3에서는 소리 합성이 없어 `audio`가 항상 `null`이고, 합성(보이스·문구별 캐시)과 재생은 M4다.
 - `[v2]` **호칭은 이 인사말에서만 쓰인다.** 서버는 인사말을 만들 때만 프로필의 호칭을 넣고, 이후 답변·재개 인사말·마무리 멘트에는 쓰지 않는다. 예외로 사용자가 호칭 변경을 요청해 `set_nickname`이 불린 턴에서만, 변경을 알리는 답변에서 새 호칭을 한 번 말해도 된다.
 - 음성 세션과 글 세션의 `mode`는 시작 방식이며, 텍스트 세션에서도 음성 턴을, 음성 세션에서도 글 턴을 보낼 수 있다.
 
@@ -207,6 +207,8 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 서버는 음성 턴마다 요청 처리를 시작한 때를 기준으로 단계 시간(ms)을 남긴다: `upload_ms`(세션 확인과 본문 다 받기까지), `stt_ms`(형식 변환과 인식), `first_token_ms`(CLI 첫 글자), `first_queued_ms`·`first_synth_ms`·`synth_wait_ms`(첫 문장 합성 구간), `first_sentence_ms`(첫 문장을 소리와 함께 보냄), `done_ms`(턴 끝), `audio_bytes`. `[v2]` 문장마다 쓴 합성 모델(`tts_model`)과 폴백 발동 여부도 남긴다.
 
+행은 음성 업로드로 시작한 턴(`turns/audio`)만 만든다(글 턴은 기록하지 않는다). 서버 기록은 턴이 끝난 뒤(오류·끊김 포함) 한 번 쓴다.
+
 클라이언트는 한 번만 보고한다: `POST /api/sessions/{id}/turns/{turn_id}/latency {speech_to_request_ms, request_to_playback_ms, first_sound_notice, ack_ms}` → 204.
 
 | 필드 | 뜻 |
@@ -288,8 +290,8 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 
 ### 4.2 보이스
 
-- `GET /api/voices` → `{voices, default_voice, default_rate, min_rate, max_rate}`.
-- `GET /api/voices/{voice}/sample?rate=` → 고정 문장의 미리 듣기 MP3(보이스·속도별로 한 번만 합성). 합성할 수 없으면 503 `voice_unavailable`.
+- `GET /api/voices` → `{voices, default_voice, default_rate, min_rate, max_rate}`. `voices`는 OpenAI TTS가 받는 고정 보이스 목록(서버 상수), `default_voice`·`default_rate`는 프로필이 비었을 때 쓰는 캐릭터(페르소나 YAML)의 값, `min_rate`·`max_rate`는 프로필 `speaking_rate` 범위(0.75~1.5)다.
+- `GET /api/voices/{voice}/sample?rate=` → 고정 문장의 미리 듣기 MP3(보이스·속도별로 한 번만 합성). 합성할 수 없으면 503 `voice_unavailable`. 목록에 없는 보이스나 범위 밖 `rate`는 422 `validation_error`이고, `rate`를 빼면 캐릭터 기본 속도다. 읽는 문장은 페르소나 YAML의 `voice.sample`이다. 프로필의 `voice`도 이 목록에 있어야 한다(없으면 422).
 
 ## 5. 오디오 형식
 
@@ -298,6 +300,8 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 - `[v2]` 합성 실패 시 서버는 재시도·대체 모델을 거쳐 최종 실패하면 `audio: null`과 `speech_text`를 보내고, 클라이언트는 기기 TTS(`speechSynthesis`, ko-KR)로 읽는다. 첫 문장은 요청 시작 후 12초가 지나도 소리가 없으면 글을 먼저 보낸다(Spec 5.2).
 
 ## 6. 세션 상태 머신
+
+**구현 단계**: M3은 이 절의 부분 구현이다(대기·듣기·처리 중·말하기·정리와 종료 확인). 끼어들기·쉬기(`paused`)·맞장구·병합·오프라인 큐와 클라이언트 무발화 타이머는 M4에서 더한다. 그 전에는 처리 중·말하기의 큰 버튼을 무시하고, 서버가 쉬기로 끝낸 턴은 듣기로 돌아간다.
 
 음성 대화는 아래 상태를 오가는 하나의 루프다. 상태 머신은 이벤트를 받아 다음 상태와 **명령**을 돌려주는 순수 함수이고(웹 `web/src/core/sessionMachine.ts`), 마이크·재생·서버 호출·타이머는 화면·플랫폼 계층이 명령을 받아 실행한다. 전이 표 `shared/fixtures/transitions.json`을 웹 테스트(Vitest)가 읽는다. 각 사례는 대기에서 시작해 단계마다 이벤트를 넣고 상태 이름·명령 목록(순서 포함)·지정한 context 값을 확인한다. v1 사례(33개)를 이식하고 `[v2]` 사례를 더한다: 종료 확인(열기·확인·취소, 열린 동안 서버가 끝냄), 맞장구(타이머 → 재생, 첫 문장이 먼저 와서 건너뜀, 겹침, 사용자 발화로 중단), 병합(뒷말 즉시 전송, 앞 턴 `done.superseded`가 뒷말 `turn`보다 먼저 도착, 병합 조건 불충족 각 경우, `turn_in_progress`로 큐에 되돌림).
 

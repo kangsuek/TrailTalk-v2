@@ -22,6 +22,7 @@ voice:
   tts_voice: nova
   speaking_rate: 1.05
   search_notice: 잠깐만요, 찾아볼게요!
+  sample: 안녕하세요! 저는 이런 목소리예요. 같이 걸으면서 이야기해요!
   instructions: 밝고 쾌활한 한국인 20대 여성 말동무처럼 생기 있고 다정하게, 약간 빠른 속도로 자연스럽게 말해요. 감탄할 때는 신나게, 질문은 끝을 올려서 말해요.
 ack:
   - 음~

@@ -9,6 +9,7 @@ from sqlalchemy import select
 
 from app.db.models import ConversationSession, Turn, TurnLatency, TurnRole, TurnTts
 from app.main import create_app
+from app.persona.loader import load_persona
 from app.voice.fake import SILENCE_MP3
 from tests.test_sessions import events_of, home, start  # noqa: F401  (home 픽스처 포함)
 
@@ -225,3 +226,24 @@ def test_deleting_the_journal_removes_latency_and_tts_rows(api):
     assert api.delete(f"/api/journal/{session_id}").status_code == 204
     assert rows(api, TurnLatency) == [] and rows(api, TurnTts) == []
     assert rows(api, ConversationSession) == []
+
+
+def test_profile_voice_and_rate_are_used_for_synthesis(api):
+    api.put("/api/profile", json={"voice": "onyx", "speaking_rate": 1.3})
+    seen = []
+    backend = api.app.state.tts_backend
+    original = backend.synthesize
+
+    async def spy(text, voice, *, model=None):
+        seen.append((voice.tts_voice, voice.speaking_rate))
+        return await original(text, voice, model=model)
+
+    backend.synthesize = spy
+    session_id = start(api, "voice")["session"]["id"]
+    events_of(audio_turn(api, session_id))
+    assert seen and set(seen) == {("onyx", 1.3)}  # 인사말과 답변 문장 모두
+    api.put("/api/profile", json={"voice": None, "speaking_rate": None})
+    seen.clear()
+    start(api, "voice")
+    voice = load_persona(api.app.state.settings.persona_dir, "jenny").persona.voice
+    assert set(seen) == {(voice.tts_voice, voice.speaking_rate)}  # 페르소나 YAML 값으로 돌아간다
