@@ -20,6 +20,8 @@
     "e2e:update": "playwright test --update-snapshots"
   },
   "dependencies": {
+    "@ricky0123/vad-web": "^0.0.31",
+    "mediabunny": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
