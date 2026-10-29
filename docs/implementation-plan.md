@@ -18,14 +18,14 @@
 | M0 | 기반 | 완료 | 16/16 | 2026-10-22 | 2026-10-23 | 5d5c9f9 |
 | M1 | 글 대화 | 완료 | 14/14 | 2026-10-23 | 2026-10-24 | 4737f99 |
 | M2 | 일지 | 완료 | 15/15 | 2026-10-27 | 2026-10-29 | 53e2c62 |
-| M3 | 음성 | 대기 | - | - | - | - |
+| M3 | 음성 | 진행 중 | 0/19 | 2026-10-29 | - | - |
 | M4 | 신뢰성 | 대기 | - | - | - | - |
 | M5 | 확장 기능 | 대기 | - | - | - | - |
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | P2 | 내보내기·검색·브리핑·MCP | 대기 | - | - | - | - |
 
-현재 작업: M2 종료(2026-10-29). 묶음 A~D `main` 병합: `ebd2e2e`, `dad338c`, `c063e83`, `53e2c62`. M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
-다음 작업: M3 음성 상세화(4·5절 형식으로 작업 표를 만든다. Linux CI 시각 기준 이미지 산출물 업로드와 persona 시드 경합은 8절 이월)
+현재 작업: M3 음성 계획 수립 완료(6.1절), 묶음 A `m3-a-voice-server`(M3-01~08) 착수 대기. M2 종료(2026-10-29, 묶음 A~D `main` 병합: `ebd2e2e`, `dad338c`, `c063e83`, `53e2c62`). M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
+다음 작업: 묶음 A `m3-a-voice-server`(M3-01~08)
 
 ## 3. M0 기반
 
@@ -157,9 +157,85 @@ M2-01~M2-15 15개 작업을 모두 완료했다(2026-10-29 종료, 종료 커밋
 | M | 핵심 | 완료 기준(요약) |
 |---|---|---|
 | M3 | VAD·녹음·STT·문장 TTS·재생, 상태 머신, 지연 계측, 시안 적용 이월분("음성으로 이어서"·"음성으로/글로" 선택, 8절) | PC·폰 음성 대화, TTS 100문장 무손실, 지연 30턴 측정 |
-| M4 | 끼어들기, 오프라인 큐, 발화 병합(D2), 맞장구·첫 문장 분할, 쉬기·무발화 종료 | 비행기 모드 유실 0, 병합 15회, 60턴 지연 판정 |
-| M5 | 검색·출처, 첨부, 설정 화면(스크린샷 기준 이미지 라이트·다크 포함), 시안 적용 이월분(인용·첨부 썸네일·토큰 막대, 8절), 이메일, 사용량 막대, WebFetch 차단(D7), 외부 MCP 연결(FR-25: 예시 설정 파일·`.gitignore`·허용 도구 차단 확인 포함) | 도구·첨부·설정 E2E, 폰 첨부 확인, 검색 턴 지연 판정, 허용 밖 도구 호출 안 됨(가짜 외부 MCP E2E) |
+| M4 | 끼어들기, 오프라인 큐, 발화 병합(D2), 맞장구·첫 문장 분할, 쉬기·무발화 종료, `prepare`, 시안 적용 이월분(대화 03 맞장구·이어 말함, 06 쉬는 중, 07 오프라인 보관) | 비행기 모드 유실 0, 병합 15회, 60턴 지연 판정 |
+| M5 | 검색·출처, 첨부, 설정 화면(스크린샷 기준 이미지 라이트·다크 포함), 시안 적용 이월분(인용·첨부 썸네일·토큰 막대, 대화 05 검색 중, 설정 02 보이스·속도 선택, 8절), 이메일, 사용량 막대, WebFetch 차단(D7), 외부 MCP 연결(FR-25: 예시 설정 파일·`.gitignore`·허용 도구 차단 확인 포함) | 도구·첨부·설정 E2E, 폰 첨부 확인, 검색 턴 지연 판정, 허용 밖 도구 호출 안 됨(가짜 외부 MCP E2E) |
 | M6 | CSRF(D3), 안전장치, PWA, iOS Safari, 실제 산책 1회 | 보안 테스트 통과, 산책 측정 기록 |
+
+### 6.1 M3 음성 (2026-10-29 상세화)
+
+**목표**: 이어폰만으로 말하고 듣는 음성 대화가 PC와 폰에서 돌아간다. 말 → VAD 종료 감지 → 녹음·인코딩 → 서버 STT → Claude 답변 → 문장별 TTS → 재생을 하나의 루프로 잇고, 세션 상태 머신(규약 6절)을 순수 함수로 만들며, 5.1의 구간별 지연을 재어 구간 표를 채운다. v1(`~/pythonProject/TrailTalk/`)의 검증된 구현(`server/app/voice/*`, `services/conversation.py`의 음성 턴, 웹 `core/sessionMachine.ts`·`platform/audio*.ts`·`screens/voiceController.ts`, `shared/fixtures/transitions.json`, `shared/sounds/`, `web/vadAssets.ts`)에서 끼어들기·맞장구·병합·오프라인 큐·검색·첨부를 걷어 내고 v2 규약(`speech_text`·TTS 폴백·`tts_model` 기록)을 반영해 옮긴다. 이미 v2에 있는 것: 페르소나 YAML의 `voice`·`ack`, SSE `sentence`의 `audio`·`speech_text` 필드, 시작 응답의 `persona.ack`·`closing_audio` 자리(값은 `null`), 프로필 `speaking_rate` 검사, 프롬프트의 음성 분기.
+
+**범위 밖(해당 마일스톤으로)**:
+- M4: 끼어들기(`cancel` API, 재생 중 VAD 임계값 `playback_*`), 맞장구(`ack_*` 재생과 `persona.ack` 소리 합성), 쪼개진 발화 병합, 오프라인 큐·`offline` 상태, 클라이언트 쉬기(`paused`)·무발화 타이머, `POST /sessions/prepare`.
+- M5: 검색 도구·검색 안내 음성·출처, 첨부, 설정 화면(보이스·속도 UI), 토큰 막대, 음성 원본 보관.
+- M6: CSRF.
+
+**M3에서 정한 동작**:
+- **마이크**: 처리 중·말하기에는 마이크를 끈다(`micOff`). 끼어들기와 재생 중 임계값은 M4라서 M3은 캐릭터 목소리를 사용자 발화로 오인하는 것을 막으려고 답변이 끝나 `playback_idle`이 오면 다시 켠다. 그래서 M3에서는 답변 중에 한 말은 들리지 않는다(M4에서 큐·끼어들기로 푼다).
+- **큰 버튼**: 대기에서 시작, 듣기에서 대화종료 확인 창, 처리 중·말하기에서는 무시. 쉬기 버튼은 M3에 없다. client-contract 6절은 M4까지 포함한 최종형이고(끼어들기·쉬기·맞장구·병합·큐 포함) M3 머신은 그 부분집합이다. 계약에 "M3은 부분 구현, 나머지는 M4" 표시를 더해 둔다(M3-08). 그래서 말하기 중 음성 대화 글 입력(6.6의 `tap` 끼어든 뒤 전송)도 M3은 듣기에서만 받는다.
+- **종료 확인과 진행 중 턴**: `end_confirm`의 `cancelTurn`은 M3에서 받는 중인 턴 요청 연결만 끊는다(서버 취소 API는 M4). 그 뒤 `endSession`을 부르고, 서버가 `turn_in_progress`로 거절하면 0.5초 뒤 최대 3번 다시 부른다. 이미 보낸 문장까지는 서버가 끊긴 답변으로 남긴다(규약 2.10).
+- **마이크 복귀 순서**: `playback_idle`이 `turn_done`보다 먼저 와도 마이크는 켜지 않고, `turn_done`을 받은 뒤 대기열도 비었을 때 켠다(`done(paused/ended)` 처리를 앞지르지 않게, 전이 사례로 시험한다).
+- **무발화 타이머**: 클라이언트 `startIdleTimer`는 M4 몫이라 M3은 서버 안전망(`IDLE_TIMEOUT_S`)만 쓴다.
+- **보이스 선택 UI**: M3은 API(M3-06)와 프로필 값까지이고 선택 화면(시안 설정 02)은 M5 설정 화면이다(6절 M5 행에 이월 기록).
+- **서버가 끝낸 턴**: `done.session_status`가 `ended`(`end_session` 도구)이면 끝내기 API로 마무리 멘트를 받아 정리로 가고, `paused`(`pause_session` 도구)이면 M3은 `paused` 상태가 없으므로 듣기로 돌아간다(서버 세션은 쉬는 중이지만 다음 턴을 보내면 `active`가 된다. 규약 2.10. M4가 `paused`를 더한다).
+- **검색 안내 음성·`first_sound_notice`**: M3에는 검색 도구가 없어 `tool.notice`는 오지 않는다. 필드와 보고 자리만 두고 구현은 M5다.
+- **프롬프트는 바꾸지 않는다.** 음성 분기 문구를 바꾸게 되면 스냅샷 갱신과 톤 평가(실제 CLI 사용량)가 걸리므로 그때 알리고 쓴다.
+- **ffmpeg**: 이 머신과 CI에 없을 수 있으므로 필수 의존으로 두지 않는다. 변환이 필요한 형식(ogg 등)의 시험은 가짜 실행기로 하고, 실제 ffmpeg가 있을 때만 도는 시험은 없으면 건너뛴다. 설치 방법(`brew install ffmpeg`)은 README에 적는다. CI 워크플로(보호 파일)는 M3-16의 Linux 기준 이미지 산출물 업로드 단계에서만 고친다.
+- **지연 기준선**: `prepare`와 맞장구가 없는 M3은 첫 턴에 CLI 콜드 스타트가 섞인다. M3-18은 `cli_age_ms`로 첫 턴을 분리해 보고하고, 판정은 M4(60턴)다.
+
+**묶음**: A `m3-a-voice-server`(M3-01~08, 서버), B `m3-b-web-core`(M3-09~12, 순수 로직·플랫폼), C `m3-c-web-voice`(M3-13~15, 화면), D `m3-d-verify`(M3-16~19, E2E·실측·문서). 순서는 A → B → C → D(B는 A와 독립이라 병행도 가능하나 순서를 지킨다)이고 묶음마다 완료 기준 점검과 독립 서브에이전트 diff 리뷰 뒤 `main`에 병합한다(2026-10-29 사용자가 이후 확인을 묻지 않고 진행하도록 했다). 의존성(npm `@ricky0123/vad-web`·`onnxruntime-web`·`mediabunny`)을 더할 때 훅이 확인을 요청하면 그것은 규칙에 따른 자리다. 실제 OpenAI(STT·TTS)·Claude CLI 사용량이 드는 작업은 M3-18 하나이며 쓰기 전에 알린다.
+
+#### 6.1.1 작업 표
+
+| ID | 묶음 | 작업 | 산출물 | 대상 시안 | 상태 |
+|---|---|---|---|---|---|
+| M3-01 | A | 음성 설정과 백엔드 틀 | `config`의 OpenAI 키(비밀 가림)·STT/TTS 모델·타임아웃·`voice_backend`(openai/fake), `app/voice/` 패키지: OpenAI HTTP 클라이언트, `SttBackend`·`TtsBackend` 인터페이스, 과금 없는 가짜 백엔드(STT는 `FAKE_STT:` 접두 글이면 그 글, 아니면 설정 `fake_stt_text`를 돌려줘 가짜 마이크 wav E2E가 고정 문장을 얻는다. TTS는 고정 MP3), 키 없어도 서버가 뜨고 음성 호출만 `voice_unavailable`. 시험: 설정 기본값·잘못된 값, 키가 로그에 없음, 가짜 백엔드 | - | 대기 |
+| M3-02 | A | 음성 인식(STT)과 오디오 형식 | `voice/stt.py`(OpenAI 전사, 타임아웃), `voice/audio.py`(webm·wav·mp3·m4a는 그대로, 그 밖은 ffmpeg로 16kHz 모노 webm/opus, 10MB·변환 120초 한도), 오류 `audio_invalid`(400, 413)·`no_speech`(422)·`stt_failed`·`stt_timeout`·`voice_unavailable`. 시험: 형식별 분기, 너무 큼, 말 없음, 시간 초과, ffmpeg 없음(가짜 실행기, 실제 ffmpeg 시험은 있을 때만) | - | 대기 |
+| M3-03 | A | 음성 합성(TTS)과 폴백 | `voice/tts.py`: `gpt-4o-mini-tts`(페르소나 `voice.instructions`·`tts_voice`·`speaking_rate` 적용)와 대체 `tts-1`, 첫 문장 3초 헤징·5초 대체 모델(동시 최대 3개, 먼저 온 것만 쓰고 나머지 취소), 둘째 문장부터 6초 제한·1회 재시도→대체 모델→`audio: null`, `voice/speech.py`(`speech_text`: 숫자·단위를 말로, 마크다운·링크 제거), 문장별 사용 모델·폴백 정보를 돌려줌. 시험: 가짜 지연 백엔드로 헤징·폴백·취소 전 경로, 시간 민감 시험은 3번 연속 통과 | - | 대기 |
+| M3-04 | A | 음성 세션 시작·종료·재개 | `POST /sessions {mode: voice}`(인사말 MP3 base64, `persona.ack`은 M3에서 `audio: null`, 소리 합성은 M4), `POST /sessions/{id}/end`의 `closing_audio`, `POST /reopen {mode: voice}`의 재개 인사말 `audio`, 합성 실패해도 세션은 시작·종료된다(`audio: null`). 시험: 가짜 음성으로 세 응답의 오디오, 글 세션은 오디오 없음, 합성 실패 경로 | - | 대기 |
+| M3-05 | A | 음성 턴 파이프라인 | `POST /sessions/{id}/turns/audio`(오디오 바이트 → 인식 → SSE: `transcript` → `turn` → `sentence`(audio·`speech_text`) → `done`, 인식 오류와 말 없음은 SSE 전 JSON 오류라 사용자 메시지를 만들지 않음), 음성 세션의 글 턴도 답변 음성 생성, 첫 문장 요청 시작 후 12초가 지나도 소리가 없으면 글을 먼저 보냄(`audio: null`+`speech_text`), 둘째 문장부터 재생 중 합성. 시험: 가짜 CLI·가짜 음성으로 이벤트 순서·오류(`turn_in_progress`·`session_ended`·인식 실패)·인식 글과 답변 문장이 DB에 즉시 기록됨·12초 규칙(시간 주입) | - | 대기 |
+| M3-06 | A | 보이스 목록·미리 듣기·프로필 검증 | `GET /api/voices`(OpenAI TTS가 받는 고정 보이스 목록을 서버 상수로 두고, `default_voice`·`default_rate`는 페르소나 YAML, `min_rate`·`max_rate`는 프로필 범위 0.75~1.5), `GET /api/voices/{voice}/sample?rate=`(고정 문장 MP3, 보이스·속도별로 한 번만 합성해 캐시, 실패 503 `voice_unavailable`), `PUT /api/profile`이 `voice`를 목록으로 검사(M1에서 미룬 검사). 시험: 목록·샘플 캐시·잘못된 보이스 422 | - | 대기 |
+| M3-07 | A | 지연 계측 | `turn_latency`(턴 시작 때 행 생성, 세션·턴 삭제 때 함께 삭제)와 문장별 `turn_tts`(턴·문장 번호·사용 모델·폴백 여부) 테이블+Alembic 리비전. 서버 단계(`upload_ms`·`stt_ms`·`first_token_ms`·`first_queued_ms`·`first_synth_ms`·`synth_wait_ms`·`first_sentence_ms`·`done_ms`·`audio_bytes`·`cli_age_ms`·답변 글자 수), 클라이언트 보고(`speech_to_request_ms`·`request_to_playback_ms`·`first_sound_notice`·선택 `ack_ms`는 M3 스키마에 이미 포함). `POST /sessions/{id}/turns/{turn_id}/latency`(204, 덮어쓰기, 행이 없으면 404 `turn_not_found`), `GET /api/latency?limit=`(`summary.total_ms`·`total_ms_reply`·`stages`·`tts`(`models` 문장 수·`fallback_ratio`), 검색 분리 틀). 시험: 서버 단계 기록, 일지 삭제 때 함께 삭제, 보고 덮어쓰기·범위, 요약 중앙값·p90, 폴백 비율 | - | 대기 |
+| M3-08 | A | 계약·타입·`run.sh --fake` | client-contract 2.2·2.7·2.9·2.11·2.15·4.2·5절이 코드와 같음(변경은 문서와 함께), 6절 머리에 "M3은 부분 구현, 끼어들기·쉬기·맞장구·병합·큐는 M4" 표시, `npm run gen:api`로 생성 타입 갱신, `./run.sh --fake`(음성 백엔드를 가짜로 띄움, 과금 없음), `.env.example`에 OpenAI 키 이름(값 없음), README에 ffmpeg 안내. 시험: OpenAPI 스냅샷, 묶음 A 전체 게이트 | - | 대기 |
+| M3-09 | B | 상태 머신 | `web/src/core/sessionMachine.ts`(순수 함수: 이벤트 → 다음 상태·명령, `idle`·`listening`·`processing`·`speaking`·`closing`, `endConfirmOpen`·`userSpeaking` context, 처리 중·말하기에 `micOff`, 재생이 끝나면 `micOn`, 종료 확인 열기·확인·취소, `done(ended)`→끝내기, `done(paused)`→듣기, `playback_idle`이 `turn_done`보다 먼저 와도 `turn_done` 뒤에 `micOn`, 종료 확인의 `cancelTurn`(연결 끊기)과 `endSession`, 늦은 턴 ID 무시, 모르는 이벤트와 표에 없는 조합 무시)와 `shared/fixtures/transitions.json`(v1 사례에서 M3 범위를 옮기고 v2 종료 확인 사례를 더함. M4 몫(맞장구·병합·큐·`paused`·끼어들기)은 M4에서 더한다), `src/core` 비의존 규칙 준수. 시험: 전이 표 전체 | - | 대기 |
+| M3-10 | B | 오디오 입력(VAD·녹음·인코딩) | `platform/audioInput.ts`(vad-web, `speech_start`는 `min_speech_ms` 뒤에만, `stop` 뒤 이벤트 없음, 트랙 정지로 마이크 표시 끔, 마이크 거부·불가·VAD 실패 오류 구분, `PRE_SPEECH_PAD_MS`), VAD 모델·worklet·wasm 정적 서빙(`web/vadAssets.ts`와 Vite 설정으로 `/vad/<버전>/`에서 서빙, 빌드에도 포함. CDN을 쓰지 않는다), `platform/encodeAudio.ts`(WebCodecs Opus 24kbps webm, 못 하면 16bit WAV), 음성 모듈 지연 로드(`lazyPlatform`), 임계값은 `client-defaults.json`. 시험: 이벤트 순서·오류·인코딩 분기(가짜 마이크 오디오로), 빌드 산출물에 자산 포함 | - | 대기 |
+| M3-11 | B | 오디오 출력과 기기 연동 | `platform/audioOutput.ts`(넣은 순서대로 이어 재생, 디코드는 병렬, `sentence_played`·`playback_idle`, `unlock`, 소리 없는 문장은 기기 TTS(`speechSynthesis` ko-KR) 폴백, 실패는 길이 0으로 넘김, `stopPlayback`), Screen Wake Lock, Media Session(이어폰 버튼 = `tap`), 알림음(`shared/sounds`의 `listen`·`saved`). 시험: 대기열 순서·정지·폴백·자동 재생 제한 | - | 대기 |
+| M3-12 | B | 지연 보고 클라이언트 | `core/metrics.ts`(말 끝 → 요청 시작 `speech_to_request_ms`, 요청 시작 → 첫 답변 소리 `request_to_playback_ms`, 끊은 턴·소리 없는 턴·마무리 멘트는 보고 안 함), 한 번만 `POST …/latency`, 기다리지 않고 실패 무시. 시험: 계산·한 번만·제외 조건 | - | 대기 |
+| M3-13 | C | 음성 대화 연결 | `screens/voiceController.ts`·`useVoiceConversation.ts`: 머신 명령 실행(`startSession`·`sendTurn`·`cancelTurn`(요청 연결 끊기)·`endSession`(`turn_in_progress`면 0.5초 뒤 최대 3번)·`micOn/Off`·`stopPlayback`·`playSound`·`showEndConfirm`·`hideEndConfirm`·`notifyError`), 음성 업로드와 SSE → 머신 이벤트·대화 리듀서(`transcript`는 내 말풍선, `sentence`는 소리를 대기열에 넣은 뒤 이벤트), 모든 요청이 성공·실패 이벤트로 끝남, 음성 대화 중 글 입력(규약 6.6, 듣기에서만), 마이크 오류는 `long_press` 종료 규칙. 시험: 가짜 마이크·가짜 서버로 한 턴 전체(인식→답변 재생→듣기 복귀), 오류 경로(인식 실패·서버 오류·마이크 거부), 서버가 끝낸 턴 | - | 대기 |
+| M3-14 | C | 음성 화면과 시작 화면 | 시안 적용: 시작 화면 "음성으로/글로" 선택(고른 방식 기억)과 마이크 큰 버튼, 듣기·처리 중·말하기 화면(큰 버튼 상태·문구, 말풍선 흐름), 대화종료 버튼과 확인 창 연결, 연결 상태. 음성 모듈 로드 전 "음성으로" 막기와 로드 실패 시 글 안내. 대화 03은 처리 중 화면만(맞장구·이어 말함 표시는 M4), 대화 04는 말하기·노트 저장(검색 없음). 시안의 "일시 중단" 보조 버튼과 대화 06(쉬는 중)은 M4 몫이라 M3 화면에 없다(시안과 다르게 한 점으로 보고). 시험: 화면별 렌더·선택 기억·로드 전 막기·실패 안내, Playwright 스크린샷을 시안과 눈으로 대조 | 대화 01·02·03(처리 중만)·04·08·10·11 | 대기 |
+| M3-15 | C | 음성으로 이어서 | 일지 상세 03~07의 "음성으로 이어서" 버튼(`reopen {mode: voice}`, 재개 인사말 소리, 마이크 켜기), 진행 중 대화 이어받기 흐름 유지, 다른 대화 진행 중이면 막고 안내. 시험: 단위 시험(버튼 상태·reopen 모드·재개 인사말 재생·진행 중 대화 막기), 가짜 서버로 이어 말하기 | 일지 03·04·05·06·07(M2에서 이월) | 대기 |
+| M3-16 | D | 음성 E2E와 시각 기준 | 가짜 마이크(`--use-fake-device-for-media-stream`+wav)·가짜 음성 백엔드(`fake_stt_text` 고정)·가짜 CLI 격리 서버로 시작 → 말하기 → 답변 재생 → 대화종료 → 일지까지, 마이크 거부·음성 모듈 로드 실패 폴백, 음성으로 이어서. 시각 기준 이미지 추가(음성 시작·듣기·처리 중·말하기, 라이트·다크). Linux CI 기준 이미지: CI 워크플로(보호 파일)에 스크린샷 산출물 업로드 단계를 더해 받아 눈으로 확인하고 승인해 커밋(M2에서 넘어온 약속) | 위 보드 대조 | 대기 |
+| M3-17 | D | 폰 접속 `run.sh --phone` | `./run.sh --phone`(폰 마이크는 HTTPS가 필요하므로 Tailscale HTTPS 주소를 안내하거나 띄움, 서버가 그 Origin을 허용), 폰 확인 절차 문서화. 시험: 스크립트 옵션·도움말·안내 문구(실제 Tailscale 연결은 사용자 환경) | - | 대기 |
+| M3-18 | D | 실측과 지연 보고 | **실제 OpenAI·Claude 사용량이 든다(사전 고지)**. 실행 도구는 `server/tests/voice_eval/`(`run_tts100.py`·`run_latency.py`, `RUN_REAL_CLI=1`과 키가 있을 때만 돈다, 리포트는 `docs/eval/`). ① TTS 100문장 연속 합성(소리 없이 빠지는 문장 0, 폴백 비율 보고), ② PC에서 실제 음성 대화 30턴 이상으로 5.1 구간 표 채움(`docs/eval/latency-<날짜>.md`, 검색 없음, 첫 턴 콜드 스타트는 `cli_age_ms`로 분리, 일자별 중앙값 포함), ③ 폰 음성 대화·지연은 사용자가 직접 수행해 결과를 받는다. OpenAI 키가 없으면 ①②는 막힘으로 두고 보고한다 | - | 대기 |
+| M3-19 | D | 문서 정합과 종료 | client-contract(M3 반영분)·CLAUDE.md·README 점검, 6.1.2 완료 기준 표 채움, 6.1.3 종료 체크리스트. 검증: 문서의 명령·폴더 구조·계약이 실제와 같은지 대조 | - | 대기 |
+
+#### 6.1.2 완료 기준
+
+| 기준 | 목표 | 측정값 | 결과 |
+|---|---|---|---|
+| 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과(보이스 목록·미리 듣기·프로필 검증·지연 API 시험 포함) | - | - |
+| 웹 | typecheck 두 종류, lint, test, build 통과 | - | - |
+| 타입 생성 | `npm run gen:api -- --check` 통과 | - | - |
+| 계약 일치 | client-contract(2.2·2.7·2.9·2.11·2.15·4.2·5·6절 표시)와 CLAUDE.md·README가 코드와 같음 | - | - |
+| 상태 머신 | `transitions.json` 사례 전부 통과, 표에 없는 조합 무시 | - | - |
+| STT·TTS 단위 | 형식 분기·오류 코드·헤징·폴백 전 경로 시험 통과(시간 민감 시험 3번 연속) | - | - |
+| TTS 100문장 | 100문장 연속 합성에서 소리 없이 빠지는 문장 0, 폴백 비율 보고(기본 모델 문장 중 대체로 넘어간 비율 10% 초과 시 기본 모델 재검토) | - | - |
+| 음성 E2E | 가짜 마이크·가짜 백엔드로 말하기 → 재생 → 종료 → 일지 통과, 격리 확인 | - | - |
+| PC 음성 대화 | 실제 음성 대화 가능 | - | - |
+| 폰 음성 대화 | 실제 폰에서 음성 대화 가능(사용자 확인) | - | - |
+| 지연 30턴 | PC에서 검색 없는 30턴 이상 측정, 5.1 구간 표 채움, 첫 턴 분리·일자별 중앙값 보고(폰 측정은 사용자가 하면 추가, 판정은 M4) | - | - |
+| 시각 기준 | 음성 화면 라이트·다크, Linux 기준 이미지 승인 | - | - |
+| 게이트 | `scripts/verify.sh` 전체 통과 | - | - |
+
+#### 6.1.3 M3 종료 체크리스트
+
+- [ ] 단위 테스트와 Playwright 실구동 통과, 완료 기준 표 채움
+- [ ] 실제 OpenAI·Claude 점검(TTS 100문장, 지연 30턴, 사용량 확인 포함)
+- [ ] `CLAUDE.md`와 client-contract가 코드와 일치
+- [ ] 묶음마다 독립 서브에이전트가 diff를 리뷰하고 지적을 반영
+- [ ] 커밋·푸시
+- [ ] 사용자 확인(폰 음성 대화 포함)
+- [ ] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
 
 ## 7. 요구사항 추적표
 
@@ -201,7 +277,7 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 - 웹 글꼴(Noto Sans KR)은 M0에서 불러오지 않고 시스템 글꼴로 대체한다. 오프라인 PWA에 맞는 방식(자체 호스팅)은 M6에서 정한다.
 - D7 (WebFetch 사설망 차단): M5 초반에 CLI 권한 규칙으로 가능한지 확인하고, 안 되면 자체 MCP `web_fetch`로 간다.
 - 화면 시안은 렌더링을 검증하지 않았다. M2·M3에서 화면을 구현할 때 아티팩트와 대조하며 어긋남을 기록한다.
-- 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 옮긴다. CSRF 검사는 M6이다.
+- 제안값으로 정한 사항: 초기 리비전은 `persona`·`user_profile`만 둔다. core 비의존은 oxlint와 DOM 제외 tsconfig 두 겹이다. 상태 머신 전이 표는 M3에서 부분(M4 몫 제외)을 옮기고 나머지는 M4에서 옮긴다. CSRF 검사는 M6이다.
 - M0에서 넘어온 약속: Linux CI 시각 비교 기준 이미지는 화면이 생기는 M2~M3에서 CI 산출물을 받아 승인해 더한다(그 전에는 Linux CI가 시각 비교를 건너뛴다). → M2에서는 macOS 기준만 만들었고 Linux는 M3로 넘겼다(아래 묶음 D 결과 ①). 첨부 `purge_orphans` 안전장치는 M5. `run.sh`의 `--fake`·`--phone`은 필요한 마일스톤(M3~M4)에서 추가한다.
 - D8 (외부 MCP 등록): 서버 설정 파일 직접 등록 + 도구 허용 목록, M5(2026-10-23 확정).
 - 외부 MCP 구현 메모(M5): 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체로 넓히고 stderr뿐 아니라 CLI 결과의 `error_message`에도 적용한다. v1 `mcp_client_config`는 http 형식만 만들므로 stdio 항목(`command`·`args`·`env`)과 외부 서버 목록은 M5에서 새로 만든다. M5 첫 작업은 `.gitignore`(`server/mcp-servers.yaml`)와 `mcp-servers.example.yaml`이다.
