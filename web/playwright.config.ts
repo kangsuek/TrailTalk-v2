@@ -9,6 +9,8 @@ const DATA_DIR = '.e2e/data'
 
 export default defineConfig({
   testDir: 'e2e',
+  // 모든 시험이 격리 서버 하나와 DB 하나를 쓰고 "가장 최근 세션"을 읽으므로 파일끼리 겹쳐 돌리지 않는다
+  workers: 1,
   // 스크린샷 기준 이미지는 OS마다 다르게 그려지므로 플랫폼별 폴더에 둔다
   snapshotPathTemplate: '{testDir}/__screenshots__/{platform}/{testFilePath}/{arg}{ext}',
   use: { baseURL: `http://127.0.0.1:${WEB_PORT}`, viewport: { width: 360, height: 800 } },
