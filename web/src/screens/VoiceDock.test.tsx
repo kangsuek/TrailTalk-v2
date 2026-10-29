@@ -12,7 +12,7 @@ afterEach(() => {
 describe('VoiceDock', () => {
   it.each([
     ['idle', '음성 대화 시작', '눌러서 시작해요'],
-    ['listening', /듣는 중/, '편하게 말씀하세요'],
+    ['listening', '듣는 중', '편하게 말씀하세요'],
     ['processing', /생각하는 중/, '누르면 멈추고 다시 들을게요'],
     ['speaking', /말하는 중/, '말하면 바로 멈추고 들어요'],
     ['paused', /쉬는 중/, '누르면 다시 들어요'],

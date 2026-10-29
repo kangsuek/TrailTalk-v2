@@ -52,6 +52,27 @@ export interface VoiceDeps {
   now: () => number // 지연 측정 시계(단조 ms, 말 끝 시각과 같은 기준)
 }
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/** promise를 ms까지만 기다린다(넘으면 거절). 타이머는 끝나면 치운다 */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('timeout')), ms)
+  })
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer))
+}
+
+/** 취소 신호가 오면 요청이 신호를 무시해도 바로 거절한다(시간 제한·끼어들기·종료가 요청에 막히지 않게) */
+function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error('aborted'))
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new Error('aborted'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
+}
+
 const DEFAULT_DEPS: VoiceDeps = {
   createInput: lazyAudioInput,
   // offline 알림음은 M4(오프라인 큐)에서 연결한다
@@ -65,8 +86,14 @@ const DEFAULT_DEPS: VoiceDeps = {
   now: () => performance.now(),
 }
 
-const END_BUSY_RETRIES = 3 // 종료가 진행 중인 턴과 부딪쳐 거절될 때 다시 부르는 횟수(규약 6.3)
-const END_BUSY_RETRY_MS = 500
+// 진행 중이던 턴이 아직 정리되지 않아 서버가 거절할 때(`turn_in_progress`) 다시 보내는 횟수와 간격(규약 6.3·6.6)
+const BUSY_RETRIES = 3
+const BUSY_RETRY_MS = 500
+// 요청 시간 제한(규약 6.6: 시간 초과도 실패 이벤트로 끝낸다). 서버는 끝내기에서 일지 정리를 최대 45초 기다린다
+const START_TIMEOUT_MS = 30_000
+const PRE_TURN_TIMEOUT_MS = 30_000 // 턴이 시작되기(turn 이벤트) 전까지
+const END_TIMEOUT_MS = 60_000
+const PROFILE_TIMEOUT_MS = 5_000 // 서버 설정값을 못 받으면 기본값으로 쓴다
 
 // 세션이 서버에서 이미 끝났다는 오류(머신이 정리로 간다)
 const SESSION_GONE = new Set(['session_ended', 'session_not_found'])
@@ -77,6 +104,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   vad_failed: '음성 감지를 시작하지 못했어요. 글로 대화해 주세요.',
   no_speech: '말소리를 듣지 못했어요. 다시 말해 주세요.',
   network_error: '서버에 연결할 수 없어요. 연결을 확인하고 다시 말해 주세요.',
+  timeout: '서버가 응답하지 않아요. 다시 해 주세요.',
   stream_closed: '답변을 받는 중에 연결이 끊겼어요.',
 }
 
@@ -124,7 +152,8 @@ export function createVoiceController({
   let config: SessionConfig = DEFAULT_SESSION_CONFIG
   let vad: VadSettings = DEFAULT_VAD_SETTINGS
   let input: AudioInput | null = null // 처음 마이크를 쓸 때 만든다(서버 설정값을 받은 뒤)
-  let inputPending: Promise<AudioInput> | null = null
+  let inputPending: Promise<AudioInput | null> | null = null
+  let micWanted = false // 마이크를 켜 두려는 의도(켜기 요청이 비동기라 그사이 꺼도 켜진 채 남지 않게)
   let sessionId: string | null = null
   let reopened: SessionReopened | null = null // 다시 연 대화를 이어 가는 시작(시작 요청 대신 이 응답을 쓴다)
   let startAbort: AbortController | null = null
@@ -209,16 +238,17 @@ export function createVoiceController({
     closingReason = null
   }
 
-  const ensureInput = (): Promise<AudioInput> => {
+  const ensureInput = (): Promise<AudioInput | null> => {
     if (input) return Promise.resolve(input)
     inputPending ??= (async () => {
       try {
-        const client = (await d.getProfile()).client
+        const client = (await withTimeout(d.getProfile(), PROFILE_TIMEOUT_MS)).client
         vad = vadSettingsFrom(client.vad)
         config = { idleTimeoutMinutes: client.session.idle_timeout_minutes }
       } catch {
-        // 서버 설정값을 못 받으면 기본값으로 쓴다
+        // 서버 설정값을 못 받거나 늦으면 기본값으로 쓴다
       }
+      if (disposed) return null // 기다리는 사이 정리됐으면 마이크를 만들지 않는다(닫을 길이 없다)
       input = d.createInput(vad, onInputEvent)
       return input
     })()
@@ -232,7 +262,9 @@ export function createVoiceController({
       utterances.set(id, { kind: 'audio', audio: event.audio, speechEndedAt: event.speechEndedAt })
       return send({ type: 'speech_end', utteranceId: id })
     }
-    // 마이크 오류: 대화를 마치고(일지 정리) 정리가 끝난 뒤 이유를 보인다(규약 6.3)
+    // 마이크 오류: 대화를 마치고(일지 정리) 정리가 끝난 뒤 이유를 보인다(규약 6.3).
+    // 대기·정리 중에 늦게 온 오류는 무시한다(이유가 다음 대화로 새지 않게)
+    if (state.name === 'idle' || state.name === 'closing') return
     closingReason = ERROR_MESSAGES[event.code] ?? ERROR_MESSAGES.vad_failed
     send({ type: 'long_press' })
   }
@@ -309,42 +341,80 @@ export function createVoiceController({
     const utterance = takeTurn(utteranceId)
     const id = sessionId
     if (utterance === null || id === null) {
+      // 큐에서 꺼낼 말이 없다: 머신의 큐 수를 0으로 맞춰야 sendQueued ↔ turn_error가 끝없이 돌지 않는다
+      if (fromQueue) send({ type: 'queue_sent', remaining: queue.length })
       send({ type: 'turn_error', turnId: null, code: 'queue_empty' })
       return
     }
-    const controller = (turnAbort = new AbortController())
-    const turn = { gotTurn: false, id: null as string | null }
+    // 큐에서 꺼낸 말은 서버가 받았거나(turn) 실패하면(이미 큐에서 뺐다) 머신의 큐 수를 맞춘다
+    let queueSettled = false
+    const settleQueue = () => {
+      if (!fromQueue || queueSettled) return
+      queueSettled = true
+      send({ type: 'queue_sent', remaining: queue.length })
+    }
     const textId = `t${utteranceId}`
     if (utterance.kind === 'audio') latency.begin(utterance.speechEndedAt)
     else {
       latency.cancel() // 글 턴은 지연을 재지 않는다
       dispatch({ type: 'send', id: textId, text: utterance.text })
     }
-    try {
-      const handle = (event: StreamEvent) => {
-        if (controller.signal.aborted) return
-        // turn 전의 오류는 서버가 메시지를 받지 못한 것이다: 글은 입력창으로 돌려주고 말풍선을 뺀다
-        if (event.type === 'error' && !turn.gotTurn && utterance.kind === 'text') {
-          dispatch({ type: 'unsend', id: textId })
-          utterance.onUnsent?.(utterance.text)
+    for (let attempt = 0; ; attempt += 1) {
+      const controller = (turnAbort = new AbortController())
+      const turn = { gotTurn: false, id: null as string | null }
+      let timedOut = false
+      let busy = false // 서버가 이전 답변을 정리 중이라 거절했다(다시 보낸다)
+      const preTurn = setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, PRE_TURN_TIMEOUT_MS)
+      try {
+        const handle = (event: StreamEvent) => {
+          if (controller.signal.aborted) return
+          if (event.type === 'turn') clearTimeout(preTurn)
+          if (event.type === 'error' && !turn.gotTurn && event.code === 'turn_in_progress' && attempt < BUSY_RETRIES) {
+            busy = true
+            return
+          }
+          // turn 전의 오류는 서버가 메시지를 받지 못한 것이다: 글은 입력창으로 돌려주고 말풍선을 뺀다
+          if (event.type === 'error' && !turn.gotTurn && utterance.kind === 'text') {
+            dispatch({ type: 'unsend', id: textId })
+            utterance.onUnsent?.(utterance.text)
+          }
+          if (event.type === 'turn' || (event.type === 'error' && !turn.gotTurn)) settleQueue()
+          onStreamEvent(event, turn)
         }
-        onStreamEvent(event, turn)
-        if (fromQueue && event.type === 'turn') send({ type: 'queue_sent', remaining: queue.length })
+        const request =
+          utterance.kind === 'audio'
+            ? d.sendAudioTurn(id, utterance.audio, handle, controller.signal)
+            : d.sendTextTurn(id, utterance.text, handle, controller.signal)
+        await raceAbort(request, controller.signal)
+      } catch (error) {
+        if (controller.signal.aborted && !timedOut) return // 끼어들기·종료로 끊었다
+        const code = timedOut ? 'timeout' : error instanceof ApiError ? error.code : 'network_error'
+        if (code === 'turn_in_progress' && !turn.gotTurn && attempt < BUSY_RETRIES) {
+          busy = true
+        } else {
+          latency.cancel()
+          if (utterance.kind === 'text' && !turn.gotTurn) {
+            dispatch({ type: 'unsend', id: textId })
+            utterance.onUnsent?.(utterance.text)
+          }
+          if (SESSION_GONE.has(code)) closingReason = messageOf(error, code)
+          settleQueue()
+          // 서버에 닿지 않았거나 스트림이 끊겼다: M3은 오프라인 보관이 없으므로 알리고 다시 듣는다
+          send({ type: 'turn_error', turnId: turn.gotTurn ? turn.id : null, code })
+          if (!SESSION_GONE.has(code)) dispatch({ type: 'failed', message: messageOf(error, code) })
+          return
+        }
+      } finally {
+        clearTimeout(preTurn)
       }
-      if (utterance.kind === 'audio') await d.sendAudioTurn(id, utterance.audio, handle, controller.signal)
-      else await d.sendTextTurn(id, utterance.text, handle, controller.signal)
-    } catch (error) {
-      if (controller.signal.aborted) return // 끼어들기·종료로 끊었다
-      latency.cancel()
-      const code = error instanceof ApiError ? error.code : 'network_error'
-      if (utterance.kind === 'text' && !turn.gotTurn) {
-        dispatch({ type: 'unsend', id: textId })
-        utterance.onUnsent?.(utterance.text)
-      }
-      closingReason = SESSION_GONE.has(code) ? messageOf(error, code) : null
-      // 서버에 닿지 않았거나 스트림이 끊겼다: M3은 오프라인 보관이 없으므로 알리고 다시 듣는다
-      send({ type: 'turn_error', turnId: turn.gotTurn ? turn.id : null, code })
-      if (!SESSION_GONE.has(code)) dispatch({ type: 'failed', message: messageOf(error, code) })
+      if (!busy) return
+      // 잠깐 기다렸다 다시 보낸다. 그사이 끼어들기·종료가 오면 그만둔다
+      const waiting = (turnAbort = new AbortController())
+      await sleep(BUSY_RETRY_MS)
+      if (waiting.signal.aborted || disposed) return
     }
   }
 
@@ -361,8 +431,10 @@ export function createVoiceController({
         break
       case 'sendQueued': {
         const next = queue.shift()
-        if (next === undefined) send({ type: 'turn_error', turnId: null, code: 'queue_empty' })
-        else void runTurn(next, true)
+        if (next === undefined) {
+          send({ type: 'queue_sent', remaining: 0 }) // 큐 수를 맞춘다(끝없이 다시 부르지 않게)
+          send({ type: 'turn_error', turnId: null, code: 'queue_empty' })
+        } else void runTurn(next, true)
         break
       }
       case 'cancelTurn':
@@ -377,13 +449,17 @@ export function createVoiceController({
         void finish()
         break
       case 'micOn':
-        void ensureInput().then((i) => (disposed ? undefined : i.start()))
+        micWanted = true
+        void ensureInput()
+          .then((i) => (i && micWanted && !disposed ? i.start() : undefined))
+          .catch(() => {}) // 오류는 입력의 error 이벤트로 온다
         break
       case 'micOff':
+        micWanted = false // 켜기 요청이 아직 대기 중이어도 켜지지 않게 한다
         void input?.stop()
         break
       case 'setVadMode':
-        void ensureInput().then((i) => i.setMode(command.mode))
+        void ensureInput().then((i) => (i && !disposed ? i.setMode(command.mode) : undefined))
         break
       case 'stopPlayback':
         output.stop()
@@ -412,6 +488,12 @@ export function createVoiceController({
 
   const begin = async () => {
     const controller = (startAbort = new AbortController())
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, START_TIMEOUT_MS)
+    closingReason = null // 지난 대화의 이유가 남아 있지 않게
     dispatch({ type: 'start' })
     try {
       if (reopened !== null) {
@@ -420,33 +502,46 @@ export function createVoiceController({
         beginGreeting(again, again.turns)
         return
       }
-      const started = await d.startSession('voice', controller.signal)
+      const started = await raceAbort(d.startSession('voice', controller.signal), controller.signal)
       if (controller.signal.aborted) return
       beginGreeting(started, null)
     } catch (error) {
-      if (controller.signal.aborted) return
-      const code = error instanceof ApiError ? error.code : 'network_error'
+      if (controller.signal.aborted && !timedOut) return // 시작 중에 종료가 와서 끊었다
+      const code = timedOut ? 'timeout' : error instanceof ApiError ? error.code : 'network_error'
       send({ type: 'start_failed', code })
       dispatch({ type: 'failed', message: messageOf(error, code) })
+    } finally {
+      clearTimeout(timer)
     }
   }
 
   const finish = async () => {
     const id = sessionId
-    if (id === null) return
+    if (id === null) {
+      // 대화를 시작하는 중에 종료가 왔다: 시작 요청을 끊고 조용히 대기로 간다(머신이 정리에 갇히지 않게)
+      startAbort?.abort()
+      dispatch({ type: 'failed', message: '' })
+      send({ type: 'session_closed' })
+      return
+    }
     turnAbort?.abort() // 받는 중인 답변은 받은 데까지 끊는다
     const controller = (endAbort = new AbortController())
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, END_TIMEOUT_MS)
     dispatch({ type: 'ending' })
     try {
       let closed: SessionClosed | null = null
       for (let attempt = 0; closed === null; attempt += 1) {
         try {
-          closed = await d.endSession(id, controller.signal)
+          closed = await raceAbort(d.endSession(id, controller.signal), controller.signal)
         } catch (error) {
           // 진행 중이던 턴이 아직 정리되지 않아 거절되면 잠깐 뒤 다시 부른다
           const busy = error instanceof ApiError && error.code === 'turn_in_progress'
-          if (!busy || attempt >= END_BUSY_RETRIES || controller.signal.aborted) throw error
-          await new Promise((resolve) => setTimeout(resolve, END_BUSY_RETRY_MS))
+          if (!busy || attempt >= BUSY_RETRIES || controller.signal.aborted) throw error
+          await sleep(BUSY_RETRY_MS)
         }
       }
       if (controller.signal.aborted) return
@@ -465,10 +560,12 @@ export function createVoiceController({
       send({ type: 'session_closed' })
       showClosingReason()
     } catch (error) {
-      if (controller.signal.aborted) return
-      const code = error instanceof ApiError ? error.code : 'network_error'
+      if (controller.signal.aborted && !timedOut) return // "그만 기다리기"로 끊었다
+      const code = timedOut ? 'timeout' : error instanceof ApiError ? error.code : 'network_error'
       send({ type: 'end_failed', code })
       dispatch({ type: 'failed', message: messageOf(error, code) })
+    } finally {
+      clearTimeout(timer)
     }
   }
 

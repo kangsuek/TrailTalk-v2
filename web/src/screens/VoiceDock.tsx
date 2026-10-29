@@ -11,7 +11,7 @@ type DockState = SessionStateName | 'starting'
 const COPY: Record<DockState, { aria: string; hint: string }> = {
   idle: { aria: '음성 대화 시작', hint: '눌러서 시작해요' },
   starting: { aria: '연결하는 중', hint: '연결하는 중…' },
-  listening: { aria: '듣는 중. 길게 누르면 대화를 마쳐요', hint: '편하게 말씀하세요' },
+  listening: { aria: '듣는 중', hint: '편하게 말씀하세요' },
   processing: { aria: '생각하는 중. 누르면 멈추고 다시 듣기', hint: '누르면 멈추고 다시 들을게요' },
   speaking: { aria: '말하는 중. 누르면 끼어들기', hint: '말하면 바로 멈추고 들어요' },
   paused: { aria: '쉬는 중. 누르면 다시 듣기', hint: '누르면 다시 들어요' },
@@ -122,9 +122,7 @@ export default function VoiceDock({
           <span aria-hidden="true" />
         )}
       </div>
-      <p className="voice-hint" role="status">
-        {copy.hint}
-      </p>
+      <p className="voice-hint">{copy.hint}</p>
     </div>
   )
 }

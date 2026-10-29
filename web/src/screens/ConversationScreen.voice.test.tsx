@@ -258,14 +258,15 @@ describe('내가 말하는 동안', () => {
   it('말을 시작하면 "말하는 중" 말풍선이 보이고, 말이 끝나면 사라진다', async () => {
     const t = setup({ sendAudioTurn: vi.fn(() => new Promise<never>(() => {})) })
     await startVoiceAndListen(t)
-    expect(screen.queryByLabelText('말하는 중', { selector: 'li' })).toBeNull()
+    const speaking = () => screen.queryByText('말하는 중', { selector: 'li.bubble-speaking span' })
+    expect(speaking()).toBeNull()
     await t.heard({ type: 'speech_start' })
-    expect(screen.getByLabelText('말하는 중', { selector: 'li' })).toBeInTheDocument()
+    expect(speaking()).toBeInTheDocument()
     await t.heard({
       type: 'speech_end',
       audio: { bytes: new Uint8Array([1]), mimeType: 'audio/webm', durationMs: 500 },
       speechEndedAt: 1,
     })
-    await waitFor(() => expect(screen.queryByLabelText('말하는 중', { selector: 'li' })).toBeNull())
+    await waitFor(() => expect(speaking()).toBeNull())
   })
 })

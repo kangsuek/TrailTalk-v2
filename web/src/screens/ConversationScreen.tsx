@@ -94,7 +94,7 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
 // 내가 말하는 동안 보이는 말풍선(시안 대화 02): 파형과 "말하는 중"
 function SpeakingBubble() {
   return (
-    <li className="bubble bubble-user bubble-speaking" aria-label="말하는 중">
+    <li className="bubble bubble-user bubble-speaking">
       <span className="wave" aria-hidden="true">
         {[10, 20, 28, 16, 24, 12, 6].map((height, i) => (
           <i key={i} style={{ height }} />
@@ -159,7 +159,8 @@ export default function ConversationScreen({
     sessionId: null,
     panel: 'voice',
   })
-  // 음성 대화가 끝내기 응답을 받았다: 컨트롤러가 이미 마무리했으므로 화면이 다시 부르지 않는다
+  // 음성 대화가 끝내기 응답을 받았다: 컨트롤러가 이미 마무리했으므로 화면이 다시 부르지 않는다.
+  // finalized를 여기서 동기로 먼저 세워 두어야 아래 마무리 효과가 같은 대화를 다시 끝내지 않는다(순서 의존)
   const handleClosed = useCallback((sessionId: string, closed: VoiceClosed) => {
     finalized.current = sessionId
     setSummary({ sessionId, epoch: epoch.current, saved: closed.saved, journalStatus: closed.journalStatus })
@@ -616,7 +617,11 @@ export default function ConversationScreen({
               type="button"
               className="send"
               aria-label="보내기"
-              disabled={!draft.trim() || state.sending || (voiceActive && voice.machine.name !== 'listening')}
+              disabled={
+                !draft.trim() ||
+                state.sending ||
+                (voiceActive && (voice.machine.name !== 'listening' || voice.machine.queued > 0))
+              }
               onClick={() => void send()}
             >
               <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">

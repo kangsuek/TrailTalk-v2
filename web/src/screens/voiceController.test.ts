@@ -461,7 +461,7 @@ describe('음성 대화 중 글 입력', () => {
     const t = await listening(
       setup({
         sendTextTurn: vi.fn(async (_id, _text, onEvent) => {
-          onEvent({ type: 'error', code: 'turn_in_progress', message: '답변을 만드는 중이에요.' })
+          onEvent({ type: 'error', code: 'internal_error', message: '서버 내부 오류가 발생했습니다.' })
         }),
       }),
     )
@@ -505,5 +505,216 @@ describe('다시 열기와 정리', () => {
     expect(t.input.dispose).toHaveBeenCalled()
     t.controller.tap() // 정리 뒤에는 아무 일도 하지 않는다
     expect(t.states.length).toBeGreaterThan(0)
+  })
+})
+
+describe('처리 중에 한 말(큐) — 리뷰 지적 회귀', () => {
+  /** 첫 턴 요청은 gate를 열 때까지 기다리고, 그동안 한 말은 큐에 쌓인다 */
+  function gated(second: VoiceDeps['sendAudioTurn']) {
+    let open: () => void = () => {}
+    const gate = new Promise<void>((resolve) => (open = resolve))
+    let calls = 0
+    const sendAudioTurn = vi.fn<VoiceDeps['sendAudioTurn']>(async (id, audio, onEvent, signal) => {
+      calls += 1
+      if (calls === 1) {
+        await gate
+        for (const event of reply()) onEvent(event)
+        return
+      }
+      return second(id, audio, onEvent, signal)
+    })
+    return { sendAudioTurn, open: () => open() }
+  }
+
+  it('답변을 기다리며 한 말은 답변을 다 들려준 뒤 이어서 보낸다', async () => {
+    const g = gated(async (_id, _audio, onEvent) => {
+      for (const event of reply().map((e) => (e.type === 'turn' ? { ...e, turn_id: 'a2' } : e))) onEvent(event as never)
+    })
+    const t = await listening(setup({ sendAudioTurn: g.sendAudioTurn }))
+    speech(t)
+    await flush()
+    expect(t.last()?.name).toBe('processing')
+    speech(t) // 처리 중에 이어서 한 말
+    await flush()
+    expect(t.last()?.queued).toBe(1)
+    expect(g.sendAudioTurn).toHaveBeenCalledTimes(1)
+    g.open()
+    await flush()
+    t.played({ type: 'sentence_played', index: 0 })
+    t.played({ type: 'sentence_played', index: 1 })
+    t.played({ type: 'playback_idle' })
+    await flush()
+    expect(g.sendAudioTurn).toHaveBeenCalledTimes(2) // 큐의 말을 보통 턴으로 보냈다
+    expect(t.last()?.queued).toBe(0)
+  })
+
+  it('큐에서 꺼낸 말이 인식되지 않아도(no_speech) 멈추지 않고 다시 듣는다', async () => {
+    const g = gated(async () => {
+      throw new ApiError('no_speech', '말소리가 들리지 않았어요.', 422)
+    })
+    const t = await listening(setup({ sendAudioTurn: g.sendAudioTurn }))
+    speech(t)
+    await flush()
+    speech(t)
+    await flush()
+    g.open()
+    await flush()
+    t.played({ type: 'sentence_played', index: 0 })
+    t.played({ type: 'sentence_played', index: 1 })
+    t.played({ type: 'playback_idle' })
+    await flush()
+    // 예전에는 queued가 1로 남아 sendQueued↔turn_error가 동기로 끝없이 돌았다
+    expect(g.sendAudioTurn).toHaveBeenCalledTimes(2)
+    expect(t.last()?.name).toBe('listening')
+    expect(t.last()?.queued).toBe(0)
+  })
+
+  it('큐에서 꺼낸 말이 서버에 닿지 않아도 큐 수를 맞추고 다시 듣는다', async () => {
+    const g = gated(async () => {
+      throw new ApiError('network_error', '서버에 연결할 수 없어요.', 0)
+    })
+    const t = await listening(setup({ sendAudioTurn: g.sendAudioTurn }))
+    speech(t)
+    await flush()
+    speech(t)
+    await flush()
+    g.open()
+    await flush()
+    t.played({ type: 'playback_idle' })
+    await flush()
+    expect(t.last()?.name).toBe('listening')
+    expect(t.last()?.queued).toBe(0)
+    expect(t.actions).toContainEqual(expect.objectContaining({ type: 'failed' }))
+  })
+})
+
+describe('요청 시간 제한(규약 6.6: 시간 초과도 실패 이벤트로 끝낸다)', () => {
+  it('시작 요청이 응답하지 않으면 30초 뒤 시작 실패로 대기에 돌아간다', async () => {
+    vi.useFakeTimers()
+    const t = setup({ startSession: vi.fn(() => new Promise<never>(() => {})) })
+    t.controller.tap()
+    await vi.advanceTimersByTimeAsync(29_000)
+    expect(t.last()?.name).toBe('processing')
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(t.last()?.name).toBe('idle')
+    expect(t.actions).toContainEqual({ type: 'failed', message: '서버가 응답하지 않아요. 다시 해 주세요.' })
+  })
+
+  it('턴이 시작되기(turn 이벤트) 전에 30초가 지나면 오류로 알리고 다시 듣는다', async () => {
+    const t = await listening(setup({ sendAudioTurn: vi.fn(() => new Promise<never>(() => {})) }))
+    vi.useFakeTimers()
+    speech(t)
+    await vi.advanceTimersByTimeAsync(31_000)
+    expect(t.last()?.name).toBe('listening')
+    expect(t.actions).toContainEqual({ type: 'failed', message: '서버가 응답하지 않아요. 다시 해 주세요.' })
+  })
+
+  it('끝내기 요청이 응답하지 않으면 60초 뒤 실패로 대기에 돌아간다', async () => {
+    const t = await listening(setup({ endSession: vi.fn(() => new Promise<never>(() => {})) }))
+    vi.useFakeTimers()
+    t.controller.longPress()
+    await vi.advanceTimersByTimeAsync(59_000)
+    expect(t.last()?.name).toBe('closing')
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(t.last()?.name).toBe('idle')
+    expect(t.actions).toContainEqual({ type: 'failed', message: '서버가 응답하지 않아요. 다시 해 주세요.' })
+  })
+
+  it('서버 설정값을 받는 요청이 멈춰도 5초 뒤 기본값으로 마이크를 켠다', async () => {
+    vi.useFakeTimers()
+    const t = setup({ getProfile: vi.fn(() => new Promise<never>(() => {})) })
+    t.controller.tap()
+    await vi.advanceTimersByTimeAsync(0)
+    t.played({ type: 'playback_idle' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(t.input.start).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(5_100)
+    expect(t.input.start).toHaveBeenCalled()
+  })
+})
+
+describe('그 밖의 리뷰 지적 회귀', () => {
+  it('끝난 대화에 늦게 온 마이크 오류는 무시하고 다음 대화에 이유를 남기지 않는다', async () => {
+    const t = await listening()
+    t.controller.longPress() // 정상 종료
+    await flush()
+    expect(t.last()?.name).toBe('idle')
+    t.heard({ type: 'error', code: 'mic_denied' }) // 늦게 온 오류(규약 6.3: 무시)
+    await flush()
+    t.controller.tap()
+    await flush()
+    t.played({ type: 'playback_idle' })
+    await flush()
+    t.controller.longPress()
+    await flush()
+    const failed = t.actions.filter((a) => (a as { type: string }).type === 'failed')
+    expect(JSON.stringify(failed)).not.toContain('마이크 권한')
+  })
+
+  it('끼어든 직후 서버가 이전 답변을 정리 중이라 거절하면 0.5초 뒤 다시 보낸다(음성)', async () => {
+    let calls = 0
+    const t = await listening(
+      setup({
+        sendAudioTurn: vi.fn(async (_id, _audio, onEvent) => {
+          calls += 1
+          if (calls === 1) throw new ApiError('turn_in_progress', '답변을 만드는 중이에요.', 409)
+          for (const event of reply()) onEvent(event)
+        }),
+      }),
+    )
+    vi.useFakeTimers()
+    speech(t)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(calls).toBe(1)
+    await vi.advanceTimersByTimeAsync(600)
+    expect(calls).toBe(2)
+    expect(t.out.enqueue).toHaveBeenCalledWith({ audio: 'QQ==', index: 0, speechText: null })
+    expect(t.actions.some((a) => (a as { type: string; message?: string }).message?.includes('문제'))).toBe(false)
+  })
+
+  it('거절이 계속되면 3번까지만 다시 보내고 알린다', async () => {
+    const t = await listening(
+      setup({
+        sendAudioTurn: vi.fn(async () => {
+          throw new ApiError('turn_in_progress', '답변을 만드는 중이에요.', 409)
+        }),
+      }),
+    )
+    vi.useFakeTimers()
+    speech(t)
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(t.deps.sendAudioTurn).toHaveBeenCalledTimes(4) // 처음 + 다시 3번
+    expect(t.last()?.name).toBe('listening')
+    expect(t.actions).toContainEqual(expect.objectContaining({ type: 'failed' }))
+  })
+
+  it('마이크를 켜기 전에 정리로 가면 마이크가 켜진 채 남지 않는다', async () => {
+    let profile: (value: never) => void = () => {}
+    const t = setup({ getProfile: vi.fn(() => new Promise<never>((resolve) => (profile = resolve))) })
+    t.controller.tap()
+    await flush()
+    t.played({ type: 'playback_idle' }) // 듣기 진입: micOn은 프로필을 기다리는 중
+    await flush()
+    t.controller.longPress() // 정리로: micOff
+    await flush()
+    profile({ client: { vad: { speech_threshold: 0.5, silence_threshold: 0.25, playback_speech_threshold: 0.8, playback_silence_threshold: 0.65, end_of_speech_silence_ms: 1800, min_speech_ms: 300 }, session: { idle_timeout_minutes: 30 } } } as never)
+    await flush()
+    expect(t.input.start).not.toHaveBeenCalled()
+  })
+
+  it('대화를 시작하는 중에 종료가 오면 요청을 끊고 대기로 간다', async () => {
+    let signal: AbortSignal | undefined
+    const t = setup({
+      startSession: vi.fn((_mode, s) => {
+        signal = s
+        return new Promise<never>(() => {})
+      }),
+    })
+    t.controller.tap()
+    await flush()
+    t.controller.longPress()
+    await flush()
+    expect(signal?.aborted).toBe(true)
+    expect(t.last()?.name).toBe('idle')
   })
 })
