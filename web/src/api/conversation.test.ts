@@ -181,3 +181,20 @@ describe('startSession·endSession', () => {
     expect(init.method).toBe('POST')
   })
 })
+
+describe('reportLatency', () => {
+  it('턴 경로로 지연 필드만 POST한다', async () => {
+    const { reportLatency } = await import('./conversation.ts')
+    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await reportLatency('s 1', 't/1', 1850, 5400, true)
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/sessions/s%201/turns/t%2F1/latency')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({
+      speech_to_request_ms: 1850,
+      request_to_playback_ms: 5400,
+      first_sound_notice: true,
+    })
+  })
+})
