@@ -1,7 +1,8 @@
 // 대화 세션 API(docs/client-contract.md 2절). 타입은 서버 OpenAPI에서 생성한 schema.d.ts를 쓴다.
 import type { StreamEvent } from '../core/conversation.ts'
 import { SseParser } from '../core/sse.ts'
-import { ApiError, request } from './http.ts'
+import type { RecordedAudio } from '../core/audio.ts'
+import { ApiError, RawBody, request } from './http.ts'
 import type { components } from './schema.d.ts'
 
 export { ApiError }
@@ -77,6 +78,24 @@ export async function sendTurn(
 ): Promise<void> {
   const path = `/api/sessions/${encodeURIComponent(sessionId)}/turns`
   await readTurnStream(await post(path, { text }, signal), onEvent, signal)
+}
+
+/**
+ * 말 한 번의 녹음을 올려 인식하고 답변 이벤트를 onEvent로 넘긴다(규약 2.7). 첫 이벤트는 transcript다.
+ * 오디오·인식 오류와 말 없음은 스트림 전에 ApiError로 던진다.
+ */
+export async function sendAudioTurn(
+  sessionId: string,
+  audio: RecordedAudio,
+  onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await post(
+    `/api/sessions/${encodeURIComponent(sessionId)}/turns/audio`,
+    new RawBody(audio.bytes, audio.mimeType),
+    signal,
+  )
+  await readTurnStream(response, onEvent, signal)
 }
 
 async function readTurnStream(

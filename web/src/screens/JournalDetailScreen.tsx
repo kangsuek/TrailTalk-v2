@@ -238,6 +238,7 @@ export default function JournalDetailScreen({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState<'reopen' | 'end' | 'retry' | 'delete' | null>(null)
+  const [openingMode, setOpeningMode] = useState<'text' | 'voice'>('text') // 다시 여는 중인 방식(버튼 문구)
   const [menuOpen, setMenuOpen] = useState(false)
   const [titleOpen, setTitleOpen] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -353,11 +354,13 @@ export default function JournalDetailScreen({
     }
   }
 
-  const resume = () =>
-    run('reopen', async () => {
+  const resume = (mode: 'text' | 'voice') => {
+    setOpeningMode(mode)
+    return run('reopen', async () => {
       // 기다리는 사이 화면을 떠났어도 서버에서 이미 다시 열렸으니 대화 화면에 넘기되 갑자기 이동하지 않는다
-      onResume(await reopenSession(id, 'text'), { navigate: mounted.current })
+      onResume(await reopenSession(id, mode), { navigate: mounted.current })
     })
+  }
 
   const endNow = () =>
     run('end', async () => {
@@ -688,11 +691,19 @@ export default function JournalDetailScreen({
               )}
               <button
                 type="button"
+                className="btn btn-act"
+                disabled={busy !== null || otherOpen}
+                onClick={() => void resume('text')}
+              >
+                {busy === 'reopen' && openingMode === 'text' ? '여는 중…' : '글로 이어서'}
+              </button>
+              <button
+                type="button"
                 className="btn btn-primary btn-act"
                 disabled={busy !== null || otherOpen}
-                onClick={() => void resume()}
+                onClick={() => void resume('voice')}
               >
-                {busy === 'reopen' ? '여는 중…' : '글로 이어서'}
+                {busy === 'reopen' && openingMode === 'voice' ? '여는 중…' : '음성으로 이어서'}
               </button>
             </>
           )}

@@ -128,6 +128,8 @@ export type ConversationAction =
   | { type: 'failed'; message: string; code?: string; unsentId?: string }
   // 서버가 받기 전에 대화가 끝나 보내지 못한 사용자 메시지를 조용히 뺀다(오류 문구 없음)
   | { type: 'unsend'; id: string }
+  // 끼어들기: 그 턴(turnId)의 말풍선을 다 들려준 문장(lastPlayed번까지, 없으면 -1)까지만 남긴다. 하나도 없으면 말풍선을 뺀다
+  | { type: 'interrupt'; turnId: string; lastPlayed: number }
   | { type: 'ending' }
   // closing: 서버가 준 마무리 멘트(캐릭터 말풍선으로 보인다)
   | { type: 'ended'; closing?: string }
@@ -176,7 +178,13 @@ function applyTool(tools: ToolState[], event: ToolEvent): ToolState[] {
 function applyEvent(state: ConversationState, event: StreamEvent): ConversationState {
   switch (event.type) {
     case 'transcript':
-      return state // 내 말풍선은 음성 연결(voiceController)이 인식 결과로 만든다(M3-13)
+      // 음성 턴: 인식한 글이 내 말풍선이다(인식 전에는 말풍선이 없다)
+      return {
+        ...state,
+        sending: true,
+        error: null,
+        messages: [...state.messages, { role: 'user', id: `heard-${state.messages.length}`, text: event.text }],
+      }
     case 'turn':
       return {
         ...state,
@@ -279,6 +287,20 @@ export function conversationReducer(
       return applyEvent(state, action.event)
     case 'unsend':
       return { ...state, messages: state.messages.filter((m) => m.id !== action.id) }
+    case 'interrupt': {
+      const messages: Message[] = []
+      for (const message of state.messages) {
+        if (message.role !== 'assistant' || message.id !== action.turnId) {
+          messages.push(message)
+          continue
+        }
+        const sentences = message.sentences.slice(0, Math.max(action.lastPlayed + 1, 0))
+        if (sentences.length > 0) {
+          messages.push({ ...message, sentences, status: 'done', interrupted: true })
+        }
+      }
+      return { ...state, messages, sending: false }
+    }
     case 'failed': {
       const messages = action.unsentId
         ? state.messages.filter((m) => m.id !== action.unsentId)

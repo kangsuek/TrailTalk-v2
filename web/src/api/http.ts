@@ -13,12 +13,23 @@ export class ApiError extends Error {
   }
 }
 
+/** JSON이 아닌 본문(음성 업로드). 바이트를 Content-Type과 함께 그대로 보낸다 */
+export class RawBody {
+  readonly bytes: Uint8Array<ArrayBuffer>
+  readonly contentType: string
+
+  constructor(bytes: Uint8Array<ArrayBuffer>, contentType: string) {
+    this.bytes = bytes
+    this.contentType = contentType
+  }
+}
+
 const NETWORK_ERROR = '서버에 연결할 수 없어요.'
 const GATEWAY_STATUSES = new Set([502, 503, 504])
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-/** 서버 API 요청(본문은 JSON). 응답이 실패면 ApiError를 던진다.
+/** 서버 API 요청(본문은 JSON, RawBody면 바이트 그대로). 응답이 실패면 ApiError를 던진다.
  * 변경성 요청(POST·PUT·PATCH·DELETE)에는 규약 1.5의 X-TrailTalk 헤더를 붙인다(서버 검사는 M6). */
 export async function request(
   path: string,
@@ -28,13 +39,14 @@ export async function request(
 ): Promise<Response> {
   const headers: Record<string, string> = {}
   if (method !== 'GET') headers['X-TrailTalk'] = '1'
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const raw = body instanceof RawBody ? body : null
+  if (body !== undefined) headers['Content-Type'] = raw ? raw.contentType : 'application/json'
   let response: Response
   try {
     response = await fetch(path, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : raw ? raw.bytes : JSON.stringify(body),
       signal,
     })
   } catch (error) {
