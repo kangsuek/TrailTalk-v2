@@ -1,4 +1,4 @@
-// 발화 오디오 인코딩(계획서 S3-10, 클라이언트 규약 3절). VAD가 준 16kHz 모노 Float32를
+// 발화 오디오 인코딩(클라이언트 규약 5절, 계획 M3-10). VAD가 준 16kHz 모노 Float32를
 // WebCodecs Opus(webm)로 담고, 브라우저가 Opus 인코딩을 못 하면 WAV(16bit PCM)로 만든다.
 // 서버는 webm·wav를 변환 없이 그대로 음성 인식에 넘긴다.
 import {

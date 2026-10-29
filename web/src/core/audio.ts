@@ -1,4 +1,4 @@
-// 마이크 입력(AudioInput) 약속과 VAD 설정값(설계서 4.8, 계획서 S3-10, 클라이언트 규약 5절).
+// 마이크 입력(AudioInput) 약속과 VAD 설정값(클라이언트 규약 5·6.6절, 계획 M3-10).
 // 브라우저 구현은 src/platform/audioInput.ts. 테스트에서는 가짜 구현을 끼운다.
 import clientDefaults from '../../../shared/client-defaults.json'
 
@@ -52,7 +52,7 @@ export type AudioInputErrorCode = 'mic_denied' | 'mic_unavailable' | 'vad_failed
 export type AudioInputEvent =
   // rawStartAt: vad-web이 말소리를 처음 잡은 시각(확정 전, 단조 시계 ms). 끼어들기 기록의 감지 → 확정 지연
   | { type: 'speech_start'; rawStartAt?: number }
-  // speechEndedAt: 말소리가 실제로 끝난 시각(무음 대기 전, 단조 시계 ms). 지연 측정(S3-07)
+  // speechEndedAt: 말소리가 실제로 끝난 시각(무음 대기 전, 단조 시계 ms). 지연 측정(core/latency.ts)
   | { type: 'speech_end'; audio: RecordedAudio; speechEndedAt: number }
   | { type: 'error'; code: AudioInputErrorCode }
 
@@ -68,11 +68,12 @@ export type SoundName = 'listen' | 'saved' | 'offline'
 
 /** 재생 대기열에 넣는 소리. index: 답변 문장 번호(인사말·검색 안내·마무리 멘트는 null) */
 export interface PlaybackItem {
-  audio: string | null // base64 MP3. null이면(합성 실패) 길이 0으로 보고 순서대로 넘어간다
+  audio: string | null // base64 MP3. null이면(합성 실패) speechText를 기기 TTS로 읽고, 그것도 없으면 길이 0으로 넘어간다
   index: number | null
+  speechText?: string | null // audio가 null일 때 서버가 함께 보낸 읽을 글(규약 2.4·5절)
 }
 
-// sentence_played: 그 문장을 끝까지 들려줬다. playback_idle: 보내는 순간 대기열이 비어 있다(규약 4절).
+// sentence_played: 그 문장을 끝까지 들려줬다. playback_idle: 보내는 순간 대기열이 비어 있다(규약 6.6).
 // started: 소리 하나가 재생을 시작했다(지연 측정용, 상태 머신에는 넘기지 않는다)
 export type AudioOutputEvent =
   | { type: 'sentence_played'; index: number }

@@ -13,7 +13,7 @@ const ortDist = dirname(createRequire(join(vadDist, 'index.js')).resolve('onnxru
 const versionOf = (dist: string): string =>
   (JSON.parse(readFileSync(join(dist, '..', 'package.json'), 'utf8')) as { version: string }).version
 
-/** 앱 기준 경로(BASE_URL 뒤). 예: vad/0.0.31-1.22.0/ */
+/** 앱 기준 경로(BASE_URL 뒤). 예: vad/0.0.31-1.31.1/ */
 export const VAD_DIR = `vad/${versionOf(vadDist)}-${versionOf(ortDist)}/`
 
 export const VAD_ASSETS = [

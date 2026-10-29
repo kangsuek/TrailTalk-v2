@@ -78,6 +78,24 @@ describe('세션 상태 머신 성질', () => {
     }
   })
 
+  it('종료 확인 창이 열린 채 어떤 이벤트가 와도, 정리·대기로 가면 창을 닫고 그 밖에는 취소·확인이 아닌 한 열려 있다', () => {
+    for (const name of states) {
+      if (name === 'idle' || name === 'closing') continue // 이 상태에서는 창이 열려 있을 수 없다
+      for (const event of events) {
+        const result = transition({ ...initialSession, name, turnId: 't', endConfirmOpen: true }, event)
+        const where = `${name} + ${event.type}`
+        if (result.state.name === 'closing' || result.state.name === 'idle') {
+          expect(result.state.endConfirmOpen, where).toBe(false)
+          expect(result.commands[0], where).toEqual({ type: 'hideEndConfirm' })
+        } else if (event.type === 'end_cancel') {
+          expect(result.state.endConfirmOpen, where).toBe(false)
+        } else {
+          expect(result.state.endConfirmOpen, where).toBe(true)
+        }
+      }
+    }
+  })
+
   it('알 수 없는 이벤트는 상태도 명령도 바꾸지 않는다(서버·플랫폼이 먼저 새 이벤트를 보내도 멈추지 않게)', () => {
     for (const name of states) {
       const state = { ...initialSession, name }

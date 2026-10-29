@@ -301,7 +301,7 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 
 ## 6. 세션 상태 머신
 
-**구현 단계**: M3은 이 절의 부분 구현이다(대기·듣기·처리 중·말하기·정리와 종료 확인). 끼어들기·쉬기(`paused`)·맞장구·병합·오프라인 큐와 클라이언트 무발화 타이머는 M4에서 더한다. 그 전에는 처리 중·말하기의 큰 버튼을 무시하고, 서버가 쉬기로 끝낸 턴은 듣기로 돌아간다.
+**구현 단계**: 상태 머신(`sessionMachine.ts`와 `shared/fixtures/transitions.json`)은 이 절의 끼어들기·쉬기(`paused`)·오프라인 큐·이어 말하기·종료 확인을 M3에서 모두 갖춘다(v1에서 옮긴 사례 33개와 v2 종료 확인 사례). M3 화면은 끼어들기까지 연결한다: 말하기·처리 중 큰 버튼과 말소리는 끼어들기이고 `cancelTurn`은 턴 요청 연결을 끊고 재생을 멈춘다(서버는 연결이 끊긴 시점까지 보낸 문장을 끊긴 답변으로 남긴다, 2.10). 서버 끼어들기 API로 들려준 문장까지만 자르는 `lastPlayed` 전달, 쉬기 버튼, 오프라인 큐 저장소, 맞장구, 병합, 클라이언트 무발화 타이머의 화면 연결과 `[v2]` 맞장구·병합 전이 사례는 M4에서 더한다. 서버가 쉬기 도구로 끝낸 턴(`done.session_status: paused`)은 머신이 쉬기로 보내고 큰 버튼으로 다시 듣는다.
 
 음성 대화는 아래 상태를 오가는 하나의 루프다. 상태 머신은 이벤트를 받아 다음 상태와 **명령**을 돌려주는 순수 함수이고(웹 `web/src/core/sessionMachine.ts`), 마이크·재생·서버 호출·타이머는 화면·플랫폼 계층이 명령을 받아 실행한다. 전이 표 `shared/fixtures/transitions.json`을 웹 테스트(Vitest)가 읽는다. 각 사례는 대기에서 시작해 단계마다 이벤트를 넣고 상태 이름·명령 목록(순서 포함)·지정한 context 값을 확인한다. v1 사례(33개)를 이식하고 `[v2]` 사례를 더한다: 종료 확인(열기·확인·취소, 열린 동안 서버가 끝냄), 맞장구(타이머 → 재생, 첫 문장이 먼저 와서 건너뜀, 겹침, 사용자 발화로 중단), 병합(뒷말 즉시 전송, 앞 턴 `done.superseded`가 뒷말 `turn`보다 먼저 도착, 병합 조건 불충족 각 경우, `turn_in_progress`로 큐에 되돌림).
 
@@ -323,7 +323,7 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 
 - **대화종료 버튼**: 대기·정리를 뺀 모든 상태에서 보이는 보조 버튼(글 대화는 입력창 아래 버튼)이다. context에 `endConfirmOpen`을 둔다.
   - `end_request`: `endConfirmOpen`을 `true`로 하고 `showEndConfirm`을 낸다. 상태는 그대로다(진행 중인 재생·듣기는 그대로 둔다). 이미 열려 있으면 무시한다.
-  - `end_confirm`: `endConfirmOpen`이 `true`일 때만 받는다(아니면 무시). `hideEndConfirm`, 진행 중인 턴이 있으면 `cancelTurn`, 재생 중지, `endSession`을 내고 정리로 간다.
+  - `end_confirm`: `endConfirmOpen`이 `true`일 때만 받는다(아니면 무시). `hideEndConfirm`, 진행 중인 턴이 있으면 `cancelTurn`, 재생 중지(`stopPlayback`은 어느 상태에서든 낸다. 처리 중에도 검색 안내·맞장구 소리가 나고 있을 수 있다), `endSession`을 내고 정리로 간다(마이크 끄기·무발화 타이머 정리 `micOff`·`clearIdleTimer`도 함께 낸다).
   - `end_cancel`: `endConfirmOpen`이 `true`일 때만 `hideEndConfirm`을 내고 `false`로 한다.
   - 확인 창이 열린 동안 `session_closed`·`idle_timeout`·서버가 끝낸 세션 등으로 정리나 대기로 가면 `hideEndConfirm`도 함께 낸다.
   - 확인 창 문구는 화면이 정한다(시안: "대화를 끝낼까요?", 버튼 "끝내고 정리하기"/"계속 대화하기").

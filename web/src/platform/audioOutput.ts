@@ -1,4 +1,5 @@
-// AudioOutput 브라우저 구현(계획서 S3-11, 설계서 4.1 웹 열): Web Audio API로 문장 MP3를 차례로 이어 재생한다.
+// AudioOutput 브라우저 구현(규약 6.6, 계획 M3-11): Web Audio API로 문장 MP3를 차례로 이어 재생한다.
+// 소리가 없는 문장(합성 실패)은 서버가 보낸 speech_text를 기기 TTS(speechSynthesis, ko-KR)로 읽는다.
 // 넣는 즉시 디코드를 시작해(병렬) 문장 사이 공백을 줄이고, 재생은 넣은 순서대로 하나씩 한다.
 // 어떤 경우에도 대기열이 멈추지 않게 한다: 소리가 안 나는 상황(자동 재생 제한, 오디오 중단)에서도
 // 이벤트는 차례로 나가 대화가 이어진다.
@@ -8,6 +9,49 @@ import { metrics } from './metrics'
 interface Queued {
   index: number | null
   buffer: Promise<AudioBuffer | null>
+  speechText: string | null
+}
+
+/** 기기 TTS로 글을 읽는다. done은 다 읽거나 읽지 못하면 끝나고(대기열이 멈추지 않게), cancel은 즉시 멈춘다. */
+export interface DeviceSpeech {
+  done: Promise<void>
+  cancel(): void
+}
+
+export type SpeakOnDevice = (text: string) => DeviceSpeech
+
+const SPEAK_BASE_MS = 3000 // 읽기 끝 알림이 오지 않을 때를 위한 상한: 기본 시간 + 글자당 시간
+const SPEAK_PER_CHAR_MS = 500
+
+export const speakOnDevice: SpeakOnDevice = (text) => {
+  const synth = globalThis.speechSynthesis
+  if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return { done: Promise.resolve(), cancel() {} }
+  let finish: () => void = () => {}
+  const done = new Promise<void>((resolve) => {
+    finish = resolve
+  })
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = 'ko-KR'
+  utterance.onend = finish
+  utterance.onerror = finish
+  const timer = setTimeout(finish, SPEAK_BASE_MS + text.length * SPEAK_PER_CHAR_MS)
+  void done.then(() => clearTimeout(timer))
+  try {
+    synth.speak(utterance)
+  } catch {
+    finish()
+  }
+  return {
+    done,
+    cancel() {
+      try {
+        synth.cancel()
+      } catch {
+        // 이미 끝났다
+      }
+      finish()
+    },
+  }
 }
 
 const RESUME_WAIT_MS = 500 // 멈춘 오디오를 다시 켜기를 기다리는 시간(사용자 동작 밖이면 영영 안 켜진다)
@@ -24,11 +68,13 @@ function bytesOf(base64: string): ArrayBuffer {
 export function createAudioOutput(
   onEvent: (event: AudioOutputEvent) => void,
   effects: Partial<Record<SoundName, string>> = {},
+  speak: SpeakOnDevice = speakOnDevice,
 ): AudioOutput {
   let context: AudioContext | null = null
   let generation = 0 // stop()마다 올려서 그 전에 시작한 디코드·재생의 결과를 버린다
   let queue: Queued[] = []
   let playing: { source: AudioBufferSourceNode; index: number | null; finish: () => void } | null = null
+  let reading: DeviceSpeech | null = null // 지금 기기 TTS로 읽는 중인 문장
   let pumping = false
   let disposed = false
   const effectBuffers = new Map<SoundName, Promise<AudioBuffer | null>>()
@@ -107,6 +153,13 @@ export function createAudioOutput(
           await ready(audioContext())
           if (current !== generation) break
           await play(buffer, item.index)
+        } else if (item.speechText) {
+          // 합성 실패 문장: 글을 기기 TTS로 읽는다(읽기에 실패하면 길이 0으로 넘어간다)
+          metrics.mark('playback_start', { index: item.index, device: true })
+          emit({ type: 'started', index: item.index })
+          const speech = (reading = speak(item.speechText))
+          await speech.done
+          if (reading === speech) reading = null
         }
         if (current !== generation) break
         queue.shift()
@@ -125,6 +178,8 @@ export function createAudioOutput(
     queue = []
     const current = playing
     playing = null
+    reading?.cancel() // 기기 TTS로 읽던 문장도 멈춘다
+    reading = null
     if (current) {
       try {
         current.source.stop()
@@ -143,7 +198,11 @@ export function createAudioOutput(
     },
     enqueue(item: PlaybackItem) {
       if (disposed) return
-      queue.push({ index: item.index, buffer: decode(item.audio ? bytesOf(item.audio) : null) })
+      queue.push({
+        index: item.index,
+        buffer: decode(item.audio ? bytesOf(item.audio) : null),
+        speechText: item.audio ? null : (item.speechText ?? null),
+      })
       void pump()
     },
     stop,

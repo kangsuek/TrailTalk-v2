@@ -1,4 +1,4 @@
-// 음성 모듈(vad-web·onnxruntime·mediabunny, 압축 약 150KB)은 첫 화면 로딩에서 빼고 따로 불러온다.
+// 음성 모듈(vad-web·onnxruntime·mediabunny. 모델·wasm 자산은 별도 파일로 처음 쓸 때 받는다)은 첫 화면 로딩에서 빼고 따로 불러온다.
 // 불러오기 전에 온 호출은 불러온 뒤 같은 순서로 실행한다. 화면이 열릴 때 불러오기 시작하고,
 // 다 불러오기 전에는 음성 대화 시작 버튼을 막는다(오디오는 버튼을 누른 동작 안에서 열어야 하므로).
 // 불러오지 못하면(오프라인, 배포 교체) 멈추지 않고 실패를 이벤트로 알린다.
@@ -77,7 +77,7 @@ export function lazyAudioOutput(
       void withOutput(
         (output) => output.enqueue(item),
         // 소리 없이 들려준 것으로 본다(대화는 글로 이어진다). 넣은 쪽이 머신에 sentence를 먼저
-        // 보내도록 다음 차례에 알린다(규약 4절)
+        // 보내도록 다음 차례에 알린다(규약 6.5)
         () =>
           void setTimeout(() => {
             if (item.index !== null) onEvent({ type: 'sentence_played', index: item.index })

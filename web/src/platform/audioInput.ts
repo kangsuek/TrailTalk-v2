@@ -1,4 +1,4 @@
-// AudioInput 브라우저 구현(계획서 S3-10, 설계서 4.1 웹 열): getUserMedia + Silero VAD(@ricky0123/vad-web).
+// AudioInput 브라우저 구현(규약 6.6, 계획 M3-10): getUserMedia + Silero VAD(@ricky0123/vad-web).
 // 말이 끝나면 16kHz 모노 오디오를 Opus(webm, 안 되면 WAV)로 만들어 speech_end로 넘긴다.
 import { MicVAD } from '@ricky0123/vad-web'
 import type {

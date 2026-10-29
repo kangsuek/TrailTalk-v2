@@ -150,7 +150,7 @@ function enterClosing(state: SessionState, commands: SessionCommand[]): Transiti
   }
 }
 
-/** 큐의 가장 오래된 말을 보통 턴으로 보낸다(연결이 돌아오면 제니가 차례로 대답한다, S3-12). */
+/** 큐의 가장 오래된 말을 보통 턴으로 보낸다(연결이 돌아오면 캐릭터가 차례로 대답한다, 규약 6.5). */
 function sendQueued(state: SessionState, commands: SessionCommand[]): Transition {
   return {
     state: { ...state, ...NEW_TURN, name: 'processing', sendingQueued: true },
@@ -196,11 +196,16 @@ export function transition(
     case 'end_cancel':
       if (!state.endConfirmOpen) return unchanged(state)
       return { state: { ...state, endConfirmOpen: false }, commands: [{ type: 'hideEndConfirm' }] }
-    case 'end_confirm':
-      // 창이 열려 있을 때만 받는다. 길게 누르기와 같은 종료다(창 닫기는 아래에서 앞에 붙는다)
+    case 'end_confirm': {
+      // 창이 열려 있을 때만 받는다. 진행 중인 턴은 취소하고 재생은 어느 상태에서든 멈춘 뒤(검색 안내·맞장구
+      // 소리가 처리 중에 나고 있을 수 있다) 정리로 간다
       if (!state.endConfirmOpen) return unchanged(state)
-      event = { type: 'long_press' }
-      break
+      const closing = enterClosing(state, [...cancelCurrent(state), { type: 'stopPlayback' }])
+      return {
+        state: { ...closing.state, endConfirmOpen: false },
+        commands: [{ type: 'hideEndConfirm' }, ...closing.commands],
+      }
+    }
   }
   const result = step(state, event, config)
   // 창이 열린 채 정리나 대기로 가면(서버가 끝냄·무발화 종료 등) 창도 닫는다

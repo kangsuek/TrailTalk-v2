@@ -257,3 +257,73 @@ describe('createAudioOutput', () => {
     expect(events).toEqual([])
   })
 })
+
+describe('기기 TTS 폴백(소리 없는 문장의 speech_text)', () => {
+  function setupSpeech() {
+    const events: AudioOutputEvent[] = []
+    const spoken: string[] = []
+    const cancelled: string[] = []
+    const pending = new Map<string, () => void>()
+    const output = createAudioOutput(
+      (e) => events.push(e),
+      {},
+      (text) => {
+        spoken.push(text)
+        let done = () => {}
+        const promise = new Promise<void>((resolve) => (done = resolve))
+        pending.set(text, done)
+        return {
+          done: promise,
+          cancel() {
+            cancelled.push(text)
+            done()
+          },
+        }
+      },
+    )
+    return { output, events, spoken, cancelled, pending }
+  }
+
+  it('audio가 null이고 speechText가 있으면 기기 TTS로 읽고, 다 읽으면 다음으로 넘어간다', async () => {
+    const { output, events, spoken, pending } = setupSpeech()
+    output.enqueue({ audio: null, index: 0, speechText: '첫 문장이에요' })
+    output.enqueue({ audio: b64('s1'), index: 1 })
+    await tick()
+    expect(spoken).toEqual(['첫 문장이에요'])
+    expect(nowPlaying()).toBeUndefined() // 읽는 동안 다음 소리는 기다린다
+    pending.get('첫 문장이에요')?.()
+    await tick()
+    expect(events).toContainEqual({ type: 'sentence_played', index: 0 })
+    expect(nowPlaying()).toBe('s1')
+  })
+
+  it('소리가 있는 문장은 speechText가 있어도 기기 TTS를 쓰지 않는다', async () => {
+    const { output, spoken } = setupSpeech()
+    output.enqueue({ audio: b64('s0'), index: 0, speechText: '쓰지 않는다' })
+    await tick()
+    expect(nowPlaying()).toBe('s0')
+    expect(spoken).toEqual([])
+  })
+
+  it('둘 다 없으면 길이 0으로 넘어가고, 읽는 중에 stop하면 읽기를 멈추고 이벤트를 보내지 않는다', async () => {
+    const { output, events, cancelled } = setupSpeech()
+    output.enqueue({ audio: null, index: 0 })
+    await tick()
+    expect(events).toEqual([{ type: 'sentence_played', index: 0 }, { type: 'playback_idle' }])
+    events.length = 0
+    output.enqueue({ audio: null, index: 1, speechText: '읽는 중' })
+    await tick()
+    output.stop()
+    await tick()
+    expect(cancelled).toEqual(['읽는 중'])
+    // stop은 문장·대기열 이벤트를 보내지 않는다(started는 읽기 시작 때 이미 나갔다)
+    expect(events.filter((e) => e.type !== 'started')).toEqual([])
+  })
+
+  it('지연 측정용 started도 기기 TTS로 읽기 시작할 때 보낸다', async () => {
+    const { output, events } = setupSpeech()
+    output.enqueue({ audio: null, index: 2, speechText: '읽는다' })
+    await tick()
+    expect(events).toContainEqual({ type: 'started', index: 2 })
+  })
+})

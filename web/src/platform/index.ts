@@ -2,3 +2,4 @@
 export { createAudioInput } from './audioInput'
 export { createAudioOutput } from './audioOutput'
 export { encodeUtterance, encodeWav } from './encodeAudio'
+export { bindMediaSession, createWakeLock } from './deviceSession'
