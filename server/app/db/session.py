@@ -29,6 +29,16 @@ def create_engine_for(url: str, *, foreign_keys: bool = True) -> AsyncEngine:
 
     # 연결 끊김 등으로 취소된 작업이 죽은 커넥션을 풀에 남겨도 다음 요청이 새로 연결하도록
     engine = create_async_engine(url, pool_pre_ping=True)
+    if is_sqlite and parsed.database and parsed.database != ":memory:":
+        # 기존 서버와 외부 MCP 앱 두 프로세스가 같은 파일을 쓰므로, 읽기가 쓰기를 막지 않게 WAL로
+        # 두고 쓰기 경합은 잠금을 잠시 기다린다(기본은 즉시 "database is locked")
+        @event.listens_for(engine.sync_engine, "connect")
+        def _concurrent_access(dbapi_connection, _record) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA busy_timeout=5000")
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.close()
+
     if is_sqlite and foreign_keys:
 
         @event.listens_for(engine.sync_engine, "connect")

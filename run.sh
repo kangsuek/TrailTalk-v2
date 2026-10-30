@@ -5,6 +5,9 @@
 #   ./run.sh --tmp      임시 데이터(.run/tmp)로 실행. 실제 DB·첨부를 건드리지 않는 확인용
 #   ./run.sh --no-open  브라우저를 열지 않는다
 #   ./run.sh --fake     음성 인식·합성을 과금 없는 가짜로 바꾼다(키 없이 음성 화면 확인용)
+#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)도 함께 띄운다.
+#                       MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 .env에
+#                       없으면 시작하지 않고 안내한다. 토큰 전체 폐기: ./run.sh --mcp-revoke-all
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -18,14 +21,19 @@ PID_FILE="$RUN_DIR/run.pid"
 TMP=0
 OPEN=1
 FAKE=0
+MCP=0
+MCP_REVOKE=0
+MCP_PORT_ENV="${MCP_PORT:-}"
 
 for arg in "$@"; do
   case "$arg" in
     --tmp) TMP=1 ;;
     --no-open) OPEN=0 ;;
     --fake) FAKE=1 ;;
+    --mcp) MCP=1 ;;
+    --mcp-revoke-all) MCP_REVOKE=1 ;;
     -h | --help)
-      sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -88,8 +96,47 @@ if [ -f "$PID_FILE" ] && kill -0 "$(head -n 1 "$PID_FILE")" 2>/dev/null; then
   exit 1
 fi
 
+# 외부 MCP 서버(--mcp)는 공개 주소와 소유자 비밀번호가 있어야 한다. 값은 셸 환경 변수나 저장소 루트의
+# .env에서 읽고(값을 출력하지 않는다), 없으면 서버를 띄우기 전에 멈추고 안내한다.
+mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴표와 뒤의 # 주석을 뗀다)
+  local key=$1 value="${!1:-}"
+  if [ -z "$value" ] && [ -f "$ROOT/.env" ]; then
+    value="$(grep -E "^${key}=" "$ROOT/.env" | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
+    case "$value" in
+      \"*\") value="${value#\"}"; value="${value%\"}" ;;
+      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+      *) value="${value%%[[:space:]]#*}"; value="${value%"${value##*[![:space:]]}"}" ;;
+    esac
+  fi
+  printf '%s' "$value"
+}
+MCP_PORT="${MCP_PORT_ENV:-$(mcp_setting MCP_PORT)}"
+MCP_PORT="${MCP_PORT:-8400}"
+if [ "$MCP" = 1 ] || [ "$MCP_REVOKE" = 1 ]; then
+  if [ "$MCP_REVOKE" = 0 ]; then
+    mcp_url="$(mcp_setting MCP_PUBLIC_URL)"
+    mcp_password="$(mcp_setting MCP_OWNER_PASSWORD)"
+    if [ -z "$mcp_url" ] || [ "${#mcp_password}" -lt 16 ]; then
+      echo "외부 MCP 서버를 시작하지 않습니다. .env(또는 환경 변수)에 다음을 설정하세요:" >&2
+      echo "  MCP_PUBLIC_URL=https://<기기 이름>.<tailnet>.ts.net   (끝 슬래시·경로 없이)" >&2
+      echo "  MCP_OWNER_PASSWORD=<16자 이상 비밀번호>" >&2
+      exit 1
+    fi
+  fi
+fi
+if [ "$MCP_REVOKE" = 1 ]; then
+  if [ "$TMP" = 1 ]; then
+    echo "--mcp-revoke-all은 --tmp와 함께 쓸 수 없습니다(실제 DB의 토큰을 지웁니다)." >&2
+    exit 2
+  fi
+  (cd "$ROOT/server" && uv run python -m app.mcp_external revoke-all)
+  exit $?
+fi
+
 port_in_use() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
-for port in "$API_PORT" "$WEB_PORT"; do
+ports=("$API_PORT" "$WEB_PORT")
+[ "$MCP" = 1 ] && ports+=("$MCP_PORT")
+for port in "${ports[@]}"; do
   if port_in_use "$port"; then
     echo "포트 $port 이(가) 이미 사용 중입니다. 떠 있는 서버를 먼저 끄세요: lsof -nP -iTCP:$port -sTCP:LISTEN" >&2
     exit 1
@@ -163,6 +210,13 @@ wait_for() {
 }
 wait_for "http://127.0.0.1:$API_PORT/api/health" "서버"
 wait_for "http://127.0.0.1:$WEB_PORT" "웹"
+if [ "$MCP" = 1 ]; then
+  # 기존 서버가 DB 스키마를 맞춘 뒤(위 서버 응답) 외부 앱을 띄운다. 외부 앱은 마이그레이션하지 않는다
+  (cd "$ROOT/server" && exec env MCP_PORT="$MCP_PORT" uv run python -m app.mcp_external serve) &
+  PIDS+=($!)
+  wait_for "http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server" "외부 MCP 서버"
+  echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+fi
 URL="http://127.0.0.1:$WEB_PORT"
 echo
 echo "TrailTalk 실행 중: $URL  (서버 http://127.0.0.1:$API_PORT, 종료: Ctrl+C 또는 ./stop.sh)"

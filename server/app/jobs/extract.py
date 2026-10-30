@@ -32,6 +32,7 @@ from app.db.models import (
     ExtractStatus,
     Note,
     NoteKind,
+    SessionMode,
     SessionStatus,
     Turn,
     TurnRole,
@@ -326,6 +327,8 @@ async def run_extraction(app: FastAPI, session_id: str) -> Extraction | None:
         convo = await db.get(ConversationSession, session_id)
         if convo is None or convo.extract_status in (ExtractStatus.DONE, ExtractStatus.FAILED):
             return None
+        if convo.mode is SessionMode.CLAUDE_APP:
+            return None  # 앱 일지·앱 메모는 앱이 정리한 것을 저장한 것이라 다시 정리하지 않는다
         if convo.status is not SessionStatus.ENDED:
             return None  # 다시 연 대화는 다시 끝낼 때 정리한다
         convo.extract_status = ExtractStatus.PENDING

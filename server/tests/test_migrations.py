@@ -19,6 +19,10 @@ TABLES = {
     "note",
     "turn_latency",  # M3: 음성 턴 지연
     "turn_tts",  # M3: 문장별 합성 모델·폴백
+    "oauth_client",  # MA: 외부 MCP OAuth
+    "oauth_pending",
+    "oauth_code",
+    "oauth_token",
 }
 
 
@@ -202,3 +206,64 @@ async def test_chat_model_rejects_unknown_value(db_session):
 
     with pytest.raises(IntegrityError, match="ck_user_profile_chat_model"):
         await _insert_profile(db_session, 1, "gpt")
+
+
+async def test_0005_adds_app_columns_and_keeps_existing_rows(database_url):
+    """0004 데이터가 0005 업그레이드 뒤에도 그대로이고, claude_app 모드·앱 유니크 인덱스가 동작한다.
+    다운그레이드는 claude_app 세션만 지우고 나머지는 남긴다."""
+    import asyncio
+
+    config = alembic_config(database_url)
+    await asyncio.to_thread(command.upgrade, config, "0004")
+    engine = create_engine_for(database_url)
+    async with engine.begin() as conn:
+        await conn.exec_driver_sql(
+            "INSERT INTO conversation_session (id, mode, started_at, status) "
+            "VALUES ('old', 'text', '2026-10-01 00:00:00', 'ended')"
+        )
+    await engine.dispose()
+
+    await asyncio.to_thread(command.upgrade, config, "head")
+    engine = create_engine_for(database_url)
+    async with engine.begin() as conn:
+        old = await conn.exec_driver_sql("SELECT app_kind, app_day FROM conversation_session")
+        assert old.all() == [(None, None)]
+        insert = (
+            "INSERT INTO conversation_session (id, mode, started_at, status, title, app_kind, "
+            "app_day) VALUES (?, 'claude_app', '2026-10-30 00:00:00', 'ended', ?, ?, '2026-10-30')"
+        )
+        await conn.exec_driver_sql(insert, ("a1", "산책", "journal"))
+        await conn.exec_driver_sql(insert, ("m1", "앱 메모", "memo"))
+        # 앱 일지는 턴과 노트를 갖는다(다운그레이드가 자식 행까지 지워야 한다)
+        await conn.exec_driver_sql(
+            "INSERT INTO turn (id, session_id, seq, role, text, interrupted, greeting, created_at) "
+            "VALUES ('t1', 'a1', 1, 'user', '안녕', 0, 0, '2026-10-30 00:00:00')"
+        )
+        await conn.exec_driver_sql(
+            "INSERT INTO note (id, session_id, turn_id, kind, content, starred, done, created_at) "
+            "VALUES ('n1', 'a1', 't1', 'idea', '아이디어', 0, 0, '2026-10-30 00:00:00')"
+        )
+    for dup in (("a2", "산책", "journal"), ("m2", "다른 메모", "memo")):
+        with pytest.raises(Exception, match="UNIQUE"):
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql(insert, dup)
+    async with engine.begin() as conn:
+        await conn.exec_driver_sql(insert, ("a3", "다른 제목", "journal"))  # 제목이 다르면 허용
+        with pytest.raises(Exception, match="CHECK"):
+            await conn.exec_driver_sql(
+                "INSERT INTO conversation_session (id, mode, started_at, status) "
+                "VALUES ('bad', 'nope', '2026-10-30 00:00:00', 'ended')"
+            )
+    await engine.dispose()
+
+    await asyncio.to_thread(command.downgrade, config, "0004")
+    engine = create_engine_for(database_url)
+    async with engine.connect() as conn:
+        ids = (await conn.exec_driver_sql("SELECT id FROM conversation_session")).scalars().all()
+    await engine.dispose()
+    assert ids == ["old"]
+    async with engine.connect() as conn:
+        for table in ("turn", "note"):
+            count = await conn.exec_driver_sql(f"SELECT count(*) FROM {table}")
+            assert count.scalar() == 0
+    await engine.dispose()
