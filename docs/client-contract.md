@@ -24,6 +24,7 @@
 | 종료는 화면의 "대화종료" 버튼(확인 창 포함). 큰 버튼 길게 누르기는 확인 없는 보조 수단 | 6.3 |
 | 남은 토큰 막대는 헤더 오른쪽(시작 화면과 같은 위치), "새 버전 적용" 버튼은 설정 화면 | 1.3, 1.4 |
 | 오프라인 안내 문구는 페르소나 YAML에서 나온다(`client.offline_notice`를 서버가 채운다) | 7, 8 |
+| `[MCP]` Claude 앱 연계: 일지 목록·상세 항목에 출처 필드 `source`(`app`/`web`), 앱 일지·앱 메모 세션은 턴 수와 무관하게 목록에 나옴, 앱 세션은 다시 열기 409·다시 정리 무동작·같은 날 같은 제목 거부(409), 앱 세션의 `persona_name`은 설정값, 외부 MCP 경로는 `X-TrailTalk` 규칙 대상 아님, MCP 전용 포트만 Funnel로 공개. 구현 때 확정한 오류 코드는 9절에 추가 | 1.2, 1.5, 2.11, 3.1, 3.2, 3.3, 9 |
 | v1의 `barge_in_event` API(`POST /api/barge-in-events`)와 `window.__tt_metrics` 훅은 이식하지 않는다 | — |
 
 ## 1. API 공통
@@ -38,7 +39,7 @@
 
 ### 1.2 폰 접속
 
-서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net/`)로 접속한다. 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 서버 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
+서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net/`)로 접속한다. 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(443)와 Funnel의 포트 배치와 폰 접속 주소·`ALLOWED_ORIGINS`는 MA-03에서 확인한 뒤 맞춘다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
 
 ### 1.3 Claude 남은 토큰
 
@@ -61,7 +62,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 2. `Origin`이 있으면 허용 목록(`ALLOWED_ORIGINS`: 서버 자신의 Tailscale 주소, `127.0.0.1:8000`, 개발 중에는 `localhost:5173`)에 있어야 한다. `Origin`이 없는 요청은 1번을 만족하면 받는다.
 3. 본문이 있는 요청은 `Content-Type`이 `application/json`·`multipart/form-data`·`audio/*` 중 하나여야 한다. 서버가 지원하지 않는 오디오 형식이라도 `audio/*`면 이 검사는 통과하고 서버가 `audio_invalid`로 처리한다. 그 밖의 형식은 `csrf_rejected`다. 본문 없는 요청에는 적용하지 않는다.
 
-면제: `/internal/*`(루프백만, 프록시 경유는 403). CORS는 열지 않는다. `GET` 요청과 `<img>`가 읽는 `GET /api/attachments/{id}`에는 헤더를 요구하지 않는다.
+면제: `/internal/*`(루프백만, 프록시 경유는 403). `[MCP]` 외부 MCP 앱(별도 포트)은 `Authorization: Bearer`로만 인증하며 이 규칙의 대상이 아니다. 그 로그인 폼은 자체 CSRF 방어를 둔다. CORS는 열지 않는다. `GET` 요청과 `<img>`가 읽는 `GET /api/attachments/{id}`에는 헤더를 요구하지 않는다.
 
 ## 2. 세션과 턴
 
@@ -167,6 +168,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 `POST /api/sessions/{id}/reopen {mode: "text"|"voice"}` → 200 `{session, greeting: {turn_id, text, audio}, persona, turns: [턴]}`. 본문이나 `mode`를 빼면 `text`이고, `persona`는 2.2와 같은 형식이다.
 
+- `[MCP]` 앱 세션(`mode: claude_app`)은 다시 열지 않고 409로 거절한다(코드는 구현 때 정해 9절 표에 추가).
 - 끝난 대화를 같은 세션으로 다시 열어 이어서 대화한다(일지 상세의 "글로 이어서"·"음성으로 이어서"). 끝나지 않은 대화(대화 화면을 닫았거나 다른 기기에서 남은 대화)도 같은 요청으로 이어받는다: 서버는 지금 CLI를 닫고 끝난 대화처럼 새로 띄운다(실패하면 원래 진행 중 상태로 남는다). `mode`는 이번에 쓸 방식이며 처음과 달라도 된다. 다시 연 대화는 그 대화를 시작한 페르소나로 이어 간다(그 페르소나 파일이 없으면 지금 프로필의 페르소나).
 - 서버는 저장된 전문을 새 프롬프트에 넣어 캐릭터를 다시 띄운다(일지 정리가 끝났고 전문이 길면 앞부분은 정리(제목·요약·확인할 것·노트)로 대신하고 최근 원문 약 4천 자만 넣는다). 직전 이야기를 짚는 **재개 인사말**(`greeting`, 음성이면 `audio`)을 전문 끝에 새 턴으로 남긴다. 재개 인사말에는 호칭을 쓰지 않는다. 재개 인사말 턴은 첫 인사말처럼 끼어들어도 잘리지 않는다.
 - `turns`는 그 인사말까지 포함한 전체 전문(일지 상세의 `turns`와 같은 형식)이라 클라이언트는 이것으로 이전 말풍선을 채운다.
@@ -229,9 +231,9 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 `GET /api/journal?from=YYYY-MM-DD&to=YYYY-MM-DD` → 일지 목록(최신순). 날짜는 서버 시간대의 현지 날짜이고 둘 다 포함하며, 생략하면 최근 30일이다(한 번에 366일까지, 2000-01-01~9998-12-31 밖이거나 범위가 틀리면 422 `invalid_range`).
 
-- 사용자가 한마디도 하지 않은 대화는 빠진다. 진행 중인 대화(`status: active`)는 나온다.
+- 사용자가 한마디도 하지 않은 대화는 빠진다. 진행 중인 대화(`status: active`)는 나온다. `[MCP]` 예외: 앱 일지·앱 메모 세션(`mode: claude_app`)은 턴 수와 무관하게 나온다.
 - `[v2]` 보기 전환(날짜별/아이디어별)과 정렬은 없다. 키워드 검색(`q`)은 P2(FR-15)에서 추가하며, 그때 이 절에 더한다. 클라이언트는 `date`로 날짜별로 묶어 최신순으로만 보인다(시간대 계산을 하지 않는다). `topics`는 없다.
-- 항목: `{id, date, started_at, ended_at, status, title, summary: [줄], tags, journal_status, counts: {idea, todo, memo}}`.
+- 항목: `{id, date, started_at, ended_at, status, title, summary: [줄], tags, journal_status, counts: {idea, todo, memo}, source}`. `[MCP]` `source`는 `"app"`(Claude 앱에서 저장)·`"web"`이다. 클라이언트는 모르는 값을 `web`처럼 다룬다.
 - `journal_status`는 `pending`(정리 중)·`done`·`failed`(정리 실패)·`null`(정리 기록 없음: 아직 끝나지 않은 대화, 또는 정리가 생기기 전에 끝난 대화)이다.
 - 진행 중 항목은 "대화 중" 알약으로 보이고 누르면 대화 화면으로 돌아간다. 진행 중인 대화는 지울 수 없다.
 
@@ -242,13 +244,13 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 - `turns`는 전문이고 `interrupted`는 끝까지 말하지 못한 답변이다. `[v2]` `merged_from`은 병합된 뒷말의 앞말 턴 ID이며, 두 행을 한 말풍선으로 보인다(없으면 `null`).
 - **인용**: 검색으로 알게 된 요약 줄·메모에는 근거 출처 번호가 붙는다. `summary_cites[i]`는 `session.summary[i]`의 번호(같은 길이, 없으면 빈 목록), 노트의 `cites`는 그 메모의 번호, `citations`는 `[{n, title, url}]`이다. 클라이언트는 문장 끝에 `[1][2]`를, 맨 아래 "인용:" 아래에 `[n] 제목 URL`(제목은 링크, http(s)만)을 그린다. 번호는 서버가 대화 중 캐릭터가 본 검색 결과에 맞춰 검증하고 1부터 다시 매긴 것이다. 검색하지 않은 대화·예전 일지는 빈 목록이다.
 - **표시 형식**: `checks`가 null이 아니면 새 형식이다. `session.summary` 첫 줄은 결론(굵게), 나머지 줄은 "알게 된 것", `checks`는 "확인할 것"으로 그리고, 태그는 인용 뒤 맨 아래에 둔다. `checks`가 null이면 예전 형식(요약 줄 목록)이며, 끝난 대화면 다시 정리해 새 형식으로 바꿀 수 있다(다시 정리해도 노트는 새로 넣지 않는다).
-- 전문의 캐릭터 화자 이름은 `persona_name`(그 세션의 페르소나 이름, 그 파일이 없으면 기본 페르소나)을 쓴다(코드에 두지 않는다).
+- 전문의 캐릭터 화자 이름은 `persona_name`(그 세션의 페르소나 이름, 그 파일이 없으면 기본 페르소나)을 쓴다(코드에 두지 않는다). `[MCP]` 앱 세션은 설정값(기본 "Claude")을 내려주며 코드에 박지 않는다. 앱 세션은 `checks=[]`로 새 형식을 쓴다. 앱이 메모 노트를 지우거나 노트를 고치면 `counts`와 메모 인용 번호(`cites`)가 달라질 수 있다.
 - **정리 상태 갱신**: `journal_status`가 `pending`인 동안 목록·상세를 3초마다(최대 약 2분) 다시 불러와 정리가 끝난 것을 보여 준다.
 
 | 요청 | 결과 |
 |---|---|
-| `POST /api/journal/{id}/retry` | 202 일지 항목. 정리에 실패했거나(`failed`) 정리 기록이 없는(`null`) 끝난 대화, 또는 예전 형식(`done`인데 `checks`가 null)을 다시 정리한다. 정리 중·완료면 아무것도 하지 않고 그대로 준다. 끝나지 않은 대화는 409 `session_not_ended` |
-| `PATCH /api/journal/{id} {title}` | 바뀐 일지 항목. 줄바꿈·연속 공백은 한 칸으로 줄인 뒤 1~200자. 없으면 404 `session_not_found`. 고친 제목은 다시 정리해도 바뀌지 않는다 |
+| `POST /api/journal/{id}/retry` | 202 일지 항목. 정리에 실패했거나(`failed`) 정리 기록이 없는(`null`) 끝난 대화, 또는 예전 형식(`done`인데 `checks`가 null)을 다시 정리한다. 정리 중·완료면 아무것도 하지 않고 그대로 준다. 끝나지 않은 대화는 409 `session_not_ended`. `[MCP]` 앱 세션이면 아무것도 하지 않는다 |
+| `PATCH /api/journal/{id} {title}` | 바뀐 일지 항목. 줄바꿈·연속 공백은 한 칸으로 줄인 뒤 1~200자. 없으면 404 `session_not_found`. 고친 제목은 다시 정리해도 바뀌지 않는다. `[MCP]` 앱 일지는 같은 날 같은 제목을 거부한다(409, 코드는 구현 때 정해 9절에 추가). 앱 메모 세션의 제목은 바꿀 수 없다(409) |
 | `DELETE /api/journal/{id}` | 204. 대화와 노트·전문·지연 기록·보관한 녹음을 모두 지운다. 진행 중(`active`)이면 409 `session_active`(끝낸 뒤 지운다), 답변을 만드는 중이면 409 `turn_in_progress`, 쉬는 중(`paused`)이면 CLI를 정리하고 지운다. 정리 중이던 일지 정리는 멈춘다 |
 
 P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내보낸다(FR-16). 만들 때 이 표에 추가한다.
@@ -258,6 +260,8 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 ### 3.3 노트
 
 `PATCH /api/notes/{id} {starred?, done?, content?}` → 바뀐 노트. 아이디어의 `done`은 다 했거나 접은 아이디어를 닫는 데 쓴다(다음 대화의 기억에서 빠진다). 보낸 필드만 바꾸며 `content`는 앞뒤 공백을 뺀 1~500자이고 여러 줄도 된다. 없으면 404 `note_not_found`.
+
+`[MCP]` 노트 삭제는 웹 API가 없고 Claude 앱 MCP만 제공한다. 앱은 출처와 무관하게 웹에서 만든 노트도 고칠 수 있고, 같은 노트를 웹과 앱이 고치면 마지막에 쓴 것이 남는다. 웹에 노트 삭제 버튼·API를 더할지는 별개 결정이다.
 
 ### 3.4 시작 화면 "지난 아이디어 이어 가기"
 

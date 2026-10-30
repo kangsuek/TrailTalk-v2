@@ -43,20 +43,21 @@
 | FR-09 | 브레인스토밍: 한 번에 질문 1개, 넓히기 → 구체화 → 다음 행동 → 정리 | P1 | 계승 |
 | FR-10 | "지금까지 정리해줘"에 아이디어를 3개 이내로 요약해 들려준다 | P1 | 계승 |
 | FR-11 | 최근 7일 일지와 열린 아이디어를 기억해 이어서 말한다 | P1 | 계승 |
-| FR-12 | 모든 턴을 오가는 즉시 DB에 쓴다. 음성 원본은 설정으로 30일 보관(기본 끔) | P1 | 계승 |
+| FR-12 | 모든 턴을 오가는 즉시 DB에 쓴다. 음성 원본은 설정으로 30일 보관(기본 끔; 음성 원본 보관은 **보류**) | P1 | 계승 |
 | FR-13 | 세션 종료 시 제목·요약·아이디어·할 일·메모·태그를 자동 추출한다 | P1 | `[v2]` 사용자가 수락한 것만 아이디어로(5.5) |
 | FR-14 | 일지를 날짜별 최신순 목록으로 보고 별표·완료 표시, 제목 수정, 삭제(단건·선택)를 한다 | P1 | 계승 |
 | FR-15 | 키워드로 일지·아이디어를 검색하는 화면 검색(`GET /journal?q=`)을 만든다. 제니 도구 `search_notes`·`search_conversations`는 M1~M2에서 별도로 만든다 | P2 | v1 미구현(v1 `GET /journal`에 `q` 없음) |
 | FR-16 | 일지를 Markdown으로 내보낸다 | P2 | 계승(v1 미구현) |
-| FR-17 | 설정: 호칭, 이메일, 관심사, 보이스(미리 듣기), 말 속도, 맞장구 켜기·끄기, 대화 모델, 음성 원본 보관, 화면 모드 | P1 | 계승 |
+| FR-17 | 설정: 호칭, 이메일, 관심사, 보이스(미리 듣기), 말 속도, 맞장구 켜기·끄기, 대화 모델, 음성 원본 보관, 화면 모드(보이스·말 속도·맞장구·음성 원본 보관은 **보류**) | P1 | 계승 |
 | FR-18 | 주간 트렌드·행사 브리핑. 세션 시작 인사 뒤 "이번 주 소식 들을래요?"라고 묻고 사용자가 원할 때만 재생한다 | P2 | 계승(v1 미구현) |
-| FR-19 | Claude Code에서 일지를 조회하는 MCP 서버 | P2 | 계승(v1 미구현) |
+| FR-19 | Claude 앱에서 일지·노트를 조회·저장·수정·삭제하는 MCP 서버(외부 MCP `/mcp`, OAuth 보호, 도구 13개). 요구사항·결정은 [MCP/Spec.md](MCP/Spec.md) | P1 | `[MCP]` 2026-10-30에 P2에서 P1로 확장 |
 | FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`, 해외는 `search_USA`, 오류 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
 | FR-21 | "이메일로 보내줘"에 설정한 본인 주소로 요약·노트·전문을 보낸다 | P2 | 계승 |
 | FR-22 | 글 대화에서 이미지(png·jpg·webp·gif)·텍스트(txt·md·csv·json)·PDF를 첨부해 질문한다 (한도: 메시지당 3개, PDF는 1개·10쪽) | P1 | 계승 |
-| FR-23 | 시작 화면에 "지난 아이디어 이어 가기" 카드, 서버 연결 상태, Claude 남은 토큰 막대를 보인다 | P1 | 계승 |
+| FR-23 | 시작 화면에 "지난 아이디어 이어 가기" 카드, 서버 연결 상태, Claude 남은 토큰 막대를 보인다("음성으로" 시작 선택 등 자체 음성 항목은 **보류**) | P1 | 계승 |
 | FR-24 | `[v2]` 답변·일지의 마크다운(굵게, 링크, 목록)을 화면에서 안전하게 렌더링한다(5.4) | P1 | 신규 |
 | FR-25 | `[v2]` 서버 설정 파일에 등록한 외부 MCP 서버의 허용된 도구를 대화 중에 쓴다(5.6) | P2 | 신규 |
+| FR-26 | `[MCP]` Claude 앱에서 저장한 일지·노트를 웹 일지 화면에서 보고 노트를 고친다(조회·노트 수정은 MFR-09, 출처 표시 UI는 P2·시안 수정 뒤, MFR-12) | P1 | 신규 |
 
 ### 3.2 비기능 요구사항
 
@@ -67,7 +68,7 @@
 | NFR-03 | 인식 품질 | 실제 등산로에서 발화 인식률 90% 이상(산책 1회의 발화 50문장 이상을 정답과 대조, 기기와 날씨 기록) |
 | NFR-04 | 통신 불안정 | 음영지에서 기록 유실 0건. 단, 기기에 30일을 넘게 보관한 녹음과 기록 전송이 5번 실패한 녹음은 버린다 |
 | NFR-05 | 배터리 | 1시간 세션에 10% 이내(참고 지표, 기기·화면 밝기와 측정값 기록) |
-| NFR-06 | 개인정보 | 대화·음성·첨부는 본인 서버에만 저장. 키·토큰은 서버에만. 예외는 FR-21·FR-25 |
+| NFR-06 | 개인정보 | 대화·음성·첨부는 본인 서버에만 저장. 키·토큰은 서버에만. 예외는 FR-21·FR-25와 앱 연계(FR-19: 일지·노트 내용이 사용자의 Claude 계정(Anthropic)으로 전달된다) |
 | NFR-07 | 페르소나 일관성 | 답변 샘플 20개 중 18개 이상이 톤 체크리스트 통과 |
 | NFR-08 | 설정 분리 | 캐릭터 이름·성격·말투·보이스·안내 문구는 코드가 아닌 `personas/*.yaml`로 바꾼다 |
 | NFR-09 | `[v2]` 음성 신뢰성 | TTS가 멈춰도 문장이 소리 없이 사라지지 않는다. 합성 실패 시 글은 반드시 보이고 재시도·대체 모델 후 기기 TTS로 폴백한다(5.2) |
@@ -81,7 +82,12 @@
  오프라인 큐              일지 추출, MCP 도구 서버       └─ MCP 도구(save_note, 검색 등)
                           SQLite(Alembic)
 외부: OpenAI STT/TTS, Tavily, 네이버 검색, SMTP(FR-21)
+
+[MCP] Claude 앱 ──HTTPS(Funnel, MCP 전용 포트)──> 외부 MCP 앱(별도 ASGI 앱·포트, /mcp, OAuth)
+                                                  └─ app/services/(일지·노트·기억, 웹 API·내부 MCP와 공유) ── 같은 SQLite
 ```
+
+자체 음성(STT/TTS·VAD 경로)은 2026-10-30부터 **보류**다(D9). 병합된 코드는 유지한다. 외부 MCP의 구조는 [MCP/design.md](MCP/design.md)를 따른다.
 
 ### 4.1 기술 스택 (v1 유지, D4)
 
@@ -97,7 +103,7 @@
 ### 4.2 저장소 구조
 
 ```
-server/   app/{api,voice,persona,llm,mcp,services,jobs,db}, personas/, migrations/, tests/
+server/   app/{api,voice,persona,llm,mcp,mcp_external `[MCP]`,services,jobs,db}, personas/, migrations/, tests/
 web/      src/{core,platform,screens,api}, e2e/
 shared/   sounds/, fixtures/transitions.json, client-defaults.json
 docs/     Intent.md, Spec.md, client-contract.md, implementation-plan.md, design/ (마일스톤 검증 기록은 필요할 때 추가)
@@ -225,6 +231,8 @@ v1 서버가 남긴 `turn_latency` 기록(2026-10-18~21, 실제 사용 314행 �
 
 ### 5.6 제니(페르소나) 도구
 
+도구 서버는 둘이다. 내부 도구 서버(`/internal/mcp`, 이 절의 표)는 Claude CLI 전용이고 루프백만 허용한다. 외부 도구 서버(`/mcp`, `[MCP]`)는 Claude 앱용 별도 ASGI 앱·포트이며 OAuth로 보호한다. 외부 13개 도구는 [MCP/tools.md](MCP/tools.md)를 따르고, 두 서버는 `app/services/`의 로직을 공유한다. 아래 "외부 MCP" 절은 이와 달리 CLI가 연결하는 외부 서버(FR-25)의 이야기다.
+
 | 도구 | 역할 | 제약 |
 |---|---|---|
 | `save_note` | idea/todo/memo 즉시 저장, 짧게 복창 | 검색 직후 턴의 쓰기 도구 호출은 서버가 검증 |
@@ -267,7 +275,7 @@ ID는 UUID 문자열, 시각은 UTC. 열거값은 DB CHECK 제약, 스키마 변
 
 | 테이블 | 주요 컬럼 |
 |---|---|
-| `conversation_session` | id, mode(text/voice), started_at, ended_at, status(active/paused/ended), title, summary, tags, summary_cites, citations, checks, extract_status(pending/done/failed/null; API 필드명은 `journal_status`), title_edited, reopened_at, persona_id `[v2]`, system_prompt(시작 때 고정), cli_session_id |
+| `conversation_session` | id, mode(text/voice/claude_app `[MCP]`), started_at, ended_at, status(active/paused/ended), title, summary, tags, summary_cites, citations, checks, extract_status(pending/done/failed/null; API 필드명은 `journal_status`), title_edited, reopened_at, persona_id `[v2]`, system_prompt(시작 때 고정), cli_session_id, app_kind(journal/memo/null)·app_day `[MCP]` |
 | `turn` | id, session_id, seq, role, text, audio_path, interrupted, greeting, sources(출처 JSON), merged_from `[v2]`, created_at |
 | `attachment` | id, turn_id(CASCADE), name, mime, size, path, thumb_path, chars, pages. 파일은 `attachments_dir/{session_id}/`(폴더 0700·파일 0600) |
 | `note` | id, session_id, turn_id, kind(idea/todo/memo), content, cites, starred, done, created_at |
@@ -275,6 +283,7 @@ ID는 UUID 문자열, 시각은 UTC. 열거값은 DB CHECK 제약, 스키마 변
 | `persona` | id, yaml 경로, version(YAML 내용 해시), updated_at |
 | `user_profile` | 단일 행: nickname, email, interests[], persona_id, voice, speaking_rate, ack_enabled `[v2]`, chat_model, keep_audio |
 | `pending_upload` (기기 로컬 IndexedDB) | id, session_id, audio, recorded_at, retry_count, record_only |
+| `oauth_*` `[MCP]` | 외부 MCP의 OAuth 테이블 3종(클라이언트·인가 코드·토큰, 토큰은 해시 저장). 열·제약은 [MCP/design.md](MCP/design.md) |
 | `briefing` (P2) | id, week_start, script_text, audio_path, sources_json |
 
 v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_metrics` 훅은 v2에 이식하지 않는다. 끼어들기 기록이 필요해지면 M4에서 추가한다. `persona_id`는 일지 전문의 화자 이름이 현재 페르소나가 아닌 그 세션의 페르소나를 따르게 하려는 것이다. 프로필 값의 제약(호칭 1~20자, 관심사 10개 등)은 `client-contract.md` 이식으로 갈음한다.
@@ -293,9 +302,9 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | POST | /sessions/{id}/turns/audio/record | 인식만 해 기록(답변 없음) |
 | POST | /sessions/{id}/turns/{turn_id}/cancel | 끼어들기 `{last_played}` |
 | POST | /sessions/{id}/turns/{turn_id}/latency | 클라이언트 지연 보고 |
-| POST | /sessions/{id}/reopen | 끝난(또는 열려 있지 않은 진행 중) 세션을 다시 열어 이어서 대화 |
+| POST | /sessions/{id}/reopen | 끝난(또는 열려 있지 않은 진행 중) 세션을 다시 열어 이어서 대화. `[MCP]` 앱 세션은 409로 거절 |
 | POST | /sessions/{id}/end | 종료 + 마무리 멘트 + 추출 시작 |
-| GET | /journal?from=&to= | 목록 (`q` 검색은 FR-15, P2) |
+| GET | /journal?from=&to= | 목록 (`q` 검색은 FR-15, P2). `[MCP]` 항목에 출처 필드, 앱 일지·앱 메모는 턴 수와 무관하게 나옴 |
 | GET/PATCH/DELETE | /journal/{id} | 상세 / 제목 수정 / 삭제 |
 | POST | /journal/{id}/retry | 정리 다시 하기 |
 | GET | /journal/{id}/export.md | Markdown 내보내기 (P2) |
@@ -327,10 +336,11 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 ## 9. 보안과 개인정보
 
 - 데이터는 본인 서버에만 둔다. 키(OpenAI, Tavily, 네이버, SMTP)와 Claude 토큰은 서버 `.env`에만 둔다(`.env`는 읽지 않고, 값이 없어도 서버는 시작한다).
-- Tailscale Serve로 tailnet 안에서만 HTTPS를 연다. 공개 Funnel은 쓰지 않는다. `/internal/*`(앱 도구 경로)은 프록시 경유 요청을 403으로 막는다.
+- Tailscale Serve로 tailnet 안에서만 HTTPS를 연다. 공개 Funnel은 MCP·OAuth 전용 포트에만 쓰고 `/api`·웹·`/internal`은 공개하지 않는다(`[MCP]`, 포트 배치는 MCP/design.md 1.1). `/internal/*`(앱 도구 경로)은 프록시 경유 요청을 403으로 막는다.
 - `[v2]` **CSRF 방어(NFR-10)** (D3): 변경성 요청(POST/PUT/PATCH/DELETE)은 ① 커스텀 헤더 `X-TrailTalk: 1`을 가져야 한다. 이 헤더가 교차 출처 요청에 CORS 사전 요청을 강제하고 CORS는 열지 않으므로 이것이 주된 방어선이다. ② `Origin`이 있으면 허용 목록(`ALLOWED_ORIGINS`, 기본은 서버 자신의 Tailscale 주소·`127.0.0.1:8000`, 개발 중에는 `localhost:5173`)에 있어야 한다. `Origin`이 없는 요청은 ①을 만족하면 받는다. ③ 본문이 있는 요청은 `Content-Type`이 `application/json`·`multipart/form-data`·지정한 오디오 형식이어야 한다(본문 없는 요청에는 적용하지 않는다). 면제: `/internal/*`(루프백만, 프록시 경유 403), `GET /api/health`. 오디오 업로드처럼 본문이 바이트인 요청도 ①을 요구한다. 수락 기준: 다른 출처 페이지에서 보낸 단순 POST/DELETE가 모두 거절되는 시험.
 - 첨부: 서버가 이미지를 재인코딩(EXIF 제거), 텍스트는 `<attachment>` 래퍼로 감싸 안의 지시를 따르지 않게 한다. `GET /attachments/{id}`는 UUID 추측 불가성과 네트워크 경계로 보호한다(`<img>`가 헤더를 못 붙인다). 항상 `X-Content-Type-Options: nosniff`.
 - 웹 내용 인젝션: 검색·fetch·외부 MCP 도구 직후 턴의 쓰기 도구는 서버가 검증한다. `set_nickname`·`set_model`·`send_email`은 첨부·웹이 아닌 사용자 발화만 근거로 한다. 알려진 한계: 발화에 "메일"이 있으면 그 턴의 검색 결과가 지시한 본문이 본인 주소로 나갈 수 있다(받는 사람은 바뀌지 않음).
+- `[MCP]` 외부 MCP 앱(FR-19): OAuth·토큰 해시 저장·로그인 시도 제한·DCR 제한, 쓰기·삭제 도구의 인젝션 방어(서버가 강제하는 2단계 확인 `confirm_token`, 사용자가 두 호출 사이에 확인했는지는 서버가 보장하지 못하는 한계), 외부 MCP 경로의 CSRF 규칙(`Authorization: Bearer`만 인증하고 로그인 폼은 자체 CSRF 방어)을 [MCP/Spec.md](MCP/Spec.md) 9절과 [MCP/design.md](MCP/design.md)가 정한다.
 - 음성 원본은 기본 저장하지 않는다. 켜면 본인만 읽을 수 있는 권한으로 30일 보관 후 삭제한다.
 - `[v2]` 외부 MCP(FR-25): stdio 서버는 서버 머신에서 명령을 실행하므로 설정 파일 접근이 신뢰 경계다. 외부 서비스형 서버는 모델이 도구 인자로 넣은 내용(검색어·발화 일부, 첨부·일지 내용이 섞일 수도 있다)이 서버 밖으로 나갈 수 있어 NFR-06의 예외이며 예시 파일에 주석으로 밝힌다. 외부 서버가 임의 URL을 가져오는 도구를 제공하면 D7(WebFetch 차단)의 범위 밖이므로 허용 목록으로만 통제한다.
 
@@ -365,11 +375,12 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | M0 | 기반: 저장소 뼈대, 설정, 오류 형식, DB+Alembic, 페르소나 로더·조립기, `client-contract.md` 이식(v2 계약 변경 반영), OpenAPI→TS 생성, `core` 비의존 린트 | pytest·lint·빌드 통과, `/api/health` |
 | M1 | 글 대화: Claude CLI 세션 매니저, SSE 턴, 즉시 기록, 도구(`save_note`, `pause_session`, `end_session` 등), 서버 무발화 종료, 프롬프트 스냅샷 | 글로 대화하고 DB에 즉시 기록, 톤 평가 18/20 |
 | M2 | 일지: 종료·추출·재시도·제목 수정·삭제, 일지 화면, 이어서 하기, 시작 화면 카드·연결 상태, 마크다운 렌더링(FR-24) | 실제 글 대화 3개의 일지가 맞게 추출, 수락하지 않은 제안 미추출 |
-| M3 | 음성: VAD·녹음·STT·문장 TTS(폴백 포함)·재생, 상태 머신, 지연 계측(5.1 구간 표) | PC와 폰에서 음성 대화, TTS 100문장 무손실, 지연 30턴 측정 보고(구간 표 채움) |
-| M4 | 신뢰성: 끼어들기, 오프라인 큐, 쪼개진 발화 병합(D2), 맞장구·첫 문장 짧게 분할(5.1), 클라이언트 쉬기·무발화 종료 | 비행기 모드 유실 0, 병합 시나리오 15회(5.3), 60턴 지연 판정: 첫 반응 2.2초·첫 답변 6.9초/p90 9.0초 |
+| M3 | 음성: VAD·녹음·STT·문장 TTS(폴백 포함)·재생, 상태 머신, 지연 계측(5.1 구간 표). **부분 종료(2026-10-30)**: M3-01~15 병합, M3-16~19(E2E·실측)는 보류(D9) | PC와 폰에서 음성 대화, TTS 100문장 무손실, 지연 30턴 측정 보고(구간 표 채움) |
+| M4 | 신뢰성: 끼어들기, 오프라인 큐, 쪼개진 발화 병합(D2), 맞장구·첫 문장 짧게 분할(5.1), 클라이언트 쉬기·무발화 종료. **음성 항목은 보류(D9)** | 비행기 모드 유실 0, 병합 시나리오 15회(5.3), 60턴 지연 판정: 첫 반응 2.2초·첫 답변 6.9초/p90 9.0초 |
 | M5 | 확장 기능: 검색 도구·출처 인용, 파일 첨부, 설정 화면, 이메일, 사용량 막대, WebFetch 차단(D7), 외부 MCP 연결(FR-25, D8) | 도구·첨부·설정 E2E, 폰에서 첨부 확인, 검색 턴 지연 판정(5.1), 가짜 외부 MCP 서버로 허용·비허용 도구를 호출하는 E2E(허용 밖은 호출되지 않음) |
 | M6 | 보안·마무리: CSRF 방어(D3), 안전장치, PWA, iOS Safari 확인, 실제 산책 1회(NFR-01/03/05 측정) | 보안 테스트 통과, 산책 측정 기록 |
-| P2 | Markdown 내보내기, 검색, 주간 브리핑, 일지 조회 MCP | 별도 계획 |
+| MA `[MCP]` | Claude 앱 MCP 연계(FR-19·FR-26): 서비스 계층 추출, 스키마·OAuth, 도구 13개, 웹 노출·E2E·폰 실측. 묶음 A~D는 [MCP/implementation-plan.md](MCP/implementation-plan.md) | 도구 시험·OAuth 시험 통과, 앱 저장 일지가 웹에 보임, 폰 실측 |
+| P2 | Markdown 내보내기, 검색, 주간 브리핑 | 별도 계획 |
 
 ## 13. 결정 사항
 
@@ -383,6 +394,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | D6 | 브리핑 관심사 초기 목록(P2) | P2 때 정한다 |
 | D7 | CLI 내장 `WebFetch`는 서버가 가로챌 수 없다. `localhost`·사설 대역 차단 수단 | **확정(2026-10-22)**: M5 스파이크에서 CLI 권한 규칙으로 가능한지 확인하고, 불가능하면 내장 `WebFetch`를 끄고 서버가 검사하는 MCP `web_fetch`를 만든다 |
 | D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. 검색용 후보 서버 채택·`web_search` 표시와 이름 변경은 M5 스파이크에서 결정 |
+| D9 | 음성 대화를 어떻게 할까? | **확정(2026-10-30)**: 음성은 Claude 앱 연계(외부 MCP `/mcp`, 별도 ASGI 앱·포트)가 맡고 자체 음성(M3-16~19, M4 음성 항목)은 **보류**한다. 병합된 M3-01~15는 유지. 앱이 수정·삭제할 수 있는 범위는 노트는 출처 무관, 일지는 앱 출처만이고, 삭제는 서버가 강제하는 2단계 확인이다. 근거와 세부는 [MCP/README.md](MCP/README.md) 결정 1·2·7·9·10·12 |
 
 ## 14. 성공 기준
 
