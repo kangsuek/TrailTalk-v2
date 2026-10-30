@@ -91,6 +91,32 @@ class Settings(BaseSettings):
     ffmpeg_path: str = "ffmpeg"
     ffmpeg_timeout_s: float = Field(default=10, gt=0)
 
+    # Claude 앱 MCP 연계(외부 MCP 앱, 별도 포트, docs/MCP). 공개 주소와 소유자 비밀번호가 둘 다
+    # 있어야 외부 앱을 띄울 수 있다(app/mcp_external/config.py가 검증). 저장소에는 값을 두지 않는다
+    mcp_public_url: str = ""
+    mcp_owner_password: SecretStr | None = None
+    mcp_port: int = Field(default=8400, ge=1, le=65535)
+    # OAuth 리다이렉트 허용 목록(쉼표 구분). 비면 Claude 콜백 하나
+    mcp_allowed_redirects: Annotated[tuple[str, ...], NoDecode] = ()
+    # 동적 클라이언트 등록(DCR) 수 상한
+    mcp_max_clients: int = Field(default=50, gt=0)
+    # 도구 호출 기록(이름·시각·성공 여부·대상 id만, 내용은 남기지 않는다)
+    mcp_call_log: Path = SERVER_DIR / "data" / "mcp-calls.jsonl"
+
+    @field_validator("mcp_owner_password", mode="before")
+    @classmethod
+    def _blank_mcp_password_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("mcp_allowed_redirects", mode="before")
+    @classmethod
+    def _split_redirects(cls, value: object) -> object:
+        if isinstance(value, str):
+            return tuple(item.strip() for item in value.split(",") if item.strip())
+        return value
+
     @field_validator("log_level")
     @classmethod
     def _valid_log_level(cls, value: str) -> str:
