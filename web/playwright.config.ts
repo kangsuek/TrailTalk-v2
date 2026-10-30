@@ -5,6 +5,7 @@ import { defineConfig } from '@playwright/test'
 // 사용자의 실제 서버(8000)와 DB(server/data)는 건드리지 않는다(CLAUDE.md).
 const API_PORT = 8100
 const WEB_PORT = 5174
+const MCP_PORT = 8401
 const DATA_DIR = '.e2e/data'
 
 export default defineConfig({
@@ -33,6 +34,19 @@ export default defineConfig({
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // Claude 앱 연계 외부 MCP 서버(별도 포트). 같은 임시 DB를 쓰고, 도구 호출은 e2e/mcp.ts가 OAuth로
+      // 연결해 직접 부른다(실제 Claude·OpenAI 호출 없음). 첫 서버가 마이그레이션한 뒤에 뜬다
+      command:
+        `cd ../server && ` +
+        `DATABASE_URL="sqlite+aiosqlite:///$PWD/../web/${DATA_DIR}/trailtalk.db" ` +
+        `MCP_PUBLIC_URL="http://localhost:${MCP_PORT}" MCP_OWNER_PASSWORD="e2e-owner-password-1234" ` +
+        `MCP_PORT=${MCP_PORT} MCP_CALL_LOG="$PWD/../web/${DATA_DIR}/mcp-calls.jsonl" ` +
+        `uv run python -m app.mcp_external serve`,
+      url: `http://127.0.0.1:${MCP_PORT}/.well-known/oauth-authorization-server`,
       reuseExistingServer: false,
       timeout: 60_000,
     },
