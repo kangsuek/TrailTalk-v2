@@ -3,6 +3,8 @@
 - 앱 일지: 같은 날(서버 시간대) 같은 제목이면 갱신한다. 조회 후 갱신이며 `app_day`·제목 유니크
   인덱스가 최후의 방어선이다(동시 호출로 충돌하면 다시 조회해 한 번 더 시도한다).
 - 갱신은 넘긴 항목만 바꾼다. 노트(아이디어·할 일·메모)는 기존 노트를 유지하고 없는 내용만 더한다.
+  같은 날 앱 메모(`save_note`로 저장한 노트)에 같은 종류·같은 내용의 노트가 있으면 새로 만들지 않고
+  그 노트를 일지로 옮긴다(id·별표·완료 보존). 노트가 모두 옮겨져 빈 앱 메모 세션은 지운다.
 - 앱 메모: 일지 없이 저장하는 노트를 날짜별 세션 하나에 모은다.
 """
 
@@ -84,6 +86,7 @@ class SaveResult:
     changed: list[str] = field(default_factory=list)
     counts: dict[NoteKind, int] = field(default_factory=dict)
     added_notes: int = 0
+    moved_notes: int = 0
 
 
 async def _find_journal(db: AsyncSession, day: date, title: str) -> ConversationSession | None:
@@ -145,25 +148,51 @@ async def _save_once(
 
     existing = (await db.scalars(select(Note).where(Note.session_id == convo.id))).all()
     seen = {(n.kind, normalize(n.content)) for n in existing}
-    added = 0
+    memo_notes = (
+        await db.scalars(
+            select(Note)
+            .join(ConversationSession, Note.session_id == ConversationSession.id)
+            .where(
+                ConversationSession.mode == SessionMode.CLAUDE_APP,
+                ConversationSession.app_kind == AppKind.MEMO,
+                ConversationSession.app_day == day,
+            )
+            .order_by(Note.created_at, Note.id)
+        )
+    ).all()
+    added = moved = 0
+    emptied: set[str] = set()  # 노트를 내준 앱 메모 세션
     for kind, items in notes.items():
         if items is None:
             continue
         added_here = 0
+        changed_here = False
         for item in items:
             key = (kind, normalize(item))
             if key in seen:
                 continue
             seen.add(key)
-            db.add(Note(session_id=convo.id, kind=kind, content=item.strip()))
-            added_here += 1
-        if added_here:
+            adopted = next((n for n in memo_notes if (n.kind, normalize(n.content)) == key), None)
+            if adopted is not None:
+                memo_notes.remove(adopted)
+                emptied.add(adopted.session_id)
+                adopted.session_id = convo.id
+                moved += 1
+            else:
+                db.add(Note(session_id=convo.id, kind=kind, content=item.strip()))
+                added_here += 1
+            changed_here = True
+        if changed_here:
             changed.append(f"{kind.value}s")
         added += added_here
+    await db.flush()
+    for memo_id in emptied:  # 노트가 모두 일지로 옮겨졌으면 빈 앱 메모 세션을 남기지 않는다
+        if not await db.scalar(select(Note.id).where(Note.session_id == memo_id).limit(1)):
+            await db.execute(delete(ConversationSession).where(ConversationSession.id == memo_id))
     await db.commit()
     rows = (await db.scalars(select(Note).where(Note.session_id == convo.id))).all()
     counts = {kind: sum(n.kind is kind for n in rows) for kind in NoteKind}
-    return SaveResult(convo, created, list(dict.fromkeys(changed)), counts, added)
+    return SaveResult(convo, created, list(dict.fromkeys(changed)), counts, added, moved)
 
 
 async def save_app_journal(

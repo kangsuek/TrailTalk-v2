@@ -201,6 +201,56 @@ def test_save_journal_creates_then_updates_keeping_notes(client):
     ]  # fmt: skip
 
 
+def test_save_journal_adopts_same_day_memo_notes_instead_of_duplicating(client, monkeypatch):
+    """save_note로 저장한 노트(앱 메모)를 같은 날 save_journal에 같은 문장으로 넣으면 중복 노트를
+    만들지 않고 그 노트를 일지로 옮긴다(id·별표 보존). 다른 날 앱 메모와 웹 노트는 건드리지 않는다."""
+    times = iter([NOW, NOW, NOW + timedelta(days=1)])  # 서울 10월 30일 2번, 다음 날 1번
+    monkeypatch.setattr(tools_module, "utcnow", lambda: next(times))
+    ok(client, "save_note", kind="idea", content="[MCP-TEST] 날씨 알림")
+    ok(client, "save_note", kind="todo", content="남는 할 일")
+    ok(client, "save_note", kind="idea", content="날짜 다른 메모")
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW + timedelta(hours=1))
+
+    async def star(db):
+        note = await db.scalar(select(Note).where(Note.content == "[MCP-TEST] 날씨 알림"))
+        note.starred = True
+        await db.commit()
+        return note.id
+
+    note_id = run(client, star)
+    saved = ok(
+        client, "save_journal", title="점검", summary="요약",
+        ideas=["[MCP-TEST]  날씨 알림"],
+    )  # fmt: skip
+    assert "아이디어 1개" in saved and "옮겼습니다" in saved and "새 노트" not in saved
+
+    async def inspect(db):
+        journal = await db.scalar(
+            select(ConversationSession).where(ConversationSession.title == "점검")
+        )
+        rows = (await db.scalars(select(Note).order_by(Note.content))).all()
+        return journal.id, [(n.content, n.session_id, n.starred, n.id) for n in rows]
+
+    journal_id, rows = run(client, inspect)
+    assert len(rows) == 3  # 중복 없이 그대로 3개
+    moved = [r for r in rows if r[0] == "[MCP-TEST] 날씨 알림"]
+    assert moved == [("[MCP-TEST] 날씨 알림", journal_id, True, note_id)]
+    assert all(r[1] != journal_id for r in rows if r[0] != "[MCP-TEST] 날씨 알림")
+    memory = ok(client, "get_memory")
+    assert memory.count("[MCP-TEST] 날씨 알림") == 1  # 옮겨진 노트는 기억에 한 번만 나온다
+
+
+def test_adopting_the_only_memo_note_leaves_no_empty_memo_session(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    ok(client, "save_note", kind="idea", content="하나뿐인 메모")
+    ok(client, "save_journal", title="정리", summary="요약", ideas=["하나뿐인 메모"])
+    listing = ok(client, "list_journals")
+    assert "앱 메모" not in listing  # 노트가 없는 빈 앱 메모 세션을 남기지 않는다
+
+    ok(client, "save_note", kind="todo", content="다시 만든 메모")  # 지워진 날에도 새로 만들어진다
+    assert "앱 메모 · 10월 30일 (앱, 노트 1개)" in ok(client, "list_journals")
+
+
 def test_save_journal_rules(client):
     assert "summary" in fails(client, "save_journal", title="요약 없음")
     ok(client, "save_journal", title="하루", summary="요약", ideas=["a"], tags=["x"])

@@ -116,7 +116,9 @@ def register_tools(mcp: MCPServer, runtime: ToolRuntime) -> None:
 
         오늘 대화의 일지를 저장한다. 새 일지는 summary가 필요하다(첫 줄은 결론). 같은 날 같은 제목으로
         다시 부르면 갱신한다. summary·tags·transcript는 넘긴 것만 통째로 바꾸고 생략하면 그대로 둔다.
-        ideas·todos·memos는 기존 노트를 유지하고 없는 내용만 더한다(지우지 않는다).
+        ideas·todos·memos는 기존 노트를 유지하고 없는 내용만 더한다(지우지 않는다). 이미 save_note로
+        저장한 노트는 한 글자도 바꾸지 말고 같은 문장으로만 넣는다(같은 날 앱 메모의 같은 노트는 일지로
+        옮겨지고, 문장이 다르면 중복 노트가 생긴다).
         transcript에는 이번 대화에서 주고받은 말을 한 줄에 한 발화씩 "나: …", "Claude: …" 형식으로 넣는다.
         """
         async with factory() as db:
@@ -141,6 +143,11 @@ def register_tools(mcp: MCPServer, runtime: ToolRuntime) -> None:
             f"현재 아이디어 {counts.get(NoteKind.IDEA, 0)}개, 할 일 {counts.get(NoteKind.TODO, 0)}개, "
             f"메모 {counts.get(NoteKind.MEMO, 0)}개"
             + (f". 새 노트 {result.added_notes}건을 더했습니다" if result.added_notes else "")
+            + (
+                f". 오늘 앱 메모의 노트 {result.moved_notes}건을 일지로 옮겼습니다"
+                if result.moved_notes
+                else ""
+            )
         )
 
     @mcp.tool(annotations=READ)
