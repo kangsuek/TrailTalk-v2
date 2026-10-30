@@ -9,10 +9,13 @@ DB와 서비스 계층(app/services)은 기존 서버와 같은 파일·같은 �
 import logging
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import Response
@@ -22,8 +25,10 @@ from app.config import Settings
 from app.db.migrate import alembic_config, current_revision
 from app.db.session import create_engine_for, create_session_factory
 from app.mcp_external.config import MCP_PATH, McpConfig
+from app.mcp_external.guard import ConfirmSigner, DailyWriteCounter, ToolGuard
 from app.mcp_external.login import LoginLimiter, make_login_handler
 from app.mcp_external.oauth import SCOPE_MCP, SCOPES, OwnerOAuthProvider
+from app.mcp_external.rpclog import RpcLogMiddleware
 
 logger = logging.getLogger("trailtalk.mcp_external")
 SERVER_NAME = "trailtalk"
@@ -47,6 +52,16 @@ async def serve_sw_kill(request: Request) -> Response:
     )
 
 
+@dataclass
+class ToolRuntime:
+    """도구가 쓰는 것: DB 세션 팩토리, 서버 설정, 시간대, 호출 보호(guard)."""
+
+    session_factory: async_sessionmaker[AsyncSession]
+    settings: Settings
+    tz: ZoneInfo
+    guard: ToolGuard
+
+
 class SchemaNotReady(RuntimeError):
     """DB가 최신 스키마가 아니다. 기존 서버를 먼저 띄워 마이그레이션해야 한다."""
 
@@ -63,7 +78,8 @@ def build_mcp_server(
     config: McpConfig,
     provider: OwnerOAuthProvider,
     limiter: LoginLimiter,
-    register_tools: Callable[[MCPServer], None] | None = None,
+    register_tools: Callable[[MCPServer, ToolRuntime], None] | None = None,
+    runtime: ToolRuntime | None = None,
 ) -> MCPServer:
     auth = AuthSettings(
         issuer_url=config.public_url,
@@ -78,8 +94,8 @@ def build_mcp_server(
     mcp.custom_route("/login", methods=["GET", "POST"])(
         make_login_handler(provider, limiter, config.owner_password)
     )
-    if register_tools is not None:
-        register_tools(mcp)
+    if register_tools is not None and runtime is not None:
+        register_tools(mcp, runtime)
     return mcp
 
 
@@ -88,8 +104,9 @@ def create_external_app(
     *,
     config: McpConfig | None = None,
     check_schema: bool = True,
-    register_tools: Callable[[MCPServer], None] | None = None,
+    register_tools: Callable[[MCPServer, ToolRuntime], None] | None = None,
     limiter: LoginLimiter | None = None,
+    guard: ToolGuard | None = None,
 ) -> Starlette:
     """외부 MCP 앱을 만든다. 설정이 틀리면 McpConfigError, 스키마가 오래됐으면 SchemaNotReady."""
     config = config or McpConfig.from_settings(settings)
@@ -98,7 +115,14 @@ def create_external_app(
     provider = OwnerOAuthProvider(
         session_factory, config.resource_url, config.allowed_redirects, config.max_clients
     )
-    mcp = build_mcp_server(config, provider, limiter or LoginLimiter(), register_tools)
+    tz = ZoneInfo(settings.timezone)
+    guard = guard or ToolGuard(
+        call_log=settings.mcp_call_log,
+        writes=DailyWriteCounter(tz=tz),
+        signer=ConfirmSigner(config.owner_password),
+    )
+    runtime = ToolRuntime(session_factory, settings, tz, guard)
+    mcp = build_mcp_server(config, provider, limiter or LoginLimiter(), register_tools, runtime)
     # 공개 호스트명으로만 받는다(DNS 리바인딩 방어). 로컬 시험용 localhost도 허용한다
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
@@ -121,6 +145,8 @@ def create_external_app(
         await engine.dispose()
 
     inner.router.lifespan_context = lifespan
+    rpc_log = settings.mcp_call_log.with_name("mcp-rpc.jsonl")
+    inner.add_middleware(RpcLogMiddleware, path=MCP_PATH, log_path=rpc_log)
     inner.state.session_factory = session_factory
     inner.state.config = config
     return inner
