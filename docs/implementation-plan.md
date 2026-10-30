@@ -22,7 +22,7 @@
 | M4 | 신뢰성 | 음성 항목 보류 | - | - | - | - |
 | M5 | 확장 기능 | 대기 | - | - | - | - |
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
-| MA | Claude 앱 MCP 연계(상세·진행 상태 정본: [MCP/implementation-plan.md](MCP/implementation-plan.md)) | 진행 중(묶음 A~C 병합, 묶음 D 병합 대기, MA-12 폰 실측·MA-13 시안 수정 대기) | 14/16 | 2026-10-30 | - | - |
+| MA | Claude 앱 MCP 연계(상세·진행 상태 정본: [MCP/implementation-plan.md](MCP/implementation-plan.md)) | 진행 중(묶음 A~C 병합, 묶음 D 병합 대기, MA-12 폰 실측·MA-13 시안 수정 대기) | 13/16 | 2026-10-30 | - | - |
 | P2 | 내보내기·검색·브리핑 | 대기 | - | - | - | - |
 
 현재 작업: MA 묶음 D `ma-d-web-verify` 병합(2026-10-30). MA 묶음 A~C `main` 병합: `071dd02`, `8f69341`, `dc8c064`. M3 묶음 D `m3-d-verify`(M3-16~19)는 보류(2026-10-30 결정, 자체 음성 보류·Claude 앱 연계). 묶음 A·B·C `main` 병합: `4f4d1f7`, `3a8d117`, `f96b97f`. 종료 경합 수정(`m3-fix-end-race`)도 병합·푸시 완료(`19e9ae3`). M2 종료(2026-10-29, 묶음 A~D `main` 병합: `ebd2e2e`, `dad338c`, `c063e83`, `53e2c62`). M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
