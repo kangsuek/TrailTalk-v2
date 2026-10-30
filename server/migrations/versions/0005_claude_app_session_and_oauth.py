@@ -91,7 +91,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    # claude_app 세션은 옛 열거값에 없으므로 먼저 지운다(노트·턴은 외래 키 CASCADE)
+    # claude_app 세션은 옛 열거값에 없어 되돌릴 수 없다. 이 downgrade는 앱 일지·앱 메모와 그
+    # 노트·턴을 영구히 지운다. 마이그레이션 연결은 외래 키를 꺼 두므로 CASCADE에 기대지 않고
+    # 자식 행을 먼저 지운다
+    app_ids = "SELECT id FROM conversation_session WHERE mode = 'claude_app'"
+    for table in ("turn_tts", "turn_latency", "note", "turn"):
+        op.execute(f"DELETE FROM {table} WHERE session_id IN ({app_ids})")
     op.execute("DELETE FROM conversation_session WHERE mode = 'claude_app'")
     # 부분 인덱스가 app_kind를 참조하므로 열을 지우기 전에 먼저 지운다
     op.drop_index("uq_app_memo_day", table_name="conversation_session")

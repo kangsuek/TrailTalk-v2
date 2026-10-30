@@ -23,7 +23,7 @@ OPEN=1
 FAKE=0
 MCP=0
 MCP_REVOKE=0
-MCP_PORT="${MCP_PORT:-8400}"
+MCP_PORT_ENV="${MCP_PORT:-}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -98,13 +98,20 @@ fi
 
 # 외부 MCP 서버(--mcp)는 공개 주소와 소유자 비밀번호가 있어야 한다. 값은 셸 환경 변수나 저장소 루트의
 # .env에서 읽고(값을 출력하지 않는다), 없으면 서버를 띄우기 전에 멈추고 안내한다.
-mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값
+mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴표와 뒤의 # 주석을 뗀다)
   local key=$1 value="${!1:-}"
   if [ -z "$value" ] && [ -f "$ROOT/.env" ]; then
     value="$(grep -E "^${key}=" "$ROOT/.env" | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
+    case "$value" in
+      \"*\") value="${value#\"}"; value="${value%\"}" ;;
+      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+      *) value="${value%%[[:space:]]#*}"; value="${value%"${value##*[![:space:]]}"}" ;;
+    esac
   fi
   printf '%s' "$value"
 }
+MCP_PORT="${MCP_PORT_ENV:-$(mcp_setting MCP_PORT)}"
+MCP_PORT="${MCP_PORT:-8400}"
 if [ "$MCP" = 1 ] || [ "$MCP_REVOKE" = 1 ]; then
   if [ "$MCP_REVOKE" = 0 ]; then
     mcp_url="$(mcp_setting MCP_PUBLIC_URL)"
@@ -118,6 +125,10 @@ if [ "$MCP" = 1 ] || [ "$MCP_REVOKE" = 1 ]; then
   fi
 fi
 if [ "$MCP_REVOKE" = 1 ]; then
+  if [ "$TMP" = 1 ]; then
+    echo "--mcp-revoke-all은 --tmp와 함께 쓸 수 없습니다(실제 DB의 토큰을 지웁니다)." >&2
+    exit 2
+  fi
   (cd "$ROOT/server" && uv run python -m app.mcp_external revoke-all)
   exit $?
 fi
@@ -203,8 +214,7 @@ if [ "$MCP" = 1 ]; then
   # 기존 서버가 DB 스키마를 맞춘 뒤(위 서버 응답) 외부 앱을 띄운다. 외부 앱은 마이그레이션하지 않는다
   (cd "$ROOT/server" && exec env MCP_PORT="$MCP_PORT" uv run python -m app.mcp_external serve) &
   PIDS+=($!)
-  sleep 2
-  kill -0 "${PIDS[${#PIDS[@]}-1]}" 2>/dev/null || { echo "외부 MCP 서버가 시작하지 못했습니다." >&2; exit 1; }
+  wait_for "http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server" "외부 MCP 서버"
   echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
 fi
 URL="http://127.0.0.1:$WEB_PORT"

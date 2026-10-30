@@ -46,6 +46,30 @@ self.addEventListener('activate', (event) => event.waitUntil((async () => {
 """
 
 
+class HostCheckMiddleware:
+    """모든 경로에서 Host 헤더를 공개 호스트(과 로컬 시험용 localhost)로 제한한다. SDK의 Host 검사는
+    /mcp에만 걸리므로 /login·/authorize·/token 등 OAuth 경로를 여기서 함께 지킨다."""
+
+    def __init__(self, app: ASGIApp, public_host: str) -> None:
+        self.app = app
+        self.public_host = public_host.lower()
+
+    def _allowed(self, host: str) -> bool:
+        host = host.lower()
+        if host == self.public_host:
+            return True
+        name = host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+        return name in ("localhost", "127.0.0.1", "[::1]")
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            host = dict(scope["headers"]).get(b"host", b"").decode("latin-1")
+            if not self._allowed(host):
+                await Response("Invalid Host header", status_code=421)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 async def serve_sw_kill(request: Request) -> Response:
     return Response(
         SW_KILL_SCRIPT, media_type="text/javascript", headers={"Cache-Control": "no-store"}
@@ -147,6 +171,7 @@ def create_external_app(
     inner.router.lifespan_context = lifespan
     rpc_log = settings.mcp_call_log.with_name("mcp-rpc.jsonl")
     inner.add_middleware(RpcLogMiddleware, path=MCP_PATH, log_path=rpc_log)
+    inner.add_middleware(HostCheckMiddleware, public_host=config.public_host)
     inner.state.session_factory = session_factory
     inner.state.config = config
     return inner

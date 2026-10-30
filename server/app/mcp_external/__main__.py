@@ -12,7 +12,7 @@ import uvicorn
 
 from app.config import Settings
 from app.db.session import create_engine_for, create_session_factory
-from app.mcp_external.app import SchemaNotReady, create_external_app
+from app.mcp_external.app import SchemaNotReady, create_external_app, ensure_schema_ready
 from app.mcp_external.config import McpConfigError
 from app.mcp_external.oauth import revoke_all
 
@@ -41,10 +41,12 @@ def main(argv: list[str]) -> int:
         print(f"외부 MCP 서버를 시작하지 않습니다: {exc}", file=sys.stderr)
         return 1
     try:
-        uvicorn.run(app, host="127.0.0.1", port=settings.mcp_port, log_level="info")
+        # uvicorn은 lifespan 예외를 삼키고 로그만 남기므로 시작 전에 스키마를 확인한다
+        asyncio.run(ensure_schema_ready(settings.database_url))
     except SchemaNotReady as exc:
         print(str(exc), file=sys.stderr)
         return 1
+    uvicorn.run(app, host="127.0.0.1", port=settings.mcp_port, log_level="info")
     return 0
 
 

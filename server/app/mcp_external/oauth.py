@@ -38,6 +38,7 @@ ACCESS_TTL_S = 3600
 REFRESH_TTL_S = 30 * 24 * 3600
 CODE_TTL_S = 300
 PENDING_TTL_S = 600
+MAX_PENDING = 100  # 로그인 대기 요청 상한(익명 /authorize가 DB를 채우지 못하게)
 SUBJECT = "owner"
 
 
@@ -126,6 +127,14 @@ class OwnerOAuthProvider:
         }
         async with self.session_factory() as db:
             await db.execute(delete(OAuthPending).where(OAuthPending.expires_at < self.now()))
+            waiting = (
+                await db.execute(select(func.count()).select_from(OAuthPending))
+            ).scalar_one()
+            if waiting >= MAX_PENDING:
+                raise AuthorizeError(
+                    error="temporarily_unavailable",
+                    error_description="로그인 대기 요청이 너무 많습니다. 잠시 뒤에 다시 하세요.",
+                )
             db.add(
                 OAuthPending(
                     id=pending_id,

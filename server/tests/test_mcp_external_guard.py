@@ -270,3 +270,49 @@ async def test_two_processes_can_write_the_same_sqlite_file(ready):
     async with factory() as db:
         assert await db.scalar(select(func.count()).select_from(Note)) == 80
     await engine.dispose()
+
+
+# --- 리뷰 반영: Host 검사, 확인 값 경계, 로그 회전, 로그인 대기 상한 ---------------------
+
+
+@pytest.mark.parametrize(
+    "path", ["/login?req=x", "/.well-known/oauth-authorization-server", "/sw.js"]
+)
+def test_host_check_covers_oauth_paths(client, path):
+    assert client.get(path, headers={"Host": "evil.example"}).status_code == 421
+    assert client.get(path).status_code != 421  # localhost(시험용)는 통과
+
+
+def test_confirm_token_rejects_huge_numbers_and_ambiguous_ids():
+    signer = ConfirmSigner(PASSWORD, now=lambda: 1_000_000.0)
+    assert not signer.valid("9" * 5000 + ".sig", "delete_note", "n1")  # ValueError 없이 거절
+    token = signer.issue("delete_note", "a|b")
+    assert signer.valid(token, "delete_note", "a|b")
+    assert not signer.valid(token, "delete_note|a", "b")  # 구분자 이동으로 속일 수 없다
+
+
+def test_log_rotates_instead_of_stopping(tmp_path, monkeypatch):
+    from app.mcp_external import guard
+
+    monkeypatch.setattr(guard, "MAX_LOG_BYTES", 100)
+    path = tmp_path / "calls.jsonl"
+    for i in range(20):
+        guard.append_log_line(path, {"i": i, "pad": "x" * 30})
+    assert path.exists() and path.with_name("calls.jsonl.1").exists()
+    last = json.loads(path.read_text().splitlines()[-1])
+    assert last["i"] == 19  # 상한을 넘어도 새 기록이 계속 남는다
+
+
+def test_pending_login_requests_are_capped(ready, monkeypatch):
+    from app.mcp_external import oauth
+
+    monkeypatch.setattr(oauth, "MAX_PENDING", 2)
+    app = create_external_app(ready)
+    from tests.test_mcp_oauth import authorize, pkce, register
+
+    with TestClient(app, base_url=BASE, follow_redirects=False) as c:
+        client_id = register(c).json()["client_id"]
+        first = [authorize(c, client_id, pkce()[1]).headers["location"] for _ in range(2)]
+        assert all("/login?req=" in loc for loc in first)
+        third = authorize(c, client_id, pkce()[1]).headers["location"]
+        assert "/login" not in third and "temporarily_unavailable" in third

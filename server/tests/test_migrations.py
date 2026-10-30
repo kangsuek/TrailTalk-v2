@@ -234,6 +234,15 @@ async def test_0005_adds_app_columns_and_keeps_existing_rows(database_url):
         )
         await conn.exec_driver_sql(insert, ("a1", "산책", "journal"))
         await conn.exec_driver_sql(insert, ("m1", "앱 메모", "memo"))
+        # 앱 일지는 턴과 노트를 갖는다(다운그레이드가 자식 행까지 지워야 한다)
+        await conn.exec_driver_sql(
+            "INSERT INTO turn (id, session_id, seq, role, text, interrupted, greeting, created_at) "
+            "VALUES ('t1', 'a1', 1, 'user', '안녕', 0, 0, '2026-10-30 00:00:00')"
+        )
+        await conn.exec_driver_sql(
+            "INSERT INTO note (id, session_id, turn_id, kind, content, starred, done, created_at) "
+            "VALUES ('n1', 'a1', 't1', 'idea', '아이디어', 0, 0, '2026-10-30 00:00:00')"
+        )
     for dup in (("a2", "산책", "journal"), ("m2", "다른 메모", "memo")):
         with pytest.raises(Exception, match="UNIQUE"):
             async with engine.begin() as conn:
@@ -253,3 +262,8 @@ async def test_0005_adds_app_columns_and_keeps_existing_rows(database_url):
         ids = (await conn.exec_driver_sql("SELECT id FROM conversation_session")).scalars().all()
     await engine.dispose()
     assert ids == ["old"]
+    async with engine.connect() as conn:
+        for table in ("turn", "note"):
+            count = await conn.exec_driver_sql(f"SELECT count(*) FROM {table}")
+            assert count.scalar() == 0
+    await engine.dispose()

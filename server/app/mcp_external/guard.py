@@ -34,7 +34,17 @@ RATE_LIMIT_WINDOW_S = 60.0
 DAILY_WRITE_LIMIT = 200
 CONFIRM_TTL_S = 300
 SHORT_ID_CHARS = 8
-MAX_LOG_BYTES = 5 * 1024 * 1024  # 인증 없는 요청이 쌓여도 디스크를 채우지 않게 이 크기에서 멈춘다
+MAX_LOG_BYTES = 5 * 1024 * 1024  # 이 크기가 되면 로그를 한 단계(.1) 돌리고 새로 시작한다
+
+
+def append_log_line(path: Path, line: dict) -> None:
+    """기록 한 줄을 덧붙인다. 파일이 MAX_LOG_BYTES를 넘으면 `<이름>.1`로 돌려(이전 .1은 덮어쓴다)
+    인증 없는 요청이 쌓여도 디스크를 채우지 않고 새 기록도 계속 남긴다."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.stat().st_size > MAX_LOG_BYTES:
+        path.replace(path.with_name(path.name + ".1"))
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
 def short_id(full_id: str) -> str:
@@ -90,8 +100,19 @@ class DailyWriteCounter:
         return True
 
 
+CONFIRM_KDF_ITERATIONS = 100_000
+CONFIRM_MAX_EXPIRY_CHARS = 12
+
+
 def _confirm_key(owner_password: str) -> bytes:
-    return hmac.new(owner_password.encode(), b"trailtalk-mcp-confirm-v1", hashlib.sha256).digest()
+    """로그인 비교에 쓰는 비밀번호와 다른 키를 얻는다. 확인 값이 노출돼도 비밀번호를 곧바로
+    추측하기 어렵게 PBKDF2를 한 번 거친다(프로세스마다 한 번)."""
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        owner_password.encode(),
+        b"trailtalk-mcp-confirm-v1",
+        CONFIRM_KDF_ITERATIONS,
+    )
 
 
 class ConfirmSigner:
@@ -108,7 +129,8 @@ class ConfirmSigner:
         self.now = now or time.time
 
     def _sign(self, action: str, target_id: str, expires: int) -> str:
-        message = f"{action}|{target_id}|{expires}".encode()
+        # 구분자 문제가 없게 JSON 배열로 묶는다(어떤 글자가 있어도 경계가 모호하지 않다)
+        message = json.dumps([action, target_id, expires]).encode()
         digest = hmac.new(self.key, message, hashlib.sha256).digest()
         return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
 
@@ -118,7 +140,7 @@ class ConfirmSigner:
 
     def valid(self, token: str, action: str, target_id: str) -> bool:
         head, _, signature = token.partition(".")
-        if not head.isdigit() or not signature:
+        if not head.isdigit() or len(head) > CONFIRM_MAX_EXPIRY_CHARS or not signature:
             return False
         expires = int(head)
         if expires < self.now():
@@ -140,11 +162,7 @@ class ToolGuard:
         if target:
             line["target"] = short_id(target)
         try:
-            if self.call_log.exists() and self.call_log.stat().st_size > MAX_LOG_BYTES:
-                return
-            self.call_log.parent.mkdir(parents=True, exist_ok=True)
-            with self.call_log.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+            append_log_line(self.call_log, line)
         except OSError:
             logger.exception("call log write failed")
 

@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from app.db.types import utcnow
-from app.mcp_external.guard import MAX_LOG_BYTES
+from app.mcp_external.guard import append_log_line
 
 logger = logging.getLogger("trailtalk.mcp_external")
 
@@ -118,10 +118,6 @@ class RpcLogMiddleware:
 
     def _write(self, line: dict) -> None:
         try:
-            if self.log_path.exists() and self.log_path.stat().st_size > MAX_LOG_BYTES:
-                return
-            self.log_path.parent.mkdir(parents=True, exist_ok=True)
-            with self.log_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(line) + "\n")
+            append_log_line(self.log_path, line)
         except OSError:
             logger.exception("rpc log write failed")
