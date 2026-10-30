@@ -200,3 +200,11 @@ async def test_app_memory_drops_interests_and_caps_todos(db_session, make_settin
 
     chat_view = await memory.load_memory(db, settings, profile, NOW)
     assert chat_view.interests == ["등산"]
+
+
+async def test_empty_list_and_missing_journal(db_session):
+    day = NOW.astimezone(KST).date()
+    assert await journal.list_journals(db_session, KST, day, day) == []
+    with pytest.raises(AppError) as err:
+        await journal.get_journal(db_session, "없는-대화")
+    assert err.value.code == "session_not_found"

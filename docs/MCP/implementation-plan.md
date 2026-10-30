@@ -41,7 +41,7 @@
 |---|---|---|---|---|---|
 | MA-00 | 문서 | 설계 문서와 반영안 | `docs/MCP/` 문서 7개(README·Intent·Spec·design·tools·doc-changes·이 문서) | 서브에이전트 diff 리뷰 지적 반영 뒤 `main` 직접 커밋(CLAUDE.md 문서 예외, 2026-10-30 사용자 확인) | 완료 |
 | MA-00b | 문서 | 기존 문서 반영 | Intent·Spec·client-contract·기존 구현 계획서를 [doc-changes.md](doc-changes.md)대로 수정 | 서브에이전트 diff 리뷰, FR-19 P1, D9 추가, 계약 1.2·1.5·2.11·3.1~3.3 반영, M3-16~19·M4 음성 항목 "보류" 표시 | 완료 |
-| MA-01 | A | 일지 서비스 추출 | `server/app/services/` 일지 서비스: 목록·상세·검색·삭제·제목 수정(웹 API의 규칙 이전). **앱 세션의 같은 날 제목 중복 거부 규칙과 앱 출처 판정 함수도 여기에 둔다**(MA-07 `rename_journal`이 먼저 필요) | 웹 API가 서비스를 호출, **기존 pytest·E2E 전부 통과**, 삭제 409 규칙 유지 | 완료 |
+| MA-01 | A | 일지 서비스 추출 | `server/app/services/` 일지 서비스: 목록·상세·검색·삭제·제목 수정(웹 API의 규칙 이전). **앱 세션의 같은 날 제목 중복 거부 규칙과 앱 출처 판정 함수도 여기에 둔다**(MA-07 `rename_journal`이 먼저 필요. 구현됨. 후속: MA-04에서 `SessionMode.claude_app`·`app_day` 열이 생기면 모드 문자열 비교와 같은 날 판정을 열 기준 SQL로 바꾸고 앱 메모 세션 제목 변경 409를 넣으며, 실제 앱 행 시험을 더한다. MA-07 몫: 앱 일지 upsert·앱 메모 세션 확보·노트 목록·열린 아이디어/할 일 조회·retry 서비스) | 웹 API가 서비스를 호출, **기존 pytest·E2E 전부 통과**, 삭제 409 규칙 유지 | 완료 |
 | MA-02 | A | 노트·기억·호칭 서비스 추출 | 노트(저장·검색·수정·삭제, **세션을 인자로 받음**), 기억(`load_memory` 공유, 앱용 서식·할 일 5개·관심사 제외), 호칭(`Nickname` 검증) | 내부 MCP(`/internal/mcp`)와 웹 API가 서비스 사용, 기존 시험 통과, 서비스 단위 시험 추가 | 완료 |
 | MA-03 | B | Funnel·Serve 포트 확인(스파이크) | Tailscale Serve(PWA)와 Funnel(MCP) 포트 배치 결과를 design.md 1.1에 기록 | Funnel 443이 MCP 전용 포트만 가리키고 `/api`·웹이 공개되지 않음을 확인. 안 되면 대안(design.md 1.1)으로 전환 보고 | 대기 |
 | MA-04 | B | 스키마와 Alembic | `SessionMode.claude_app`, `app_kind`(null/journal/memo), `app_day` 열과 부분 유니크 인덱스, OAuth 테이블 3종, 리비전 | `alembic upgrade`·`downgrade` 시험, 기존 데이터 영향 없음, 모델 시험. **`purge_orphans`·추출 작업이 `claude_app` 세션을 건드리지 않는 시험** | 대기 |

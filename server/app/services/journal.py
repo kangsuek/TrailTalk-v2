@@ -4,7 +4,6 @@
 HTTP·MCP 표현(응답 모델, 도구 문구)은 부르는 쪽이 만든다. 서비스는 DB 행과 단순한 값만 주고받는다.
 """
 
-import logging
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -17,8 +16,6 @@ from sqlalchemy.orm import defer
 from app.db.models import ConversationSession, Note, NoteKind, Turn, TurnRole
 from app.errors import AppError
 from app.services import conversation
-
-logger = logging.getLogger("trailtalk.journal")
 
 DEFAULT_DAYS = 30
 MAX_DAYS = 366
