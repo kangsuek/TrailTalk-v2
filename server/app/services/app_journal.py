@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -91,14 +91,14 @@ class SaveResult:
 
 async def drop_if_empty_memo(db: AsyncSession, session_id: str) -> None:
     """노트가 하나도 없는 앱 메모 세션을 지운다(커밋은 부르는 쪽). 일지·웹 세션은 건드리지 않는다.
-    노트를 옮기거나 지운 뒤 '노트 0개' 앱 메모가 목록에 남지 않게 한다."""
-    if await db.scalar(select(Note.id).where(Note.session_id == session_id).limit(1)):
-        return
+    노트를 옮기거나 지운 뒤 '노트 0개' 앱 메모가 목록에 남지 않게 한다. 확인과 삭제를 한 문장으로
+    해야 그 사이에 저장된 노트가 세션과 함께 지워지지 않는다(노트는 세션 삭제에 연쇄 삭제된다)."""
     await db.execute(
         delete(ConversationSession).where(
             ConversationSession.id == session_id,
             ConversationSession.mode == SessionMode.CLAUDE_APP,
             ConversationSession.app_kind == AppKind.MEMO,
+            ~exists().where(Note.session_id == ConversationSession.id),
         )
     )
 
@@ -290,9 +290,8 @@ async def save_app_note(
         db.add(note)
         try:
             await db.commit()
-        except (
-            IntegrityError
-        ):  # 찾은 직후 save_journal이 빈 앱 메모 세션을 지운 경우: 새로 만들어 한 번 더
+        except IntegrityError:
+            # 찾은 직후 save_journal·delete_note가 빈 앱 메모 세션을 지운 경우: 새로 만들어 한 번 더
             await db.rollback()
             if attempt == 2:
                 raise
