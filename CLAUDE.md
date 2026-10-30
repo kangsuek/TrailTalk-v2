@@ -20,7 +20,7 @@ scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/
 ```
 
 - 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `./run.sh --mcp`(`.env`에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있어야 한다, 포트 8400), 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
-- 검증: `scripts/verify.sh [--quick]`
+- 검증: `scripts/verify.sh [--quick]`. 문서(`docs/`, `CLAUDE.md`, `README.md`)를 뺀 작업 트리가 같으면 통과한 단계(quick, full)를 `.git/verify-cache/` 기록으로 건너뛴다(commit에서 통과한 코드의 push는 build·E2E만 돈다). 서버·웹 검사는 병렬이고 서버 pytest는 xdist 6 워커다(`VERIFY_PYTEST_WORKERS`로 조정, CPU 수만큼 늘리면 시간에 민감한 테스트가 흔들린다). `VERIFY_NO_CACHE=1`로 기록을 끄고 `VERIFY_SERIAL=1`로 순차 실행한다.
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
 - 화면을 바꿔 스크린샷 기준이 달라지면 `cd web && npm run e2e:update`로 갱신하고 이미지를 눈으로 확인한 뒤 커밋한다.
