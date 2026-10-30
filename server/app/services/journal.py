@@ -9,13 +9,14 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
-from sqlalchemy import and_, exists, func, or_, select, true
+from sqlalchemy import String, and_, cast, exists, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
-from app.db.models import ConversationSession, Note, NoteKind, Turn, TurnRole
+from app.db.models import ConversationSession, Note, NoteKind, SessionMode, Turn, TurnRole
 from app.errors import AppError
 from app.services import conversation
+from app.services.text import escape_like
 
 DEFAULT_DAYS = 30
 MAX_DAYS = 366
@@ -42,10 +43,6 @@ def is_app_session(convo: ConversationSession) -> bool:
     """Claude 앱에서 만든 세션(앱 일지·앱 메모)인가."""
     mode = convo.mode
     return getattr(mode, "value", mode) == APP_MODE
-
-
-def escape_like(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def search_terms(keyword: str) -> list[str]:
@@ -237,3 +234,69 @@ async def search_conversations(
     )
     neighbor_rows = await db.execute(select(Turn).where(around, earlier))
     return ConversationSearch(hits, {(t.session_id, t.seq): t for t in neighbor_rows.scalars()})
+
+
+@dataclass
+class JournalSearch:
+    total: int
+    rows: list[JournalRow]
+
+
+async def search_journals(
+    db: AsyncSession,
+    tz: ZoneInfo,
+    *,
+    terms: list[str],
+    from_: date | None = None,
+    to: date | None = None,
+    limit: int = 10,
+) -> JournalSearch:
+    """앱 도구용 일지 검색: 모든 낱말이 제목·요약·태그·노트·대화 전문 어딘가에 든 일지를 최신순으로.
+
+    웹 목록과 달리 날짜 범위가 선택이고, 앱 일지·앱 메모는 사용자 발화가 없어도 나온다."""
+    spoke = exists().where(Turn.session_id == ConversationSession.id, Turn.role == TurnRole.USER)
+    conditions = [or_(spoke, ConversationSession.mode == SessionMode.CLAUDE_APP)]
+    if from_ is not None:
+        conditions.append(ConversationSession.started_at >= datetime.combine(from_, time.min, tz))
+    if to is not None:
+        end = datetime.combine(to + timedelta(days=1), time.min, tz)
+        conditions.append(ConversationSession.started_at < end)
+    for term in terms:
+        pattern = f"%{escape_like(term)}%"
+        conditions.append(
+            or_(
+                ConversationSession.title.like(pattern, escape="\\"),
+                ConversationSession.summary.like(pattern, escape="\\"),
+                cast(ConversationSession.tags, String).like(pattern, escape="\\"),
+                exists().where(
+                    Note.session_id == ConversationSession.id,
+                    Note.content.like(pattern, escape="\\"),
+                ),
+                exists().where(
+                    Turn.session_id == ConversationSession.id,
+                    Turn.text.like(pattern, escape="\\"),
+                ),
+            )
+        )
+    total = await db.scalar(
+        select(func.count()).select_from(ConversationSession).where(*conditions)
+    )
+    rows = await db.execute(
+        select(ConversationSession)
+        .options(defer(ConversationSession.system_prompt))
+        .where(*conditions)
+        .order_by(ConversationSession.started_at.desc(), ConversationSession.id)
+        .limit(limit)
+    )
+    sessions = list(rows.scalars())
+    counts = await note_counts(db, [s.id for s in sessions])
+    return JournalSearch(total or 0, [JournalRow(s, counts[s.id]) for s in sessions])
+
+
+async def delete_app_journal(db: AsyncSession, convo: ConversationSession) -> None:
+    """앱 일지·앱 메모를 지운다(전문·노트는 외래 키 CASCADE). 앱 세션은 끝난 상태이고
+    CLI·정리 작업이 없으므로 웹 삭제와 달리 대화 런타임을 거치지 않는다. 웹 대화는 거절한다."""
+    if not is_app_session(convo):
+        raise AppError("forbidden", "웹에서 만든 일지는 앱에서 지울 수 없습니다.", 403)
+    await db.delete(convo)
+    await db.commit()

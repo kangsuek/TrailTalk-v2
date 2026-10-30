@@ -15,6 +15,7 @@ from app.db.session import create_engine_for, create_session_factory
 from app.mcp_external.app import SchemaNotReady, create_external_app, ensure_schema_ready
 from app.mcp_external.config import McpConfigError
 from app.mcp_external.oauth import revoke_all
+from app.mcp_external.tools import register_tools
 
 
 async def _revoke_all(settings: Settings) -> int:
@@ -36,7 +37,7 @@ def main(argv: list[str]) -> int:
         print("사용법: python -m app.mcp_external [serve|revoke-all]", file=sys.stderr)
         return 2
     try:
-        app = create_external_app(settings)
+        app = create_external_app(settings, register_tools=register_tools)
     except McpConfigError as exc:
         print(f"외부 MCP 서버를 시작하지 않습니다: {exc}", file=sys.stderr)
         return 1
