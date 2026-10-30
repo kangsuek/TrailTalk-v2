@@ -201,6 +201,160 @@ def test_save_journal_creates_then_updates_keeping_notes(client):
     ]  # fmt: skip
 
 
+def test_save_journal_adopts_same_day_memo_notes_instead_of_duplicating(client, monkeypatch):
+    """save_note로 저장한 노트(앱 메모)를 같은 날 save_journal에 같은 문장으로 넣으면 중복 노트를
+    만들지 않고 그 노트를 일지로 옮긴다(id·별표 보존). 다른 날 앱 메모와 웹 노트는 건드리지 않는다."""
+    times = iter([NOW, NOW, NOW + timedelta(days=1)])  # 서울 10월 30일 2번, 다음 날 1번
+    monkeypatch.setattr(tools_module, "utcnow", lambda: next(times))
+    ok(client, "save_note", kind="idea", content="[MCP-TEST] 날씨 알림")
+    ok(client, "save_note", kind="todo", content="남는 할 일")
+    ok(client, "save_note", kind="idea", content="날짜 다른 메모")
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW + timedelta(hours=1))
+
+    async def star(db):
+        note = await db.scalar(select(Note).where(Note.content == "[MCP-TEST] 날씨 알림"))
+        note.starred = True
+        await db.commit()
+        return note.id
+
+    note_id = run(client, star)
+    saved = ok(
+        client, "save_journal", title="점검", summary="요약",
+        ideas=["[MCP-TEST]  날씨 알림"],
+    )  # fmt: skip
+    assert "아이디어 1개" in saved and "옮겼습니다" in saved and "새 노트" not in saved
+
+    async def inspect(db):
+        journal = await db.scalar(
+            select(ConversationSession).where(ConversationSession.title == "점검")
+        )
+        rows = (await db.scalars(select(Note).order_by(Note.content))).all()
+        return journal.id, [(n.content, n.session_id, n.starred, n.id) for n in rows]
+
+    journal_id, rows = run(client, inspect)
+    assert len(rows) == 3  # 중복 없이 그대로 3개
+    moved = [r for r in rows if r[0] == "[MCP-TEST] 날씨 알림"]
+    assert moved == [("[MCP-TEST] 날씨 알림", journal_id, True, note_id)]
+    assert all(r[1] != journal_id for r in rows if r[0] != "[MCP-TEST] 날씨 알림")
+    memory = ok(client, "get_memory")
+    assert memory.count("[MCP-TEST] 날씨 알림") == 1  # 옮겨진 노트는 기억에 한 번만 나온다
+
+
+def test_adopting_the_only_memo_note_leaves_no_empty_memo_session(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    ok(client, "save_note", kind="idea", content="하나뿐인 메모")
+    ok(client, "save_journal", title="정리", summary="요약", ideas=["하나뿐인 메모"])
+    listing = ok(client, "list_journals")
+    assert "앱 메모" not in listing  # 노트가 없는 빈 앱 메모 세션을 남기지 않는다
+
+    ok(client, "save_note", kind="todo", content="다시 만든 메모")  # 지워진 날에도 새로 만들어진다
+    assert "앱 메모 · 10월 30일 (앱, 노트 1개)" in ok(client, "list_journals")
+
+
+def test_save_journal_does_not_adopt_other_kind_or_web_notes(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    ok(client, "save_note", kind="todo", content="같은 문장")  # 앱 메모의 할 일
+    run(client, lambda db: web_session(db, "웹 대화", notes=[(NoteKind.IDEA, "웹 문장")]))
+    saved = ok(
+        client, "save_journal", title="정리", summary="요약",
+        ideas=["같은 문장", "웹 문장"],
+    )  # fmt: skip
+    assert (
+        "옮겼습니다" not in saved and "새 노트 2건" in saved
+    )  # 종류가 다르거나 웹 노트면 옮기지 않는다
+
+    async def rows(db):
+        notes = (await db.scalars(select(Note).order_by(Note.content))).all()
+        titles = {c.id: c.title for c in (await db.scalars(select(ConversationSession))).all()}
+        return sorted((n.content, n.kind, titles[n.session_id]) for n in notes)
+
+    assert run(client, rows) == sorted([
+        ("같은 문장", NoteKind.TODO, "앱 메모 · 10월 30일"),
+        ("같은 문장", NoteKind.IDEA, "정리"),
+        ("웹 문장", NoteKind.IDEA, "웹 대화"),
+        ("웹 문장", NoteKind.IDEA, "정리"),
+    ])  # fmt: skip
+
+
+def test_deleting_the_last_memo_note_drops_the_empty_memo_session(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    first = id8(ok(client, "save_note", kind="idea", content="첫 메모"))
+    second = id8(ok(client, "save_note", kind="todo", content="둘째 메모"))
+    ok(client, "save_journal", title="빈 일지", summary="요약")  # 노트 없는 일지는 지워지면 안 된다
+
+    def delete(note_id):
+        token = ok(client, "delete_note", id=note_id).split("확인 값: ")[1].rstrip(")")
+        ok(client, "delete_note", id=note_id, confirm_token=token)
+
+    delete(first)
+    assert "앱 메모 · 10월 30일 (앱, 노트 1개)" in ok(
+        client, "list_journals"
+    )  # 남은 노트가 있으면 유지
+    delete(second)
+    listing = ok(client, "list_journals")
+    assert "앱 메모" not in listing and "빈 일지" in listing  # 빈 앱 메모만 지우고 일지는 둔다
+
+
+def test_drop_if_empty_memo_only_removes_empty_app_memo_sessions(client):
+    from app.services.app_journal import drop_if_empty_memo
+
+    async def scenario(db):
+        web = await web_session(db, "웹 대화")  # 노트 없는 웹 세션
+        journal = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="일지",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.JOURNAL, app_day=NOW.date(),
+        )  # fmt: skip
+        full = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="메모",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.MEMO, app_day=NOW.date(),
+        )  # fmt: skip
+        empty = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="빈 메모",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.MEMO,
+            app_day=NOW.date() + timedelta(days=1),
+        )  # fmt: skip
+        db.add_all([journal, full, empty])
+        await db.flush()
+        db.add(Note(session_id=full.id, kind=NoteKind.IDEA, content="있는 노트"))
+        await db.commit()
+        web_id = web.id if hasattr(web, "id") else web
+        for session_id in (web_id, journal.id, full.id, empty.id):
+            await drop_if_empty_memo(db, session_id)
+        await db.commit()
+        return sorted((await db.scalars(select(ConversationSession.title))).all())
+
+    left = run(client, scenario)
+    assert "빈 메모" not in left and {"웹 대화", "일지", "메모"} <= set(left)
+
+
+async def test_save_note_retries_when_the_memo_session_was_dropped_meanwhile(ready, monkeypatch):
+    from app.db.session import create_engine_for, create_session_factory
+    from app.services import app_journal
+
+    tz = ZoneInfo(ready.timezone)
+    engine = create_engine_for(ready.database_url)
+    factory = create_session_factory(engine)
+    real = app_journal.ensure_memo_session
+    calls = {"n": 0}
+
+    async def racing(db, tz_, now):
+        memo = await real(db, tz_, now)
+        calls["n"] += 1
+        if calls["n"] == 1:  # 찾은 직후 다른 호출이 빈 세션을 지운 상황
+            async with factory() as other:
+                await app_journal.drop_if_empty_memo(other, memo.id)
+                await other.commit()
+        return memo
+
+    monkeypatch.setattr(app_journal, "ensure_memo_session", racing)
+    async with factory() as db:
+        note, memo = await app_journal.save_app_note(db, tz, NOW, NoteKind.IDEA, "경합 메모")
+    async with factory() as db:
+        saved = await db.scalar(select(Note).where(Note.content == "경합 메모"))
+        assert saved is not None and saved.session_id == memo.id and calls["n"] == 2
+    await engine.dispose()
+
+
 def test_save_journal_rules(client):
     assert "summary" in fails(client, "save_journal", title="요약 없음")
     ok(client, "save_journal", title="하루", summary="요약", ideas=["a"], tags=["x"])
