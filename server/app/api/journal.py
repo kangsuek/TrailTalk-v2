@@ -57,6 +57,8 @@ class JournalItem(BaseModel):
     # 일지 정리 상태. null이면 정리 기록이 없다(끝나지 않은 대화, 정리가 생기기 전에 끝난 대화)
     journal_status: Literal["pending", "done", "failed"] | None
     counts: NoteCounts
+    # 저장한 곳: Claude 앱 MCP("app") 또는 웹 대화("web"). 클라이언트는 모르는 값을 web처럼 다룬다
+    source: Literal["app", "web"]
 
 
 class NoteOut(BaseModel):
@@ -209,6 +211,7 @@ def _item(convo: ConversationSession, counts: dict[NoteKind, int], tz: ZoneInfo)
         tags=list(convo.tags or []),
         journal_status=convo.extract_status.value if convo.extract_status else None,
         counts=_counts_of(counts),
+        source="app" if journal_service.is_app_session(convo) else "web",
     )
 
 
@@ -247,7 +250,11 @@ async def get_journal(session_id: str, request: Request, db: DbSession) -> Journ
         summary_cites=summary_ids,
         citations=[CitationOut(**c) for c in citations],
         checks=list(convo.checks) if convo.checks is not None else None,
-        persona_name=extract.assistant_name(request.app, convo.persona_id),
+        persona_name=(
+            request.app.state.settings.app_speaker_name
+            if journal_service.is_app_session(convo)
+            else extract.assistant_name(request.app, convo.persona_id)
+        ),
         notes=[NoteOut.of(n, note_ids.get(n.id)) for n in note_rows],
         turns=[TurnOut.of(t) for t in parts.turns],
     )
@@ -279,6 +286,10 @@ async def retry_journal(session_id: str, request: Request, db: DbSession) -> Jou
     """
     app = request.app
     convo = await conversation.get_session(db, session_id)
+    if journal_service.is_app_session(convo):
+        return await _item_of(
+            request, db, convo
+        )  # 앱이 정리한 것을 저장한 일지라 다시 정리하지 않는다
     if convo.status is not SessionStatus.ENDED:
         raise SessionNotEnded()
     # 예전 형식(확인할 것 없이 요약 줄만)으로 정리를 마친 일지도 새 형식으로 다시 정리한다. 그 다시

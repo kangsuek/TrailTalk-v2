@@ -107,6 +107,13 @@ class StateChanged(AppError):
         super().__init__("conflict", "그사이 대화 상태가 바뀌었어요. 다시 해 주세요.", 409)
 
 
+class AppSessionNotReopenable(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            "app_session_not_reopenable", "Claude 앱에서 저장한 일지는 다시 열 수 없습니다.", 409
+        )
+
+
 class SessionNotEnded(AppError):
     def __init__(self) -> None:
         super().__init__("session_not_ended", "아직 끝나지 않은 대화입니다.", 409)
@@ -472,7 +479,9 @@ async def reopen_session(
     답변 중은 아니다. 지금 CLI를 닫고 끝난 대화처럼 새 CLI를 띄우며, 예전 CLI 기록 파일은 성공한
     뒤에 지운다(실패하면 그 기록으로 이어 가도록 되돌린다).
     """
-    await get_session(db, session_id)  # 없는 대화에 런타임을 만들지 않는다
+    first = await get_session(db, session_id)  # 없는 대화에 런타임을 만들지 않는다
+    if first.mode is SessionMode.CLAUDE_APP:
+        raise AppSessionNotReopenable()  # 앱 일지·앱 메모는 이어서 대화하지 않는다
     runtime = await _lock_turns(app, session_id)
     backup: dict | None = None
     stopped = False  # 돌던 정리를 멈췄다(바꾸기 전에 실패하면 다시 띄운다)

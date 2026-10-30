@@ -452,6 +452,11 @@ export interface components {
             /** Journal Status */
             journal_status: ("pending" | "done" | "failed") | null;
             counts: components["schemas"]["NoteCounts"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "app" | "web";
         };
         /** JournalPatch */
         JournalPatch: {

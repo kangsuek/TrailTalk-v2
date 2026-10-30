@@ -168,7 +168,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 `POST /api/sessions/{id}/reopen {mode: "text"|"voice"}` → 200 `{session, greeting: {turn_id, text, audio}, persona, turns: [턴]}`. 본문이나 `mode`를 빼면 `text`이고, `persona`는 2.2와 같은 형식이다.
 
-- `[MCP]` 앱 세션(`mode: claude_app`)은 다시 열지 않고 409로 거절한다(코드는 구현 때 정해 9절 표에 추가).
+- `[MCP]` 앱 세션(`mode: claude_app`)은 다시 열지 않고 409 `app_session_not_reopenable`로 거절한다.
 - 끝난 대화를 같은 세션으로 다시 열어 이어서 대화한다(일지 상세의 "글로 이어서"·"음성으로 이어서"). 끝나지 않은 대화(대화 화면을 닫았거나 다른 기기에서 남은 대화)도 같은 요청으로 이어받는다: 서버는 지금 CLI를 닫고 끝난 대화처럼 새로 띄운다(실패하면 원래 진행 중 상태로 남는다). `mode`는 이번에 쓸 방식이며 처음과 달라도 된다. 다시 연 대화는 그 대화를 시작한 페르소나로 이어 간다(그 페르소나 파일이 없으면 지금 프로필의 페르소나).
 - 서버는 저장된 전문을 새 프롬프트에 넣어 캐릭터를 다시 띄운다(일지 정리가 끝났고 전문이 길면 앞부분은 정리(제목·요약·확인할 것·노트)로 대신하고 최근 원문 약 4천 자만 넣는다). 직전 이야기를 짚는 **재개 인사말**(`greeting`, 음성이면 `audio`)을 전문 끝에 새 턴으로 남긴다. 재개 인사말에는 호칭을 쓰지 않는다. 재개 인사말 턴은 첫 인사말처럼 끼어들어도 잘리지 않는다.
 - `turns`는 그 인사말까지 포함한 전체 전문(일지 상세의 `turns`와 같은 형식)이라 클라이언트는 이것으로 이전 말풍선을 채운다.
@@ -250,7 +250,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 | 요청 | 결과 |
 |---|---|
 | `POST /api/journal/{id}/retry` | 202 일지 항목. 정리에 실패했거나(`failed`) 정리 기록이 없는(`null`) 끝난 대화, 또는 예전 형식(`done`인데 `checks`가 null)을 다시 정리한다. 정리 중·완료면 아무것도 하지 않고 그대로 준다. 끝나지 않은 대화는 409 `session_not_ended`. `[MCP]` 앱 세션이면 아무것도 하지 않는다 |
-| `PATCH /api/journal/{id} {title}` | 바뀐 일지 항목. 줄바꿈·연속 공백은 한 칸으로 줄인 뒤 1~200자. 없으면 404 `session_not_found`. 고친 제목은 다시 정리해도 바뀌지 않는다. `[MCP]` 앱 일지는 같은 날 같은 제목을 거부한다(409 `title_conflict`). 앱 메모 세션의 제목은 바꿀 수 없다(409) |
+| `PATCH /api/journal/{id} {title}` | 바뀐 일지 항목. 줄바꿈·연속 공백은 한 칸으로 줄인 뒤 1~200자. 없으면 404 `session_not_found`. 고친 제목은 다시 정리해도 바뀌지 않는다. `[MCP]` 앱 일지는 같은 날 같은 제목을 거부한다(409 `title_conflict`). 앱 메모 세션의 제목은 바꿀 수 없다(409 `app_memo_title_locked`) |
 | `DELETE /api/journal/{id}` | 204. 대화와 노트·전문·지연 기록·보관한 녹음을 모두 지운다. 진행 중(`active`)이면 409 `session_active`(끝낸 뒤 지운다), 답변을 만드는 중이면 409 `turn_in_progress`, 쉬는 중(`paused`)이면 CLI를 정리하고 지운다. 정리 중이던 일지 정리는 멈춘다 |
 
 P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내보낸다(FR-16). 만들 때 이 표에 추가한다.
@@ -422,6 +422,8 @@ VAD 수치는 시작값이며 실제 산책 측정에서 조정한다. 웹은 `@
 | 422 | `invalid_range` | 일지 목록의 날짜 범위가 틀림 |
 | 409 | `session_not_ended` | 끝나지 않은 대화를 다시 정리하려 함 |
 | 409 | `session_active` | 진행 중인 대화를 지우려 함 |
+| 409 | `app_session_not_reopenable` `[MCP]` | 앱 일지·앱 메모를 다시 열려 함 |
+| 409 | `app_memo_title_locked` `[MCP]` | 앱 메모 세션의 제목을 바꾸려 함 |
 | 409 | `title_conflict` `[MCP]` | 앱 일지 제목을 같은 날 같은 제목의 다른 앱 일지와 같게 고치려 함 |
 | 502 | `llm_error` | 인사말·답변을 만들지 못함(SSE에서는 `error` 이벤트) |
 | 502 | `llm_process_exited` | Claude CLI 프로세스가 끝남. 다음 요청에서 맥락을 이어 다시 띄운다 |
