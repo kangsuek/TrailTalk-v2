@@ -5,9 +5,11 @@
 #   ./run.sh --tmp      임시 데이터(.run/tmp)로 실행. 실제 DB·첨부를 건드리지 않는 확인용
 #   ./run.sh --no-open  브라우저를 열지 않는다
 #   ./run.sh --fake     음성 인식·합성을 과금 없는 가짜로 바꾼다(키 없이 음성 화면 확인용)
-#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)도 함께 띄운다.
-#                       MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 .env에
-#                       없으면 시작하지 않고 안내한다. 토큰 전체 폐기: ./run.sh --mcp-revoke-all
+#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)를 띄운다. .env에
+#                       MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 있으면
+#                       옵션 없이도 자동으로 함께 뜬다(--tmp 제외). 명시했는데 설정이 없으면 안내하고 멈춘다.
+#   ./run.sh --no-mcp   설정이 있어도 외부 MCP 서버를 띄우지 않는다
+#                       토큰 전체 폐기: ./run.sh --mcp-revoke-all
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -22,6 +24,7 @@ TMP=0
 OPEN=1
 FAKE=0
 MCP=0
+NO_MCP=0
 MCP_REVOKE=0
 MCP_PORT_ENV="${MCP_PORT:-}"
 
@@ -31,9 +34,10 @@ for arg in "$@"; do
     --no-open) OPEN=0 ;;
     --fake) FAKE=1 ;;
     --mcp) MCP=1 ;;
+    --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
     -h | --help)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -112,6 +116,20 @@ mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴
 }
 MCP_PORT="${MCP_PORT_ENV:-$(mcp_setting MCP_PORT)}"
 MCP_PORT="${MCP_PORT:-8400}"
+if [ "$MCP" = 1 ] && [ "$NO_MCP" = 1 ]; then
+  echo "--mcp와 --no-mcp는 함께 쓸 수 없습니다." >&2
+  exit 2
+fi
+# 옵션이 없으면 설정이 갖춰졌을 때만 자동으로 켠다. 임시 모드(--tmp)에서는 자동으로 켜지 않는다
+if [ "$MCP" = 0 ] && [ "$NO_MCP" = 0 ] && [ "$MCP_REVOKE" = 0 ] && [ "$TMP" = 0 ]; then
+  auto_url="$(mcp_setting MCP_PUBLIC_URL)"
+  auto_password="$(mcp_setting MCP_OWNER_PASSWORD)"
+  if [ -n "$auto_url" ] && [ "${#auto_password}" -ge 16 ]; then
+    MCP=1
+  else
+    echo "외부 MCP 서버는 띄우지 않습니다(.env에 MCP_PUBLIC_URL·MCP_OWNER_PASSWORD가 없음)."
+  fi
+fi
 if [ "$MCP" = 1 ] || [ "$MCP_REVOKE" = 1 ]; then
   if [ "$MCP_REVOKE" = 0 ]; then
     mcp_url="$(mcp_setting MCP_PUBLIC_URL)"

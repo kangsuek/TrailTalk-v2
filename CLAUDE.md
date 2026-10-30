@@ -19,7 +19,7 @@ shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
 scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
 ```
 
-- 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `./run.sh --mcp`(`.env`에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있어야 한다, 포트 8400), 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
+- 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `.env`에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄운다(포트 8400, `--tmp`는 제외, `--no-mcp`로 끔, `--mcp`는 명시 실행이라 설정이 없으면 멈춘다), 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
 - 검증: `scripts/verify.sh [--quick]`
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
