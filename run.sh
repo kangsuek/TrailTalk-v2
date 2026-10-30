@@ -5,11 +5,12 @@
 #   ./run.sh --tmp      임시 데이터(.run/tmp)로 실행. 실제 DB·첨부를 건드리지 않는 확인용
 #   ./run.sh --no-open  브라우저를 열지 않는다
 #   ./run.sh --fake     음성 인식·합성을 과금 없는 가짜로 바꾼다(키 없이 음성 화면 확인용)
-#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)를 띄운다. .env에
-#                       MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 있으면
-#                       옵션 없이도 자동으로 함께 뜬다(--tmp 제외). 명시했는데 설정이 없으면 안내하고 멈춘다.
+#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)를 띄운다. .env나 환경
+#                       변수에 MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 있으면
+#                       옵션 없이도 자동으로 함께 뜬다(--tmp 제외). 자동일 때 포트가 사용 중이면 MCP만 건너뛰고,
+#                       --mcp로 명시했는데 설정이 없거나 포트가 사용 중이면 안내하고 멈춘다.
 #   ./run.sh --no-mcp   설정이 있어도 외부 MCP 서버를 띄우지 않는다
-#                       토큰 전체 폐기: ./run.sh --mcp-revoke-all
+#   ./run.sh --mcp-revoke-all  발급된 MCP 토큰을 모두 폐기한다
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -24,6 +25,7 @@ TMP=0
 OPEN=1
 FAKE=0
 MCP=0
+MCP_AUTO=0
 NO_MCP=0
 MCP_REVOKE=0
 MCP_PORT_ENV="${MCP_PORT:-}"
@@ -37,7 +39,7 @@ for arg in "$@"; do
     --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
     -h | --help)
-      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -126,6 +128,8 @@ if [ "$MCP" = 0 ] && [ "$NO_MCP" = 0 ] && [ "$MCP_REVOKE" = 0 ] && [ "$TMP" = 0 
   auto_password="$(mcp_setting MCP_OWNER_PASSWORD)"
   if [ -n "$auto_url" ] && [ "${#auto_password}" -ge 16 ]; then
     MCP=1
+    MCP_AUTO=1
+    echo "외부 MCP 서버를 자동으로 함께 띄웁니다(공개 주소 $auto_url). 끄려면 --no-mcp"
   else
     echo "외부 MCP 서버는 띄우지 않습니다(.env에 MCP_PUBLIC_URL·MCP_OWNER_PASSWORD가 없음)."
   fi
@@ -154,6 +158,11 @@ fi
 port_in_use() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 ports=("$API_PORT" "$WEB_PORT")
 [ "$MCP" = 1 ] && ports+=("$MCP_PORT")
+if [ "$MCP_AUTO" = 1 ] && port_in_use "$MCP_PORT"; then
+  echo "포트 $MCP_PORT 이(가) 사용 중이라 외부 MCP 서버는 건너뜁니다(--no-mcp로 이 안내를 끌 수 있음)." >&2
+  MCP=0
+  ports=("$API_PORT" "$WEB_PORT")
+fi
 for port in "${ports[@]}"; do
   if port_in_use "$port"; then
     echo "포트 $port 이(가) 이미 사용 중입니다. 떠 있는 서버를 먼저 끄세요: lsof -nP -iTCP:$port -sTCP:LISTEN" >&2
