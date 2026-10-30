@@ -13,7 +13,15 @@ from sqlalchemy import and_, exists, func, or_, select, text, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
-from app.db.models import ConversationSession, Note, NoteKind, SessionMode, Turn, TurnRole
+from app.db.models import (
+    AppKind,
+    ConversationSession,
+    Note,
+    NoteKind,
+    SessionMode,
+    Turn,
+    TurnRole,
+)
 from app.errors import AppError
 from app.services import conversation
 from app.services.text import escape_like
@@ -32,6 +40,11 @@ APP_MODE = "claude_app"
 # 대화 전문 검색
 CONVO_HITS = 8  # 찾은 말 최대 건수(최신순)
 CONVO_TERMS = 3  # 검색어를 공백으로 나눈 낱말 중 쓰는 개수(모두 들어간 말을 찾는다)
+
+
+class AppMemoTitleLocked(AppError):
+    def __init__(self) -> None:
+        super().__init__("app_memo_title_locked", "앱 메모는 제목을 바꿀 수 없습니다.", 409)
 
 
 class AppTitleConflict(AppError):
@@ -105,7 +118,8 @@ async def list_journals(
         .where(
             ConversationSession.started_at >= start,
             ConversationSession.started_at < end,
-            spoke,
+            # 앱 일지·앱 메모는 사용자 발화(전문)가 없어도 나온다(client-contract 3.1)
+            or_(spoke, ConversationSession.mode == SessionMode.CLAUDE_APP),
         )
         .order_by(ConversationSession.started_at.desc(), ConversationSession.id)
     )
@@ -161,8 +175,11 @@ async def rename_journal(
     (앱의 저장 도구가 같은 날 같은 제목을 같은 일지로 보기 때문이다).
     """
     convo = await conversation.get_session(db, session_id)
-    if is_app_session(convo) and await _same_day_title_taken(db, convo, title, tz):
-        raise AppTitleConflict()
+    if is_app_session(convo):
+        if convo.app_kind is AppKind.MEMO:
+            raise AppMemoTitleLocked()  # 앱 메모 제목은 서버가 정한다
+        if await _same_day_title_taken(db, convo, title, tz):
+            raise AppTitleConflict()
     convo.title = title
     convo.title_edited = True
     await db.commit()
