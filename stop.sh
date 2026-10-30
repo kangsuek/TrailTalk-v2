@@ -53,7 +53,7 @@ STARTED="$(sed -n 2p "$PID_FILE")"
 if ! [[ "$PID" =~ ^[0-9]+$ ]] || ! kill -0 "$PID" 2>/dev/null ||
   [ "$(ps -p "$PID" -o lstart= 2>/dev/null)" != "$STARTED" ]; then
   echo "run.sh(PID $PID)가 이미 끝났습니다. PID 파일을 지웁니다."
-  rm -f "$PID_FILE"
+  rm -f "$PID_FILE" "$MCP_PID_FILE" # run.sh가 이미 없으므로 --mcp 기록도 낡은 것이다(남은 MCP는 ./stop.sh --mcp로 끈다)
   exit 0
 fi
 
