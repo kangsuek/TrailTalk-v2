@@ -295,6 +295,38 @@ def test_deleting_the_last_memo_note_drops_the_empty_memo_session(client, monkey
     assert "앱 메모" not in listing and "빈 일지" in listing  # 빈 앱 메모만 지우고 일지는 둔다
 
 
+def test_drop_if_empty_memo_only_removes_empty_app_memo_sessions(client):
+    from app.services.app_journal import drop_if_empty_memo
+
+    async def scenario(db):
+        web = await web_session(db, "웹 대화")  # 노트 없는 웹 세션
+        journal = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="일지",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.JOURNAL, app_day=NOW.date(),
+        )  # fmt: skip
+        full = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="메모",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.MEMO, app_day=NOW.date(),
+        )  # fmt: skip
+        empty = ConversationSession(
+            mode=SessionMode.CLAUDE_APP, status=SessionStatus.ENDED, started_at=NOW, title="빈 메모",
+            checks=[], extract_status=ExtractStatus.DONE, app_kind=AppKind.MEMO,
+            app_day=NOW.date() + timedelta(days=1),
+        )  # fmt: skip
+        db.add_all([journal, full, empty])
+        await db.flush()
+        db.add(Note(session_id=full.id, kind=NoteKind.IDEA, content="있는 노트"))
+        await db.commit()
+        web_id = web.id if hasattr(web, "id") else web
+        for session_id in (web_id, journal.id, full.id, empty.id):
+            await drop_if_empty_memo(db, session_id)
+        await db.commit()
+        return sorted((await db.scalars(select(ConversationSession.title))).all())
+
+    left = run(client, scenario)
+    assert "빈 메모" not in left and {"웹 대화", "일지", "메모"} <= set(left)
+
+
 async def test_save_note_retries_when_the_memo_session_was_dropped_meanwhile(ready, monkeypatch):
     from app.db.session import create_engine_for, create_session_factory
     from app.services import app_journal
