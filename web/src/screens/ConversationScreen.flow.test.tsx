@@ -277,7 +277,7 @@ describe('새로고침 뒤 복원', () => {
     expect(screen.getByText('네 이어서요')).toBeInTheDocument()
     expect(screen.getByText('제니')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '글로 대화 시작' })).toBeNull()
-    expect(onSessionChange).toHaveBeenCalledWith('s9')
+    await waitFor(() => expect(onSessionChange).toHaveBeenCalledWith('s9')) // 효과가 화면 반영보다 늦을 수 있다
     await userEvent.type(screen.getByRole('textbox', { name: '메시지' }), '계속해요{Enter}')
     expect(await screen.findByText('이어서 답해요.')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/reopen'))).toBe(false)
