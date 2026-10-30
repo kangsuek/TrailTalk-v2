@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Note, NoteKind
 from app.errors import AppError
-from app.services.journal import escape_like
+from app.services.text import escape_like
 
 SEARCH_LIMIT = 10
 

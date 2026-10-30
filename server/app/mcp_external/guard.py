@@ -24,8 +24,12 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from mcp.server.mcpserver.exceptions import ToolError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.types import utcnow
+from app.errors import AppError
+from app.services.app_journal import AppJournalError
+from app.services.lookup import LookupFailure
 
 logger = logging.getLogger("trailtalk.mcp_external")
 
@@ -178,12 +182,21 @@ class ToolGuard:
                 ok = False
                 try:
                     if not self.limiter.allow():
-                        raise ToolError("요청이 너무 잦습니다. 잠시 뒤에 다시 하세요.")
+                        raise ToolError("요청이 너무 많습니다. 잠시 뒤에 다시 하세요.")
                     if write and not self.writes.allow():
                         raise ToolError(
                             "오늘 저장·수정·삭제 한도에 도달했습니다. 내일 다시 하세요."
                         )
-                    result = await fn(*args, **kwargs)
+                    try:
+                        result = await fn(*args, **kwargs)
+                    except (LookupFailure, AppJournalError) as exc:
+                        raise ToolError(str(exc)) from None
+                    except AppError as exc:
+                        raise ToolError(exc.message) from None
+                    except SQLAlchemyError:
+                        # SQL·파라미터가 담긴 예외 문구를 앱에 넘기지 않는다
+                        logger.exception("tool %s failed", fn.__name__)
+                        raise ToolError("처리하지 못했습니다. 잠시 뒤에 다시 하세요.") from None
                     ok = True
                     return result
                 finally:

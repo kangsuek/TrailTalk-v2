@@ -26,6 +26,7 @@ from app.db.migrate import alembic_config, current_revision
 from app.db.session import create_engine_for, create_session_factory
 from app.mcp_external.config import MCP_PATH, McpConfig
 from app.mcp_external.guard import ConfirmSigner, DailyWriteCounter, ToolGuard
+from app.mcp_external.instructions import INSTRUCTIONS
 from app.mcp_external.login import LoginLimiter, make_login_handler
 from app.mcp_external.oauth import SCOPE_MCP, SCOPES, OwnerOAuthProvider
 from app.mcp_external.rpclog import RpcLogMiddleware
@@ -113,7 +114,13 @@ def build_mcp_server(
         required_scopes=[SCOPE_MCP],
         validate_token_resource=True,
     )
-    mcp = MCPServer(SERVER_NAME, subscriptions=False, auth=auth, auth_server_provider=provider)
+    mcp = MCPServer(
+        SERVER_NAME,
+        instructions=INSTRUCTIONS,
+        subscriptions=False,
+        auth=auth,
+        auth_server_provider=provider,
+    )
     mcp.custom_route("/sw.js", methods=["GET"])(serve_sw_kill)
     mcp.custom_route("/login", methods=["GET", "POST"])(
         make_login_handler(provider, limiter, config.owner_password)

@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     mcp_max_clients: int = Field(default=50, gt=0)
     # 도구 호출 기록(이름·시각·성공 여부·대상 id만, 내용은 남기지 않는다)
     mcp_call_log: Path = SERVER_DIR / "data" / "mcp-calls.jsonl"
+    # 앱 세션 전문의 상대(Claude 앱) 화자 이름. 캐릭터 이름이 아니라 설정값이다(코드에 박지 않는다)
+    app_speaker_name: str = Field(default="Claude", min_length=1, max_length=20)
 
     @field_validator("mcp_owner_password", mode="before")
     @classmethod
