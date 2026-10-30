@@ -7,15 +7,14 @@
 생기는 M5 전까지 빈 목록이다.
 """
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime
 from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Request
 from pydantic import AfterValidator, BaseModel, ConfigDict, StrictBool
-from sqlalchemy import exists, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import defer
 
 from app.db.models import (
     NOTE_MAX_CHARS,
@@ -25,29 +24,19 @@ from app.db.models import (
     NoteKind,
     SessionStatus,
     Turn,
-    TurnRole,
 )
 from app.db.session import DbSession
-from app.errors import AppError
 from app.jobs import extract
 from app.services import conversation
+from app.services import journal as journal_service
+from app.services import notes as note_service
 from app.services.conversation import SessionNotEnded
+from app.services.journal import TITLE_MAX_CHARS
 
 router = APIRouter(tags=["journal"])
 
-DEFAULT_DAYS = 30
-MAX_DAYS = 366
-# 시간대 변환이 넘치지 않는 범위(0001-01-01·9999-12-31 근처는 UTC로 바꿀 때 OverflowError)
-MIN_DATE = date(2000, 1, 1)
-MAX_DATE = date(9998, 12, 31)
-TITLE_MAX_CHARS = 200
 IDEA_LIST_DEFAULT = 5
 IDEA_LIST_MAX = 20
-
-
-class NoteNotFound(AppError):
-    def __init__(self) -> None:
-        super().__init__("note_not_found", "노트를 찾을 수 없습니다.", 404)
 
 
 class NoteCounts(BaseModel):
@@ -223,23 +212,9 @@ def _item(convo: ConversationSession, counts: dict[NoteKind, int], tz: ZoneInfo)
     )
 
 
-async def _counts(db: AsyncSession, session_ids: list[str]) -> dict[str, dict[NoteKind, int]]:
-    result: dict[str, dict[NoteKind, int]] = {sid: {} for sid in session_ids}
-    if not session_ids:
-        return result
-    rows = await db.execute(
-        select(Note.session_id, Note.kind, func.count())
-        .where(Note.session_id.in_(session_ids))
-        .group_by(Note.session_id, Note.kind)
-    )
-    for session_id, kind, count in rows:
-        result[session_id][kind] = count
-    return result
-
-
 async def _item_of(request: Request, db: AsyncSession, convo: ConversationSession) -> JournalItem:
     tz = ZoneInfo(request.app.state.settings.timezone)
-    counts = await _counts(db, [convo.id])
+    counts = await journal_service.note_counts(db, [convo.id])
     return _item(convo, counts[convo.id], tz)
 
 
@@ -255,43 +230,17 @@ async def list_journal(
     사용자가 한마디도 하지 않은 대화(인사말만 있는 것)는 빼고 준다. 진행 중인 대화는 나온다.
     """
     tz = ZoneInfo(request.app.state.settings.timezone)
-    to = to or datetime.now(tz).date()
-    from_ = from_ or to - timedelta(days=DEFAULT_DAYS - 1)
-    if not (MIN_DATE <= from_ and to <= MAX_DATE):
-        raise AppError("invalid_range", "조회할 수 없는 날짜입니다.", 422)
-    if from_ > to:
-        raise AppError("invalid_range", "시작 날짜가 끝 날짜보다 늦습니다.", 422)
-    if (to - from_).days >= MAX_DAYS:
-        raise AppError("invalid_range", f"한 번에 {MAX_DAYS}일까지 조회할 수 있습니다.", 422)
-    start = datetime.combine(from_, time.min, tz)
-    end = datetime.combine(to + timedelta(days=1), time.min, tz)
-    spoke = exists().where(Turn.session_id == ConversationSession.id, Turn.role == TurnRole.USER)
-    rows = await db.execute(
-        select(ConversationSession)
-        .options(defer(ConversationSession.system_prompt))  # 응답에 쓰지 않는 큰 글
-        .where(
-            ConversationSession.started_at >= start,
-            ConversationSession.started_at < end,
-            spoke,
-        )
-        .order_by(ConversationSession.started_at.desc(), ConversationSession.id)
-    )
-    sessions = list(rows.scalars())
-    counts = await _counts(db, [s.id for s in sessions])
-    return [_item(s, counts[s.id], tz) for s in sessions]
+    rows = await journal_service.list_journals(db, tz, from_, to)
+    return [_item(row.convo, row.counts, tz) for row in rows]
 
 
 @router.get("/journal/{session_id}")
 async def get_journal(session_id: str, request: Request, db: DbSession) -> JournalDetail:
     """일지 상세. 목록에서 빠지는 대화(사용자 발화 없음)도 ID로는 조회된다."""
-    convo = await conversation.get_session(db, session_id)
+    parts = await journal_service.get_journal(db, session_id)
+    convo, note_rows = parts.convo, parts.notes
     tz = ZoneInfo(request.app.state.settings.timezone)
-    notes = await db.execute(
-        select(Note).where(Note.session_id == session_id).order_by(Note.created_at, Note.id)
-    )
-    turns = await db.execute(select(Turn).where(Turn.session_id == session_id).order_by(Turn.seq))
-    note_rows = list(notes.scalars())
-    counts = {kind: sum(n.kind is kind for n in note_rows) for kind in NoteKind}
+    counts = parts.counts
     summary_ids, note_ids, citations = _number(convo, note_rows)
     return JournalDetail(
         session=_item(convo, counts, tz),
@@ -300,7 +249,7 @@ async def get_journal(session_id: str, request: Request, db: DbSession) -> Journ
         checks=list(convo.checks) if convo.checks is not None else None,
         persona_name=extract.assistant_name(request.app, convo.persona_id),
         notes=[NoteOut.of(n, note_ids.get(n.id)) for n in note_rows],
-        turns=[TurnOut.of(t) for t in turns.scalars()],
+        turns=[TurnOut.of(t) for t in parts.turns],
     )
 
 
@@ -309,10 +258,8 @@ async def update_journal(
     session_id: str, body: JournalPatch, request: Request, db: DbSession
 ) -> JournalItem:
     """대화 제목을 고친다. 고친 제목은 일지를 다시 정리해도 바뀌지 않는다."""
-    convo = await conversation.get_session(db, session_id)
-    convo.title = body.title
-    convo.title_edited = True
-    await db.commit()
+    tz = ZoneInfo(request.app.state.settings.timezone)
+    convo = await journal_service.rename_journal(db, session_id, body.title, tz)
     return await _item_of(request, db, convo)
 
 
@@ -320,7 +267,7 @@ async def update_journal(
 async def delete_journal(session_id: str, request: Request, db: DbSession) -> None:
     """대화를 지운다(전문·노트까지). 진행 중인 대화는 409 session_active, 답변을 만드는 중이면
     409 turn_in_progress. 쉬는 중이면 CLI를 정리하고, 돌던 일지 정리는 멈춘다."""
-    await conversation.delete_session(request.app, db, session_id)
+    await journal_service.delete_journal(request.app, db, session_id)
 
 
 @router.post("/journal/{session_id}/retry", status_code=202)
@@ -378,7 +325,7 @@ async def open_ideas(
         .limit(limit)
     )
     notes = list(rows)
-    counts = await _counts(db, list({n.session_id for n in notes}))
+    counts = await journal_service.note_counts(db, list({n.session_id for n in notes}))
     return [
         OpenIdea(
             id=n.id,
@@ -395,16 +342,8 @@ async def open_ideas(
 @router.patch("/notes/{note_id}")
 async def update_note(note_id: str, body: NotePatch, db: DbSession) -> NoteOut:
     """별표·완료·내용 중 보낸 필드만 바꾼다. 보낸 필드에 null은 쓸 수 없다."""
-    note = await db.get(Note, note_id)
-    if note is None:
-        raise NoteNotFound()
     changes = {name: getattr(body, name) for name in body.model_fields_set}
-    for name, value in changes.items():
-        if value is None:
-            raise AppError("validation_error", f"{name}에는 null을 쓸 수 없습니다.", 422)
-    for name, value in changes.items():
-        setattr(note, name, value)
-    await db.commit()
+    note = await note_service.update_note(db, note_id, changes)
     cites: list[int] = []
     if note.kind is NoteKind.MEMO and note.cites:
         # 상세와 같은 번호를 돌려준다(그 일지의 요약·메모 전체로 매긴다)
