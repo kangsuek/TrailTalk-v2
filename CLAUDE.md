@@ -5,6 +5,7 @@
 - 규약: [docs/client-contract.md](docs/client-contract.md) — API·SSE·상태 머신·오류 코드의 정본
 - 구현 계획: [docs/implementation-plan.md](docs/implementation-plan.md) — 작업 ID·상태·완료 기준. 작업을 시작·끝낼 때 상태를 갱신해 같은 커밋에 넣는다.
 - 화면 시안: [docs/design/README.md](docs/design/README.md) — 아티팩트 링크와 소스 사본(`docs/design/*.dc.html`). 시안을 고치면 같은 커밋에서 이 폴더도 맞춘다.
+- Claude 앱 MCP 연계(2026-10-30 결정): [docs/MCP/README.md](docs/MCP/README.md) — 결정·도구 명세·구현 계획서(MA 작업의 진행 상태 정본, 작업을 시작·끝낼 때 같은 커밋에서 갱신)
 - v1 소스(참고용): `~/pythonProject/TrailTalk/`
 
 위 문서는 자동으로 불러오지 않는다(`@` import 금지). 필요한 절만 `grep -n "^#"`으로 위치를 찾아 범위를 지정해 읽는다.
@@ -18,7 +19,7 @@ shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
 scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
 ```
 
-- 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`
+- 실행·종료: `./run.sh`(`--tmp` 임시 데이터), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `./run.sh --mcp`(`.env`에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있어야 한다, 포트 8400), 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
 - 검증: `scripts/verify.sh [--quick]`
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.

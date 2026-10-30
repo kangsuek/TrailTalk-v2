@@ -28,12 +28,22 @@ docs/     문서
 ./run.sh --tmp      # 임시 데이터(.run/tmp)로 실행(실제 DB를 건드리지 않는 확인용)
 ./run.sh --no-open  # 브라우저를 열지 않는다
 ./run.sh --fake     # 음성 인식·합성을 과금 없는 가짜로(OpenAI 키 없이 음성 화면 확인)
+./run.sh --mcp      # Claude 앱 연계 외부 MCP 서버(8400)도 띄운다(아래 "Claude 앱 연결")
 ./stop.sh           # 다른 터미널에서 끄기(이 저장소의 run.sh만 종료). Ctrl+C로도 끌 수 있다
 ```
 
 `HTTP_PROXY`·`HTTPS_PROXY`가 설정된 환경에서는 서버가 자기 도구 서버(`127.0.0.1`)를 부를 때 프록시가 가로채 막힐 수 있다. 실행 전에 `NO_PROXY=127.0.0.1`을 함께 설정한다.
 
 포트는 `API_PORT`, `WEB_PORT` 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
+
+## Claude 앱 연결
+
+음성 대화는 Claude 앱이 맡고, TrailTalk는 앱이 저장한 일지·노트를 웹 일지 화면에 보여 준다([docs/MCP/README.md](docs/MCP/README.md)).
+
+1. `.env`에 `MCP_PUBLIC_URL`(Funnel로 공개할 `https://<기기 이름>.<tailnet>.ts.net`, 끝 슬래시·경로 없이)과 `MCP_OWNER_PASSWORD`(16자 이상)를 적는다(`.env.example` 참고, 값은 저장소에 두지 않는다).
+2. `./run.sh --mcp`로 서버를 띄운다. Tailscale Funnel(443)은 MCP 포트(8400)만 가리켜야 한다. `/api`·웹은 공개하지 않는다.
+3. Claude 앱의 커넥터에 `MCP_PUBLIC_URL` + `/mcp`를 추가하고 소유자 비밀번호로 승인한다. 계정 지침은 [docs/MCP/account-instructions.md](docs/MCP/account-instructions.md)를 붙여 넣는다.
+4. 연결을 모두 끊으려면 `./run.sh --mcp-revoke-all`(소유자 비밀번호를 바꾼 뒤에도 실행한다).
 
 ## 검증
 
