@@ -28,6 +28,7 @@ from app.db.models import (
 )
 
 USER_LABELS = frozenset({"나", "사용자", "me", "user"})
+ASSISTANT_LABELS = frozenset({"claude", "assistant", "ai", "어시스턴트"})
 _HEADER = re.compile(r"^\s*([^\s:：]{1,20})\s*[:：]\s?(.*)$")
 
 
@@ -44,13 +45,24 @@ def normalize(text: str) -> str:
     return " ".join(text.split()).lower()
 
 
-def split_transcript(text: str) -> list[tuple[TurnRole, str]]:
+def split_transcript(
+    text: str, assistant_names: frozenset[str] = frozenset()
+) -> list[tuple[TurnRole, str]]:
     """'나: …'·'Claude: …' 머리표가 있는 줄을 발화로 풀고, 머리표 없는 줄은 앞 발화에 잇는다.
-    머리표가 하나도 없으면 사용자 한 턴이다. 머리표가 나·사용자 같은 말이면 사용자, 그 밖은
-    상대다."""
+
+    머리표는 알려진 화자(나·사용자·Claude·assistant와 설정한 상대 이름)만 인정한다. 본문 속
+    '예:'·'http:'·'10:30' 같은 줄은 새 발화로 쪼개지 않고 앞 발화에 이어 붙인다. 알려진 머리표가
+    하나도 없으면 사용자 한 턴이다."""
+    assistants = ASSISTANT_LABELS | {name.lower() for name in assistant_names}
+    known = USER_LABELS | assistants
+
+    def header(line: str):
+        match = _HEADER.match(line)
+        return match if match and match.group(1).lower() in known else None
+
     turns: list[tuple[TurnRole, list[str]]] = []
     for line in text.splitlines():
-        match = _HEADER.match(line)
+        match = header(line)
         if match:
             role = TurnRole.USER if match.group(1).lower() in USER_LABELS else TurnRole.ASSISTANT
             turns.append((role, [match.group(2)]))
@@ -58,7 +70,7 @@ def split_transcript(text: str) -> list[tuple[TurnRole, str]]:
             turns[-1][1].append(line)
         elif line.strip():
             turns.append((TurnRole.USER, [line]))
-    if not any(_HEADER.match(line) for line in text.splitlines()):
+    if not any(header(line) for line in text.splitlines()):
         stripped = text.strip()
         return [(TurnRole.USER, stripped)] if stripped else []
     result = [(role, "\n".join(lines).strip()) for role, lines in turns]
@@ -92,6 +104,7 @@ async def _save_once(
     title: str,
     fields: dict,
     notes: dict[NoteKind, list[str] | None],
+    assistant_names: frozenset[str],
 ) -> SaveResult:
     day = local_day(now, tz)
     convo = await _find_journal(db, day, title)
@@ -124,7 +137,9 @@ async def _save_once(
         changed.append("tags")
     if "transcript" in fields:
         await db.execute(delete(Turn).where(Turn.session_id == convo.id))
-        for seq, (role, body) in enumerate(split_transcript(fields["transcript"]), start=1):
+        for seq, (role, body) in enumerate(
+            split_transcript(fields["transcript"], assistant_names), start=1
+        ):
             db.add(Turn(session_id=convo.id, seq=seq, role=role, text=body, created_at=now))
         changed.append("transcript")
 
@@ -134,15 +149,17 @@ async def _save_once(
     for kind, items in notes.items():
         if items is None:
             continue
+        added_here = 0
         for item in items:
             key = (kind, normalize(item))
             if key in seen:
                 continue
             seen.add(key)
             db.add(Note(session_id=convo.id, kind=kind, content=item.strip()))
-            added += 1
-    if added:
-        changed.extend(f"{kind.value}s" for kind, items in notes.items() if items)
+            added_here += 1
+        if added_here:
+            changed.append(f"{kind.value}s")
+        added += added_here
     await db.commit()
     rows = (await db.scalars(select(Note).where(Note.session_id == convo.id))).all()
     counts = {kind: sum(n.kind is kind for n in rows) for kind in NoteKind}
@@ -161,6 +178,7 @@ async def save_app_journal(
     memos: list[str] | None = None,
     tags: list[str] | None = None,
     transcript: str | None = None,
+    assistant_names: frozenset[str] = frozenset(),
 ) -> SaveResult:
     """앱 일지를 저장(새로 만들거나 같은 날 같은 제목을 갱신)한다. 동시 저장이 인덱스에 부딪히면
     한 번 다시 조회해 갱신한다."""
@@ -173,7 +191,7 @@ async def save_app_journal(
     notes = {NoteKind.IDEA: ideas, NoteKind.TODO: todos, NoteKind.MEMO: memos}
     for attempt in (1, 2):
         try:
-            return await _save_once(db, tz, now, title, fields, notes)
+            return await _save_once(db, tz, now, title, fields, notes, assistant_names)
         except IntegrityError:
             await db.rollback()
             if attempt == 2:

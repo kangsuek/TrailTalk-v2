@@ -182,7 +182,7 @@ class ToolGuard:
                 ok = False
                 try:
                     if not self.limiter.allow():
-                        raise ToolError("요청이 너무 잦습니다. 잠시 뒤에 다시 하세요.")
+                        raise ToolError("요청이 너무 많습니다. 잠시 뒤에 다시 하세요.")
                     if write and not self.writes.allow():
                         raise ToolError(
                             "오늘 저장·수정·삭제 한도에 도달했습니다. 내일 다시 하세요."

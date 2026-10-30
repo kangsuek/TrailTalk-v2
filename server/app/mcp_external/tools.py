@@ -18,7 +18,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.profile import Nickname
 from app.db.models import AppKind, ConversationSession, Note, NoteKind, Turn
@@ -65,9 +65,9 @@ def _parse_day(value: str | None, label: str) -> date | None:
         raise ToolError(f"{label}은 2026-10-25 같은 YYYY-MM-DD 형식으로 쓰세요.") from None
 
 
-def _journal_state(convo: ConversationSession, notes: list[Note]) -> str:
+def _journal_state(convo: ConversationSession, notes: list[Note], turns: int) -> str:
     """삭제 확인 값에 묶는 대상의 현재 상태(바뀌면 미리보기를 다시 받아야 한다)."""
-    parts = [convo.title or "", convo.summary or "", ",".join(convo.tags or [])]
+    parts = [convo.title or "", convo.summary or "", ",".join(convo.tags or []), str(turns)]
     parts += [f"{n.id}:{n.kind.value}:{n.content}:{n.starred}:{n.done}" for n in notes]
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()[:16]
 
@@ -131,6 +131,7 @@ def register_tools(mcp: MCPServer, runtime: ToolRuntime) -> None:
                 memos=memos,
                 tags=tags,
                 transcript=transcript,
+                assistant_names=frozenset({settings.app_speaker_name}),
             )
         verb = "저장" if result.created else "갱신"
         changed = ", ".join(result.changed) or "없음"
@@ -273,7 +274,10 @@ def register_tools(mcp: MCPServer, runtime: ToolRuntime) -> None:
             convo = await resolve_prefix(db, ConversationSession, id, "일지")
             _require_app_journal(convo)
             notes = list((await db.scalars(select(Note).where(Note.session_id == convo.id))).all())
-            target = f"{convo.id}:{_journal_state(convo, notes)}"
+            turn_count = await db.scalar(
+                select(func.count()).select_from(Turn).where(Turn.session_id == convo.id)
+            )
+            target = f"{convo.id}:{_journal_state(convo, notes, turn_count or 0)}"
             if confirm_token is None or not signer.valid(confirm_token, "delete_journal", target):
                 if confirm_token is not None:
                     raise ToolError(CONFIRM_MISSING)

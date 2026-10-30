@@ -26,7 +26,7 @@ async def resolve_prefix[T](db: AsyncSession, model: type[T], prefix: str, label
         )
     rows = (await db.scalars(select(model).where(model.id.like(f"{prefix}%")).limit(2))).all()
     if not rows:
-        raise LookupFailure(f"일치하는 {label}이(가) 없습니다. 목록에서 id를 다시 확인하세요.")
+        raise LookupFailure(f"일치하는 {label}가 없습니다. 목록에서 id를 다시 확인하세요.")
     if len(rows) > 1:
         raise LookupFailure("id가 여러 건과 일치합니다. 더 긴 id를 쓰세요.")
     return rows[0]

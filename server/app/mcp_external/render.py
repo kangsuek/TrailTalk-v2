@@ -80,7 +80,14 @@ def render_journal(
     title = convo.title or "제목 없는 대화"
     summary_lines = (convo.summary or "").splitlines()
     if markdown:
-        out = [f"# {title}", "", f"{day} · {source_label(convo)}" + _tags(convo, "· 태그: "), ""]
+        out = [
+            f"# {title}",
+            "",
+            f"> {DATA_NOTICE}",
+            "",
+            f"{day} · {source_label(convo)}" + _tags(convo, "· 태그: "),
+            "",
+        ]
         if summary_lines:
             out += ["## 요약", "", *summary_lines, ""]
         if convo.checks:

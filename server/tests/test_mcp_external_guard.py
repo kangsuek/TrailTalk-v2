@@ -185,7 +185,7 @@ async def test_guard_errors_are_tool_errors_and_logged(tmp_path):
     assert await write_tool() == "ok"
     with pytest.raises(ToolError, match="한도"):
         await write_tool()  # 하루 쓰기 상한
-    with pytest.raises(ToolError, match="잦습니다"):
+    with pytest.raises(ToolError, match="너무 많습니다"):
         await read_tool()  # 세 번째 호출은 속도 제한
     ok = [json.loads(line)["ok"] for line in (tmp_path / "c.jsonl").read_text().splitlines()]
     assert ok == [True, False, False]

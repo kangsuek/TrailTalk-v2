@@ -9,7 +9,7 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
-from sqlalchemy import String, and_, cast, exists, func, or_, select, true
+from sqlalchemy import and_, exists, func, or_, select, text, true
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
@@ -236,6 +236,16 @@ async def search_conversations(
     return ConversationSearch(hits, {(t.session_id, t.seq): t for t in neighbor_rows.scalars()})
 
 
+def _tag_matches(pattern: str, index: int):
+    """태그 목록(JSON 열)의 항목 하나에 낱말이 든다. 열의 직렬화 글자가 아니라 디코딩된 항목 값에서
+    찾으므로 한글 태그도 찾고 JSON 문법 글자([ " ,)가 낱말과 맞지 않는다."""
+    name = f"tag_pattern_{index}"
+    return text(
+        "EXISTS (SELECT 1 FROM json_each(conversation_session.tags) AS tag "
+        f"WHERE tag.value LIKE :{name} ESCAPE '\\')"
+    ).bindparams(**{name: pattern})
+
+
 @dataclass
 class JournalSearch:
     total: int
@@ -261,13 +271,13 @@ async def search_journals(
     if to is not None:
         end = datetime.combine(to + timedelta(days=1), time.min, tz)
         conditions.append(ConversationSession.started_at < end)
-    for term in terms:
+    for index, term in enumerate(terms):
         pattern = f"%{escape_like(term)}%"
         conditions.append(
             or_(
                 ConversationSession.title.like(pattern, escape="\\"),
                 ConversationSession.summary.like(pattern, escape="\\"),
-                cast(ConversationSession.tags, String).like(pattern, escape="\\"),
+                _tag_matches(pattern, index),
                 exists().where(
                     Note.session_id == ConversationSession.id,
                     Note.content.like(pattern, escape="\\"),
