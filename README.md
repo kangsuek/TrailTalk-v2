@@ -31,6 +31,7 @@ docs/     문서
 ./run.sh --phone    # 폰 접속 안내(마이크는 HTTPS 필요): Tailscale 호스트를 허용하고 tailnet 전용 HTTPS(8443) 켜는 명령을 알려 준다(Tailscale 설정은 바꾸지 않음)
 ./run.sh --mcp      # 외부 MCP 서버(8400)를 명시해서 띄운다. .env 설정이 있으면 옵션 없이도 자동(--no-mcp로 끔, 아래 "Claude 앱 연결")
 ./stop.sh           # 다른 터미널에서 끄기(이 저장소의 run.sh만 종료). Ctrl+C로도 끌 수 있다
+./stop.sh --mcp     # --mcp로 띄운 외부 MCP 서버만 끈다(서버와 웹은 계속 실행)
 ```
 
 `HTTP_PROXY`·`HTTPS_PROXY`가 설정된 환경에서는 서버가 자기 도구 서버(`127.0.0.1`)를 부를 때 프록시가 가로채 막힐 수 있다. 실행 전에 `NO_PROXY=127.0.0.1`을 함께 설정한다.

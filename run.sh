@@ -24,6 +24,7 @@ API_PORT="${API_PORT:-8000}"
 WEB_PORT="${WEB_PORT:-5173}"
 RUN_DIR="$ROOT/.run"
 PID_FILE="$RUN_DIR/run.pid"
+MCP_PID_FILE="$RUN_DIR/mcp.pid" # 떠 있는 외부 MCP 서버만 따로 끌 때(./stop.sh --mcp) 쓴다
 TMP=0
 OPEN=1
 FAKE=0
@@ -248,7 +249,7 @@ MCP_PID="" # 자동으로 띄운 MCP 서버. 실패해도 서버·웹은 계속 
 stop_all() {
   for pid in ${PIDS[@]+"${PIDS[@]}"} ${MCP_PID:+"$MCP_PID"}; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
-  rm -f "$PID_FILE"
+  rm -f "$PID_FILE" "$MCP_PID_FILE"
 }
 on_exit() {
   trap - INT TERM HUP EXIT
@@ -308,7 +309,14 @@ if [ "$MCP" = 1 ]; then
   else
     PIDS+=("$mcp_pid")
     wait_for "$mcp_check" "외부 MCP 서버"
+    # 시작을 확인한 뒤에는 감시 목록에서 뺀다: 외부 MCP 서버만 따로 꺼도(./stop.sh --mcp) 서버와 웹은 계속 돈다
+    unset 'PIDS[${#PIDS[@]}-1]'
+    MCP_PID=$mcp_pid
     echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+  fi
+  # 떠 있는 외부 MCP 서버만 ./stop.sh --mcp로 끌 수 있게 PID와 시작 시각을 남긴다(자동·명시 실행 모두)
+  if [ -n "$MCP_PID" ]; then
+    { echo "$MCP_PID"; ps -p "$MCP_PID" -o lstart=; } >"$MCP_PID_FILE"
   fi
 fi
 URL="http://127.0.0.1:$WEB_PORT"
