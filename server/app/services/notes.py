@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Note, NoteKind
 from app.errors import AppError
+from app.services.app_journal import drop_if_empty_memo
 from app.services.text import escape_like
 
 SEARCH_LIMIT = 10
@@ -73,6 +74,9 @@ async def update_note(db: AsyncSession, note_id: str, changes: dict[str, Any]) -
 async def delete_note(db: AsyncSession, note_id: str) -> Note:
     """노트를 지우고 지운 노트를 돌려준다(출처와 무관하게 지운다)."""
     note = await get_note(db, note_id)
+    session_id = note.session_id
     await db.delete(note)
+    await db.flush()
+    await drop_if_empty_memo(db, session_id)  # 앱 메모의 마지막 노트면 빈 세션을 남기지 않는다
     await db.commit()
     return note

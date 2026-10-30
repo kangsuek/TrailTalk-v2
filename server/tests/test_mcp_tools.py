@@ -251,6 +251,78 @@ def test_adopting_the_only_memo_note_leaves_no_empty_memo_session(client, monkey
     assert "앱 메모 · 10월 30일 (앱, 노트 1개)" in ok(client, "list_journals")
 
 
+def test_save_journal_does_not_adopt_other_kind_or_web_notes(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    ok(client, "save_note", kind="todo", content="같은 문장")  # 앱 메모의 할 일
+    run(client, lambda db: web_session(db, "웹 대화", notes=[(NoteKind.IDEA, "웹 문장")]))
+    saved = ok(
+        client, "save_journal", title="정리", summary="요약",
+        ideas=["같은 문장", "웹 문장"],
+    )  # fmt: skip
+    assert (
+        "옮겼습니다" not in saved and "새 노트 2건" in saved
+    )  # 종류가 다르거나 웹 노트면 옮기지 않는다
+
+    async def rows(db):
+        notes = (await db.scalars(select(Note).order_by(Note.content))).all()
+        titles = {c.id: c.title for c in (await db.scalars(select(ConversationSession))).all()}
+        return sorted((n.content, n.kind, titles[n.session_id]) for n in notes)
+
+    assert run(client, rows) == sorted([
+        ("같은 문장", NoteKind.TODO, "앱 메모 · 10월 30일"),
+        ("같은 문장", NoteKind.IDEA, "정리"),
+        ("웹 문장", NoteKind.IDEA, "웹 대화"),
+        ("웹 문장", NoteKind.IDEA, "정리"),
+    ])  # fmt: skip
+
+
+def test_deleting_the_last_memo_note_drops_the_empty_memo_session(client, monkeypatch):
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+    first = id8(ok(client, "save_note", kind="idea", content="첫 메모"))
+    second = id8(ok(client, "save_note", kind="todo", content="둘째 메모"))
+    ok(client, "save_journal", title="빈 일지", summary="요약")  # 노트 없는 일지는 지워지면 안 된다
+
+    def delete(note_id):
+        token = ok(client, "delete_note", id=note_id).split("확인 값: ")[1].rstrip(")")
+        ok(client, "delete_note", id=note_id, confirm_token=token)
+
+    delete(first)
+    assert "앱 메모 · 10월 30일 (앱, 노트 1개)" in ok(
+        client, "list_journals"
+    )  # 남은 노트가 있으면 유지
+    delete(second)
+    listing = ok(client, "list_journals")
+    assert "앱 메모" not in listing and "빈 일지" in listing  # 빈 앱 메모만 지우고 일지는 둔다
+
+
+async def test_save_note_retries_when_the_memo_session_was_dropped_meanwhile(ready, monkeypatch):
+    from app.db.session import create_engine_for, create_session_factory
+    from app.services import app_journal
+
+    tz = ZoneInfo(ready.timezone)
+    engine = create_engine_for(ready.database_url)
+    factory = create_session_factory(engine)
+    real = app_journal.ensure_memo_session
+    calls = {"n": 0}
+
+    async def racing(db, tz_, now):
+        memo = await real(db, tz_, now)
+        calls["n"] += 1
+        if calls["n"] == 1:  # 찾은 직후 다른 호출이 빈 세션을 지운 상황
+            async with factory() as other:
+                await app_journal.drop_if_empty_memo(other, memo.id)
+                await other.commit()
+        return memo
+
+    monkeypatch.setattr(app_journal, "ensure_memo_session", racing)
+    async with factory() as db:
+        note, memo = await app_journal.save_app_note(db, tz, NOW, NoteKind.IDEA, "경합 메모")
+    async with factory() as db:
+        saved = await db.scalar(select(Note).where(Note.content == "경합 메모"))
+        assert saved is not None and saved.session_id == memo.id and calls["n"] == 2
+    await engine.dispose()
+
+
 def test_save_journal_rules(client):
     assert "summary" in fails(client, "save_journal", title="요약 없음")
     ok(client, "save_journal", title="하루", summary="요약", ideas=["a"], tags=["x"])

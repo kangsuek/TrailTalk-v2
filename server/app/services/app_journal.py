@@ -89,6 +89,20 @@ class SaveResult:
     moved_notes: int = 0
 
 
+async def drop_if_empty_memo(db: AsyncSession, session_id: str) -> None:
+    """노트가 하나도 없는 앱 메모 세션을 지운다(커밋은 부르는 쪽). 일지·웹 세션은 건드리지 않는다.
+    노트를 옮기거나 지운 뒤 '노트 0개' 앱 메모가 목록에 남지 않게 한다."""
+    if await db.scalar(select(Note.id).where(Note.session_id == session_id).limit(1)):
+        return
+    await db.execute(
+        delete(ConversationSession).where(
+            ConversationSession.id == session_id,
+            ConversationSession.mode == SessionMode.CLAUDE_APP,
+            ConversationSession.app_kind == AppKind.MEMO,
+        )
+    )
+
+
 async def _find_journal(db: AsyncSession, day: date, title: str) -> ConversationSession | None:
     return await db.scalar(
         select(ConversationSession).where(
@@ -186,9 +200,8 @@ async def _save_once(
             changed.append(f"{kind.value}s")
         added += added_here
     await db.flush()
-    for memo_id in emptied:  # 노트가 모두 일지로 옮겨졌으면 빈 앱 메모 세션을 남기지 않는다
-        if not await db.scalar(select(Note.id).where(Note.session_id == memo_id).limit(1)):
-            await db.execute(delete(ConversationSession).where(ConversationSession.id == memo_id))
+    for memo_id in emptied:
+        await drop_if_empty_memo(db, memo_id)
     await db.commit()
     rows = (await db.scalars(select(Note).where(Note.session_id == convo.id))).all()
     counts = {kind: sum(n.kind is kind for n in rows) for kind in NoteKind}
@@ -271,8 +284,18 @@ async def save_app_note(
     db: AsyncSession, tz: ZoneInfo, now: datetime, kind: NoteKind, content: str
 ) -> tuple[Note, ConversationSession]:
     """일지 없이 저장하는 노트를 그날 앱 메모 세션에 붙인다."""
-    memo = await ensure_memo_session(db, tz, now)
-    note = Note(session_id=memo.id, kind=kind, content=content.strip(), created_at=now)
-    db.add(note)
-    await db.commit()
-    return note, memo
+    for attempt in (1, 2):
+        memo = await ensure_memo_session(db, tz, now)
+        note = Note(session_id=memo.id, kind=kind, content=content.strip(), created_at=now)
+        db.add(note)
+        try:
+            await db.commit()
+        except (
+            IntegrityError
+        ):  # 찾은 직후 save_journal이 빈 앱 메모 세션을 지운 경우: 새로 만들어 한 번 더
+            await db.rollback()
+            if attempt == 2:
+                raise
+        else:
+            return note, memo
+    raise AssertionError("unreachable")
