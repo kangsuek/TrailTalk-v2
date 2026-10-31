@@ -39,7 +39,7 @@ for arg in "$@"; do
     --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
     -h | --help)
-      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -109,8 +109,8 @@ mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴
   if [ -z "$value" ] && [ -f "$ROOT/.env" ]; then
     value="$(grep -E "^${key}=" "$ROOT/.env" | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
     case "$value" in
-      \"*\") value="${value#\"}"; value="${value%\"}" ;;
-      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+      \"*\"*) value="${value#\"}"; value="${value%%\"*}" ;;
+      \'*\'*) value="${value#\'}"; value="${value%%\'*}" ;;
       *) value="${value%%[[:space:]]#*}"; value="${value%"${value##*[![:space:]]}"}" ;;
     esac
   fi
@@ -197,9 +197,10 @@ mkdir -p "$RUN_DIR"
 { echo "$$"; ps -p "$$" -o lstart=; } >"$PID_FILE"
 
 PIDS=()
+MCP_PID="" # 자동으로 띄운 MCP 서버. 실패해도 서버·웹은 계속 띄우므로 PIDS 밖에서 따로 관리한다
 # bash 3.2(macOS)는 set -u에서 빈 배열을 "${PIDS[@]}"로 펼치면 오류가 나므로 ${PIDS[@]+...}로 쓴다
 stop_all() {
-  for pid in ${PIDS[@]+"${PIDS[@]}"}; do kill "$pid" 2>/dev/null || true; done
+  for pid in ${PIDS[@]+"${PIDS[@]}"} ${MCP_PID:+"$MCP_PID"}; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   rm -f "$PID_FILE"
 }
@@ -240,9 +241,29 @@ wait_for "http://127.0.0.1:$WEB_PORT" "웹"
 if [ "$MCP" = 1 ]; then
   # 기존 서버가 DB 스키마를 맞춘 뒤(위 서버 응답) 외부 앱을 띄운다. 외부 앱은 마이그레이션하지 않는다
   (cd "$ROOT/server" && exec env MCP_PORT="$MCP_PORT" uv run python -m app.mcp_external serve) &
-  PIDS+=($!)
-  wait_for "http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server" "외부 MCP 서버"
-  echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+  mcp_pid=$!
+  mcp_check="http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server"
+  if [ "$MCP_AUTO" = 1 ]; then
+    # 자동으로 띄운 MCP 서버가 실패해도 서버와 웹은 그대로 쓸 수 있게 MCP만 건너뛴다
+    MCP_PID=$mcp_pid
+    mcp_ok=0
+    for _ in $(seq 1 120); do
+      if curl -sf "$mcp_check" >/dev/null 2>&1; then mcp_ok=1; break; fi
+      kill -0 "$mcp_pid" 2>/dev/null || break
+      sleep 0.5
+    done
+    if [ "$mcp_ok" = 1 ]; then
+      echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+    else
+      echo "외부 MCP 서버를 시작하지 못해 건너뜁니다(서버·웹은 계속 실행). 원인은 위 로그를 보세요." >&2
+      kill "$mcp_pid" 2>/dev/null || true
+      MCP_PID=""
+    fi
+  else
+    PIDS+=("$mcp_pid")
+    wait_for "$mcp_check" "외부 MCP 서버"
+    echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+  fi
 fi
 URL="http://127.0.0.1:$WEB_PORT"
 echo
@@ -258,5 +279,9 @@ while :; do
       exit 1
     fi
   done
+  if [ -n "$MCP_PID" ] && ! kill -0 "$MCP_PID" 2>/dev/null; then
+    echo "외부 MCP 서버가 종료되었습니다(서버·웹은 계속 실행). 다시 띄우려면 ./stop.sh 후 ./run.sh" >&2
+    MCP_PID=""
+  fi
   sleep 1
 done
