@@ -26,7 +26,7 @@ Tailscale Funnel은 포트로 노출하므로 기존 서버(8000)를 그대로 F
 - **포트 충돌(확인 필요).** 현재 계약 1.2는 Tailscale Serve가 443으로 tailnet에만 HTTPS를 연다고 쓴다. Tailscale에서 Serve와 Funnel은 외부 포트(443·8443·10000)를 공유하고, 원형 기록은 "Claude 서버는 443만 접속하고 8443은 거절한다"이다. 따라서 **Funnel(443)은 MCP 전용 포트만 가리키고, 사설 PWA용 Serve는 다른 포트(예: 8443)로 옮기거나 Serve 443을 쓰지 않아야** 한다. 한 포트에 두 용도를 겹치지 않는 것이 이 설계의 전제이며, 실제 가능 여부는 구현 첫 작업에서 `tailscale serve/funnel status`로 확인한다. PWA 주소가 바뀌면 `ALLOWED_ORIGINS`·폰 설정·README가 함께 바뀐다.
 - **MA-03 확인 결과(2026-10-30, 읽기 전용 `tailscale serve status`·`funnel status`)**: 이 Mac의 Funnel 443은 `/`를 `127.0.0.1:8400`(원형 `trailTalk-MCP`가 쓰는 MCP 포트) 하나만 가리키고, 8000(API)·5173(웹)은 Funnel에 없다. 곧 MCP 포트만 공개되는 배치가 이미 성립해 있다. 이 구성은 사용자 설정이므로 바꾸지 않았다. 아직 확인하지 못한 것: PWA를 tailnet 전용으로 다른 외부 포트(예: 8443)의 Serve로 여는 구성(`tailscale serve --bg --https=8443 http://127.0.0.1:8000`)이 Funnel 443과 공존하는지는 설정을 바꿔야 해서 MA-12(폰 실측) 전에 사용자 승인 아래 확인한다. 그 전까지 PWA는 `http://127.0.0.1:5173` 또는 Mac의 다른 접속 방법을 쓴다. 원형 서버를 끄고 v2 외부 서버(`./run.sh --mcp`)를 같은 8400에 띄우면 Funnel을 다시 설정하지 않아도 된다.
 - SQLite를 두 프로세스가 쓰므로 연결마다 `journal_mode=WAL`과 `busy_timeout=5000`을 걸었고(`app/db/session.py`), 두 프로세스가 같은 파일에 동시에 쓰는 시험이 있다(`tests/test_mcp_external_guard.py`).
-- `run.sh`에 MCP 서버 실행·종료를 더한다(`--mcp` 같은 옵션, 구현 때 정함).
+- `run.sh`에 MCP 서버 실행·종료를 더한다(2026-10-31 확정: `.env`에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄우고 `--no-mcp`로 끈다. `--mcp`는 명시 실행).
 
 ## 2. 인증
 

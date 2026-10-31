@@ -5,9 +5,12 @@
 #   ./run.sh --tmp      임시 데이터(.run/tmp)로 실행. 실제 DB·첨부를 건드리지 않는 확인용
 #   ./run.sh --no-open  브라우저를 열지 않는다
 #   ./run.sh --fake     음성 인식·합성을 과금 없는 가짜로 바꾼다(키 없이 음성 화면 확인용)
-#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)도 함께 띄운다.
-#                       MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 .env에
-#                       없으면 시작하지 않고 안내한다. 토큰 전체 폐기: ./run.sh --mcp-revoke-all
+#   ./run.sh --mcp      Claude 앱 연계 외부 MCP 서버(포트 MCP_PORT, 기본 8400)를 띄운다. .env나 환경
+#                       변수에 MCP_PUBLIC_URL(공개 https 주소)과 MCP_OWNER_PASSWORD(16자 이상)가 있으면
+#                       옵션 없이도 자동으로 함께 뜬다(--tmp 제외). 자동일 때 포트가 사용 중이면 MCP만 건너뛰고,
+#                       --mcp로 명시했는데 설정이 없거나 포트가 사용 중이면 안내하고 멈춘다.
+#   ./run.sh --no-mcp   설정이 있어도 외부 MCP 서버를 띄우지 않는다
+#   ./run.sh --mcp-revoke-all  발급된 MCP 토큰을 모두 폐기한다
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -22,6 +25,8 @@ TMP=0
 OPEN=1
 FAKE=0
 MCP=0
+MCP_AUTO=0
+NO_MCP=0
 MCP_REVOKE=0
 MCP_PORT_ENV="${MCP_PORT:-}"
 
@@ -31,9 +36,10 @@ for arg in "$@"; do
     --no-open) OPEN=0 ;;
     --fake) FAKE=1 ;;
     --mcp) MCP=1 ;;
+    --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
     -h | --help)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -103,8 +109,8 @@ mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴
   if [ -z "$value" ] && [ -f "$ROOT/.env" ]; then
     value="$(grep -E "^${key}=" "$ROOT/.env" | tail -n 1 | cut -d= -f2- | tr -d '\r' || true)"
     case "$value" in
-      \"*\") value="${value#\"}"; value="${value%\"}" ;;
-      \'*\') value="${value#\'}"; value="${value%\'}" ;;
+      \"*\"*) value="${value#\"}"; value="${value%%\"*}" ;;
+      \'*\'*) value="${value#\'}"; value="${value%%\'*}" ;;
       *) value="${value%%[[:space:]]#*}"; value="${value%"${value##*[![:space:]]}"}" ;;
     esac
   fi
@@ -112,6 +118,22 @@ mcp_setting() { # mcp_setting <KEY>: 환경 변수, 없으면 .env의 값(따옴
 }
 MCP_PORT="${MCP_PORT_ENV:-$(mcp_setting MCP_PORT)}"
 MCP_PORT="${MCP_PORT:-8400}"
+if [ "$MCP" = 1 ] && [ "$NO_MCP" = 1 ]; then
+  echo "--mcp와 --no-mcp는 함께 쓸 수 없습니다." >&2
+  exit 2
+fi
+# 옵션이 없으면 설정이 갖춰졌을 때만 자동으로 켠다. 임시 모드(--tmp)에서는 자동으로 켜지 않는다
+if [ "$MCP" = 0 ] && [ "$NO_MCP" = 0 ] && [ "$MCP_REVOKE" = 0 ] && [ "$TMP" = 0 ]; then
+  auto_url="$(mcp_setting MCP_PUBLIC_URL)"
+  auto_password="$(mcp_setting MCP_OWNER_PASSWORD)"
+  if [ -n "$auto_url" ] && [ "${#auto_password}" -ge 16 ]; then
+    MCP=1
+    MCP_AUTO=1
+    echo "외부 MCP 서버를 자동으로 함께 띄웁니다(공개 주소 $auto_url). 끄려면 --no-mcp"
+  else
+    echo "외부 MCP 서버는 띄우지 않습니다(.env에 MCP_PUBLIC_URL·MCP_OWNER_PASSWORD가 없음)."
+  fi
+fi
 if [ "$MCP" = 1 ] || [ "$MCP_REVOKE" = 1 ]; then
   if [ "$MCP_REVOKE" = 0 ]; then
     mcp_url="$(mcp_setting MCP_PUBLIC_URL)"
@@ -136,6 +158,11 @@ fi
 port_in_use() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 ports=("$API_PORT" "$WEB_PORT")
 [ "$MCP" = 1 ] && ports+=("$MCP_PORT")
+if [ "$MCP_AUTO" = 1 ] && port_in_use "$MCP_PORT"; then
+  echo "포트 $MCP_PORT 이(가) 사용 중이라 외부 MCP 서버는 건너뜁니다(--no-mcp로 이 안내를 끌 수 있음)." >&2
+  MCP=0
+  ports=("$API_PORT" "$WEB_PORT")
+fi
 for port in "${ports[@]}"; do
   if port_in_use "$port"; then
     echo "포트 $port 이(가) 이미 사용 중입니다. 떠 있는 서버를 먼저 끄세요: lsof -nP -iTCP:$port -sTCP:LISTEN" >&2
@@ -170,9 +197,10 @@ mkdir -p "$RUN_DIR"
 { echo "$$"; ps -p "$$" -o lstart=; } >"$PID_FILE"
 
 PIDS=()
+MCP_PID="" # 자동으로 띄운 MCP 서버. 실패해도 서버·웹은 계속 띄우므로 PIDS 밖에서 따로 관리한다
 # bash 3.2(macOS)는 set -u에서 빈 배열을 "${PIDS[@]}"로 펼치면 오류가 나므로 ${PIDS[@]+...}로 쓴다
 stop_all() {
-  for pid in ${PIDS[@]+"${PIDS[@]}"}; do kill "$pid" 2>/dev/null || true; done
+  for pid in ${PIDS[@]+"${PIDS[@]}"} ${MCP_PID:+"$MCP_PID"}; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   rm -f "$PID_FILE"
 }
@@ -213,9 +241,29 @@ wait_for "http://127.0.0.1:$WEB_PORT" "웹"
 if [ "$MCP" = 1 ]; then
   # 기존 서버가 DB 스키마를 맞춘 뒤(위 서버 응답) 외부 앱을 띄운다. 외부 앱은 마이그레이션하지 않는다
   (cd "$ROOT/server" && exec env MCP_PORT="$MCP_PORT" uv run python -m app.mcp_external serve) &
-  PIDS+=($!)
-  wait_for "http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server" "외부 MCP 서버"
-  echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+  mcp_pid=$!
+  mcp_check="http://127.0.0.1:$MCP_PORT/.well-known/oauth-authorization-server"
+  if [ "$MCP_AUTO" = 1 ]; then
+    # 자동으로 띄운 MCP 서버가 실패해도 서버와 웹은 그대로 쓸 수 있게 MCP만 건너뛴다
+    MCP_PID=$mcp_pid
+    mcp_ok=0
+    for _ in $(seq 1 120); do
+      if curl -sf "$mcp_check" >/dev/null 2>&1; then mcp_ok=1; break; fi
+      kill -0 "$mcp_pid" 2>/dev/null || break
+      sleep 0.5
+    done
+    if [ "$mcp_ok" = 1 ]; then
+      echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+    else
+      echo "외부 MCP 서버를 시작하지 못해 건너뜁니다(서버·웹은 계속 실행). 원인은 위 로그를 보세요." >&2
+      kill "$mcp_pid" 2>/dev/null || true
+      MCP_PID=""
+    fi
+  else
+    PIDS+=("$mcp_pid")
+    wait_for "$mcp_check" "외부 MCP 서버"
+    echo "외부 MCP 서버: http://127.0.0.1:$MCP_PORT/mcp (공개 주소 $(mcp_setting MCP_PUBLIC_URL)/mcp)"
+  fi
 fi
 URL="http://127.0.0.1:$WEB_PORT"
 echo
@@ -231,5 +279,9 @@ while :; do
       exit 1
     fi
   done
+  if [ -n "$MCP_PID" ] && ! kill -0 "$MCP_PID" 2>/dev/null; then
+    echo "외부 MCP 서버가 종료되었습니다(서버·웹은 계속 실행). 다시 띄우려면 ./stop.sh 후 ./run.sh" >&2
+    MCP_PID=""
+  fi
   sleep 1
 done
