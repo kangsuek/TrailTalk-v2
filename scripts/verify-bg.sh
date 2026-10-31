@@ -8,7 +8,7 @@
 #   scripts/verify-bg.sh status          최근 실행 상태를 보인다.
 #   scripts/verify-bg.sh run <sha>       (내부) 격리 워크트리에서 실제 검증을 돌린다.
 #
-# 검증은 커밋된 SHA를 .git/verify-bg/wt 워크트리에 풀어서 돌리므로, 그 뒤에 작업 트리를 고쳐도 결과가
+# 검증은 커밋된 SHA를 전용 워크트리(~/.cache/trailtalk-verify/<저장소>)에 풀어서 돌리므로, 그 뒤에 작업 트리를 고쳐도 결과가
 # 섞이지 않는다. 낮은 우선순위(nice)로 돌고, E2E는 개발 쪽과 겹치지 않는 다른 포트(8110·5184·8411)를 쓴다.
 # 통과하면 scripts/verify.sh가 공용 .git/verify-cache/에 남기는 기록이 push 허가증이다.
 # 끝나면 맥 알림으로 결과를 알린다. 로그와 상태는 .git/verify-bg/<sha>.log·.status.
@@ -19,6 +19,8 @@ ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 COMMON="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
 BG="$COMMON/verify-bg"
 mkdir -p "$BG"
+# 검증용 워크트리는 .git 밖에 둔다(Vite가 경로에 .git이 있는 파일의 제공을 막아 시험이 깨진다)
+WT="${VERIFY_BG_WORKTREE:-${XDG_CACHE_HOME:-$HOME/.cache}/trailtalk-verify/$(basename "$(dirname "$COMMON")")}"
 
 resolve() { git -C "$ROOT" rev-parse --verify -q "$1^{commit}"; }
 key_of() { VERIFY_REV="$1" "$ROOT/scripts/verify.sh" --key; }
@@ -88,7 +90,7 @@ cmd_start() {
 }
 
 cmd_run() {
-  local sha="$1" wt="$BG/wt" rc subject
+  local sha="$1" wt="$WT" rc subject
   trap 'echo cancelled >"$BG/$sha.status"; exit 143' TERM INT
   subject="$(git -C "$ROOT" log -1 --format=%s "$sha" 2>/dev/null)"
 
@@ -97,10 +99,9 @@ cmd_run() {
 
   git -C "$ROOT" worktree prune
   if [ -e "$wt/.git" ]; then
-    rm -f "$COMMON/worktrees/wt/index.lock" 2>/dev/null
     git -C "$wt" checkout -q --detach -f "$sha" && git -C "$wt" clean -fdq
   else
-    git -C "$ROOT" worktree add -q --detach -f "$wt" "$sha"
+    mkdir -p "$(dirname "$wt")" && git -C "$ROOT" worktree add -q --detach -f "$wt" "$sha"
   fi || { echo "워크트리 준비 실패"; echo fail >"$BG/$sha.status"; notify "TrailTalk 검증 실패" "${sha:0:7} 워크트리 준비 실패"; exit 1; }
 
   # 의존성 잠금이 같으면 메인의 node_modules를 연결하고, 다르면 그 커밋 기준으로 설치한다
