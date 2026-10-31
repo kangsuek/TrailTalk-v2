@@ -1,12 +1,10 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@playwright/test'
+import { API_PORT, MCP_PORT, WEB_PORT } from './e2e/ports.ts'
 
-// E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(8100)를 띄우고, Claude CLI는
-// 가짜(녹화 재생)로 바꾼다.
+// E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(기본 8100)를 띄우고, Claude CLI는
+// 가짜(녹화 재생)로 바꾼다. 포트는 e2e/ports.ts(E2E_*_PORT 환경 변수로 바꿈).
 // 사용자의 실제 서버(8000)와 DB(server/data)는 건드리지 않는다(CLAUDE.md).
-const API_PORT = 8100
-const WEB_PORT = 5174
-const MCP_PORT = 8401
 const DATA_DIR = '.e2e/data'
 
 export default defineConfig({

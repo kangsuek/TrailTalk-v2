@@ -2,11 +2,13 @@
 # 품질 게이트. 모든 검증을 돌리고 실패하면 종료 코드 1로 멈춘다.
 #   scripts/verify.sh           전체(빌드·E2E 포함)
 #   scripts/verify.sh --quick   타입·린트·단위 테스트까지
+#   scripts/verify.sh --key     통과 기록 키만 출력한다(VERIFY_REV=<커밋>이면 그 커밋 기준, 아니면 작업 트리)
 # 없는 폴더나 npm 스크립트는 "건너뜀"으로 표시한다.
 #
 # 속도:
 #  - 통과 기록: 문서(docs/, CLAUDE.md, README.md)를 뺀 작업 트리의 git tree 해시가 같으면
-#    이미 통과한 단계(quick, full)를 건너뛴다. 기록은 .git/verify-cache/에 둔다.
+#    이미 통과한 단계(quick, full)를 건너뛴다. 기록은 공용 .git/verify-cache/에 둔다(워크트리끼리 공유).
+#    커밋 뒤 백그라운드 검증(scripts/verify-bg.sh)이 남긴 기록이 push 게이트의 허가증이 된다.
 #    commit에서 통과한 코드로 push하면 build·E2E만 돌고, 문서만 바꾼 변경은 기록이 그대로 맞는다.
 #  - 병렬: 서버 검사와 웹 검사를 동시에 돌린다(출력은 끝난 뒤 묶어 보인다).
 #  - VERIFY_NO_CACHE=1 기록을 쓰지 않고 항상 전부 돌린다. VERIFY_SERIAL=1 순차로 돌린다.
@@ -14,10 +16,12 @@ set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QUICK=0
+PRINT_KEY=0
 case "${1:-}" in
   "") ;;
   --quick) QUICK=1 ;;
-  *) echo "사용법: scripts/verify.sh [--quick]" >&2; exit 2 ;;
+  --key) PRINT_KEY=1 ;;
+  *) echo "사용법: scripts/verify.sh [--quick|--key]" >&2; exit 2 ;;
 esac
 
 # uv 설치 스크립트는 ~/.local/bin(예전 판은 ~/.cargo/bin)에 설치하지만 PATH에 없을 수 있다
@@ -66,14 +70,14 @@ web_step() { # web_step <npm 스크립트> [추가 인자...]
 # 문서를 읽는 테스트·빌드를 더하면 아래 제외 목록(docs CLAUDE.md README.md)을 함께 고친다.
 # 계산에 실패하거나 git이 없으면 빈 문자열을 돌려주고, 기록 없이 전부 돌린다.
 compute_key() {
-  local tmp key
+  local tmp key rev="${VERIFY_REV:-}"
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/verify-idx.XXXXXX")" || return 0
   key="$(
     {
       cd "$ROOT" &&
         export GIT_INDEX_FILE="$tmp/index" &&
-        git read-tree HEAD &&
-        git add -A &&
+        git read-tree "${rev:-HEAD}" &&
+        { [ -n "$rev" ] || git add -A; } &&
         git rm -r -q --cached --ignore-unmatch -- docs CLAUDE.md README.md &&
         git write-tree
     } 2>/dev/null
@@ -88,8 +92,7 @@ init_cache() {
   [ "${VERIFY_NO_CACHE:-0}" = 1 ] && return 0
   command -v git >/dev/null || return 0
   local dir
-  dir="$(git -C "$ROOT" rev-parse --git-path verify-cache 2>/dev/null)" || return 0
-  case "$dir" in /*) ;; *) dir="$ROOT/$dir" ;; esac
+  dir="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/verify-cache" || return 0
   KEY="$(compute_key)"
   if [ -n "$KEY" ] && mkdir -p "$dir" 2>/dev/null; then
     CACHE_DIR="$dir"
@@ -180,6 +183,12 @@ web_full_checks() {
   web_step build
   web_step e2e
 }
+
+if [ "$PRINT_KEY" -eq 1 ]; then
+  compute_key
+  echo
+  exit 0
+fi
 
 init_cache
 

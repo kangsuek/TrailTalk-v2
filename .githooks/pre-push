@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
-# 푸시 전 전체 검증. Claude 밖에서 직접 푸시해도 같은 게이트가 걸린다.
+# 푸시 전 게이트. Claude 밖에서 직접 푸시해도 같은 게이트가 걸린다.
+# 올리는 각 커밋의 전체 검증 통과 기록이 있어야 한다. 검증이 돌고 있으면 끝날 때까지 기다리고,
+# 시작하지 않았다면 시작해서 기다린다(scripts/verify-bg.sh gate). 삭제 푸시는 건너뛴다.
 # 켜는 법: git config core.hooksPath .githooks
-exec "$(git rev-parse --show-toplevel)/scripts/verify.sh"
+ROOT="$(git rev-parse --show-toplevel)"
+zero="0000000000000000000000000000000000000000"
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue
+  "$ROOT/scripts/verify-bg.sh" gate "$local_sha" || exit 1
+done
+exit 0

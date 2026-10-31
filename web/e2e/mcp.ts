@@ -1,9 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { MCP_PORT } from './ports.ts'
 
 // 외부 MCP 서버(Claude 앱 연계)를 OAuth로 연결해 도구를 부르는 시험용 클라이언트.
 // 실제 Claude 앱 대신 같은 프로토콜(DCR → 인가 → 소유자 로그인 → PKCE 코드 교환 → JSON-RPC)을 쓴다.
-const BASE = 'http://127.0.0.1:8401'
-const PUBLIC = 'http://localhost:8401'
+const BASE = `http://127.0.0.1:${MCP_PORT}`
+const PUBLIC = `http://localhost:${MCP_PORT}`
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback'
 const PASSWORD = 'e2e-owner-password-1234'
 
