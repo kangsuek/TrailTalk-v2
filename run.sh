@@ -125,7 +125,7 @@ if [ "$PHONE" = 1 ]; then
     exit 1
   fi
   PHONE_URL="https://$PHONE_HOST:$PHONE_HTTPS_PORT"
-  export VITE_ALLOWED_HOSTS="$PHONE_HOST"
+  export VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS:+$VITE_ALLOWED_HOSTS,}$PHONE_HOST" # 미리 지정한 값에 덧붙인다
   echo "폰 접속 모드: 개발 서버가 $PHONE_HOST 를 받도록 합니다."
 fi
 phone_guide() {
@@ -135,9 +135,9 @@ phone_guide() {
   echo "       $TS_BIN serve --bg --https=$PHONE_HTTPS_PORT http://127.0.0.1:$WEB_PORT"
   echo "  2) 폰 브라우저에서 $PHONE_URL 을 열고 마이크를 허용"
   echo "  끄려면: $TS_BIN serve --https=$PHONE_HTTPS_PORT off"
-  echo "  이미 $PHONE_HTTPS_PORT 번을 쓰고 있으면 PHONE_HTTPS_PORT=<443·8443·10000 중 빈 포트> ./run.sh --phone"
+  echo "  이미 $PHONE_HTTPS_PORT 번을 쓰고 있으면 PHONE_HTTPS_PORT=10000 ./run.sh --phone (443은 외부 MCP Funnel이 쓸 수 있어 피한다)"
 }
-if [ "$PHONE" = 1 ] && [ "${PHONE_GUIDE_ONLY:-0}" = 1 ]; then # 시험용: 안내만 내고 끝낸다
+if [ "$PHONE" = 1 ] && [ "${TRAILTALK_TEST_PHONE_GUIDE_ONLY:-0}" = 1 ]; then # 시험용: 안내만 내고 끝낸다
   phone_guide
   exit 0
 fi

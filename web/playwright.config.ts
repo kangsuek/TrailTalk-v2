@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@playwright/test'
 
 // E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(8100)를 띄우고, Claude CLI는
@@ -25,7 +26,7 @@ export default defineConfig({
           args: [
             '--use-fake-ui-for-media-stream',
             '--use-fake-device-for-media-stream',
-            `--use-file-for-fake-audio-capture=${new URL('e2e/fixtures/speech-ko.wav', import.meta.url).pathname}`,
+            `--use-file-for-fake-audio-capture=${fileURLToPath(new URL('e2e/fixtures/speech-ko.wav', import.meta.url))}`,
           ],
         },
         permissions: ['microphone'],
