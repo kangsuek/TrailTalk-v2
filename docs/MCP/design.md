@@ -1,6 +1,6 @@
 # 설계: Claude 앱 MCP 연계
 
-결정 사항과 범위는 [README.md](README.md), 도구별 명세는 [tools.md](tools.md)에 있다. 이 문서의 이름(파일·함수·열)은 제안이며 구현 때 코드 규약에 맞춰 정한다.
+결정 사항과 범위는 [README.md](README.md), 도구별 명세는 [tools.md](tools.md)에 있다. 이 문서의 이름(파일·함수·열)은 설계 당시 제안이다. 구현된 이름은 코드가 정본이다(외부 MCP는 `server/app/mcp_external/`).
 
 ## 1. 구조
 
@@ -96,10 +96,10 @@ Tailscale Funnel은 포트로 노출하므로 기존 서버(8000)를 그대로 F
 
 `set_nickname`은 내부 MCP의 같은 이름 도구(`server/app/mcp/server.py`)의 규칙을 서비스로 옮겨 재사용한다: `Nickname` 검증(1~20자 한 줄), "님·씨"를 뺀 부분 2글자 이상. 내부 도구는 "이번 사용자 발화에 나온 호칭만" 받지만 외부 앱에서는 서버가 발화를 알 수 없어 이 검사를 뺀다. 호칭은 프로필 하나라 웹 글 대화와 공유된다.
 
-## 5. 코드 배치 (제안)
+## 5. 코드 배치
 
 - `server/app/services/`에 일지·노트·기억 서비스를 둔다(저장·조회·검색·수정·삭제 규칙). 기존 `server/app/mcp/server.py`의 `save_note`·`search_notes`·`search_conversations` 로직과 `server/app/api/journal.py`의 삭제·제목 수정·노트 수정(PATCH) 규칙을 여기로 옮겨 **세 곳(내부 MCP, 외부 MCP, 웹 API)이 같은 규칙을 쓰게** 한다. 이 리팩터링은 기존 시험이 그대로 통과해야 한다.
-- `server/app/mcp_external/`(가칭)에 외부 앱, OAuth, 도구 등록을 둔다.
+- `server/app/mcp_external/`에 외부 앱, OAuth, 도구 등록을 둔다.
 - 내부 MCP의 `save_note`는 `X-TrailTalk-Session`으로 정해진 런타임 세션에 묶여 있다. 서비스로 옮길 때 "세션을 인자로 받는" 시그니처로 바꾸고, 내부 MCP는 자기 세션을, 외부 MCP는 앱 메모 세션을 넘긴다.
 - 도구 표기: 읽기 전용은 `read_only_hint`, 삭제는 `destructive_hint`를 단다(`trailTalk-MCP`와 같음).
 
@@ -147,7 +147,7 @@ Tailscale Funnel은 포트로 노출하므로 기존 서버(8000)를 그대로 F
 | 앱 일지의 출처 표시 UI(**결정됨**) | 시안 수정 뒤에 구현한다. 시안 수정은 별도 지시를 기다린다. 서버 쪽은 먼저 구현 가능 |
 | `transcript` 처리 | **결정됨**: `Turn`으로 풀기(3.4). 머리표 해석 규칙은 구현 때 시험으로 고정 |
 
-## 9. 마일스톤 제안 (가칭 MA, 착수 승인 뒤 계획서에 옮김)
+## 9. 마일스톤 (MA, 진행 상태는 구현 계획서가 정본)
 
 묶음마다 브랜치 하나, CLAUDE.md의 병합·리뷰 규칙을 따른다.
 

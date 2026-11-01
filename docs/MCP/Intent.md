@@ -1,6 +1,6 @@
 # TrailTalk × Claude 앱 MCP 연계 Intent
 
-작성일: 2026-10-30. 상태: **제안(미구현)**. 이 문서는 Claude 앱 MCP 연계의 **의도(무엇을, 왜, 어떤 원칙으로)**를 정리한다. 기존 [docs/Intent.md](../Intent.md)를 고치지 않고 덧붙이는 문서이며, 기존 Intent의 "주 장면" 문장을 바꾸는 반영안은 [doc-changes.md](doc-changes.md) 1절에 있다. 결정은 [README.md](README.md), 설계는 [design.md](design.md), 도구 명세는 [tools.md](tools.md), 작업과 진행은 [implementation-plan.md](implementation-plan.md)가 기준이다.
+작성일: 2026-10-30. 상태: **구현·병합 완료(2026-10-30, 후속 수정 2026-10-31), 폰 실측 대기**. 이 문서는 Claude 앱 MCP 연계의 **의도(무엇을, 왜, 어떤 원칙으로)**를 정리한다. 기존 [docs/Intent.md](../Intent.md)를 고치지 않고 덧붙이는 문서이며, 기존 Intent의 "주 장면" 문장을 바꾸는 반영안은 [doc-changes.md](doc-changes.md) 1절에 있다. 결정은 [README.md](README.md), 설계는 [design.md](design.md), 도구 명세는 [tools.md](tools.md), 작업과 진행은 [implementation-plan.md](implementation-plan.md)가 기준이다.
 
 ## 1. 한 줄 정의
 

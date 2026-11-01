@@ -1,6 +1,6 @@
 # Claude 앱 MCP 연계
 
-작성일: 2026-10-30. 상태: **결정·문서 반영 완료, 구현 전**. 기존 문서(Intent·Spec·구현 계획서·클라이언트 계약)에는 [doc-changes.md](doc-changes.md)의 반영안을 2026-10-30에 옮겼다(MA-00b 완료, 화면 시안은 제외). 이 폴더 자체는 문서만 바꾸는 변경이라 서브에이전트 diff 리뷰 뒤 `main`에 바로 커밋한다(CLAUDE.md, 2026-10-30 사용자 확인).
+작성일: 2026-10-30. 상태: **구현·`main` 병합 완료(2026-10-30, 후속 수정 2026-10-31), 폰 실측(MA-12)과 출처 표시 UI(MA-13) 대기**. 진행 상태의 정본은 [implementation-plan.md](implementation-plan.md)다. 기존 문서(Intent·Spec·구현 계획서·클라이언트 계약)에는 [doc-changes.md](doc-changes.md)의 반영안을 2026-10-30에 옮겼다(MA-00b 완료, 화면 시안은 제외). 이 폴더 자체는 문서만 바꾸는 변경이라 서브에이전트 diff 리뷰 뒤 `main`에 바로 커밋한다(CLAUDE.md, 2026-10-30 사용자 확인).
 
 ## 한 줄 요약
 
@@ -25,14 +25,14 @@
 | 13 | 앱 메모 세션은 전용 열(`app_kind`)로 구분한다 |
 | 14 | 앱이 넘긴 `transcript`는 `Turn`으로 풀어 저장한다 |
 | 15 | `save_journal` 갱신은 기존 노트를 유지하고 없는 내용만 더한다. 삭제는 `delete_note`뿐 |
-| 16 | 앱 세션은 `checks=[]`, 앱 세션 전문 화자 이름은 "Claude", 앱 일지·앱 메모 중복은 날짜 키 `app_day`로 막는다(제안, MA-04·10에서 확정) |
+| 16 | 앱 세션은 `checks=[]`, 앱 세션 전문 화자 이름은 "Claude", 앱 일지·앱 메모 중복은 날짜 키 `app_day`로 막는다(MA-04·10에서 구현으로 확정) |
 
 ## 범위 밖
 
 - 화면 시안(`docs/design/`, 아티팩트) 수정
-- Intent·Spec·구현 계획서·client-contract 직접 수정(반영안만 제시)
+- 이 폴더 문서가 기존 Intent·Spec·구현 계획서·client-contract를 직접 고치는 것(반영안은 [doc-changes.md](doc-changes.md)에 두고 MA-00b에서 옮김)
 - `spike.db` 이관
-- 코드 구현
+- 코드 구현(문서 작성 당시의 범위이며, 구현은 MA-01~11에서 끝났다)
 
 ## 문서 안내
 
@@ -40,7 +40,7 @@
 |---|---|
 | [Intent.md](Intent.md) | 연계의 의도: 목표, 장면, 원칙, 성공 기준, 보류 |
 | [Spec.md](Spec.md) | 연계의 명세: 요구사항, 아키텍처, 동작 규칙, 데이터·API 변경, 보안, 테스트, 결정 |
-| [design.md](design.md) | 구조, 인증, 데이터 매핑, 보안, 코드 배치, 검증, 마일스톤 제안 |
+| [design.md](design.md) | 구조, 인증, 데이터 매핑, 보안, 코드 배치, 검증, 마일스톤 |
 | [tools.md](tools.md) | 도구 13개의 입력·출력·규칙 |
 | [doc-changes.md](doc-changes.md) | Intent·Spec·계획서·계약에 반영할 변경안(시안 제외) |
 | [implementation-plan.md](implementation-plan.md) | 구현 계획: 묶음·작업 ID·상태·완료 기준·진행 대시보드 |
@@ -53,4 +53,4 @@
 
 ## 사실과 추정의 구분
 
-이 문서의 앱 쪽 동작(Claude 앱 음성 모드의 도구 호출 안정성, 첫 호출 지연 로딩, 커넥터 접속 조건)은 `trailTalk-MCP` CLAUDE.md의 기록과 일반적인 MCP 동작에 근거한 것이며, v2에서 구현·실측한 것이 아니다. 구현 뒤 폰에서 확인할 항목은 [design.md](design.md) 7절에 있다.
+이 문서의 앱 쪽 동작(Claude 앱 음성 모드의 도구 호출 안정성, 첫 호출 지연 로딩, 커넥터 접속 조건)은 `trailTalk-MCP` CLAUDE.md의 기록과 일반적인 MCP 동작에 근거한 것이며, v2에서 폰으로 실측한 것이 아니다(구현은 끝났고 폰 실측은 MA-12 대기). 폰에서 확인할 항목은 [design.md](design.md) 7절에 있다.
