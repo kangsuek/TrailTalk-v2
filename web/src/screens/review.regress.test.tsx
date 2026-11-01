@@ -157,14 +157,19 @@ describe('일지 상세', () => {
   })
 
   it('앞 요청이 실패해도 뒤 요청의 변경은 되돌리지 않고 실패한 필드만 되돌린다', async () => {
+    // 앞 요청(별표)은 뒤 요청(완료)이 서버에 도착한 뒤에 실패시킨다. 시간(setTimeout)으로 맞추면 부하가 큰
+    // 병렬 검증에서 두 번째 클릭이 늦어, 앞 요청이 이미 실패한 뒤에 뒤 요청이 가는 순서가 되어 시험이 흔들린다
+    let secondArrived: () => void = () => {}
+    const second = new Promise<void>((resolve) => (secondArrived = resolve))
     mockServer({
       'GET /api/journal/s1': () => Response.json(detail({ session: item({ status: 'ended', ended_at: 'x' }) })),
       'PATCH /api/notes/i1': async (init) => {
         const body = JSON.parse(String(init.body))
         if ('starred' in body) {
-          await new Promise((resolve) => setTimeout(resolve, 60))
+          await second
           return Response.json({ error: { code: 'internal_error', message: '서버 내부 오류가 발생했습니다.' } }, { status: 500 })
         }
+        secondArrived()
         return Response.json(idea({ done: true }))
       },
     })
