@@ -316,7 +316,7 @@ if [ "$MCP" = 1 ]; then
   fi
   # 떠 있는 외부 MCP 서버만 ./stop.sh --mcp로 끌 수 있게 PID와 시작 시각을 남긴다(자동·명시 실행 모두)
   if [ -n "$MCP_PID" ]; then
-    { echo "$MCP_PID"; ps -p "$MCP_PID" -o lstart=; } >"$MCP_PID_FILE"
+    { echo "$MCP_PID"; ps -p "$MCP_PID" -o lstart= || true; } >"$MCP_PID_FILE" # 그사이 죽었으면 시작 시각이 비어 stop.sh가 낡은 기록으로 본다
   fi
 fi
 URL="http://127.0.0.1:$WEB_PORT"
@@ -337,6 +337,7 @@ while :; do
   if [ -n "$MCP_PID" ] && ! kill -0 "$MCP_PID" 2>/dev/null; then
     echo "외부 MCP 서버가 종료되었습니다(서버·웹은 계속 실행). 다시 띄우려면 ./stop.sh 후 ./run.sh" >&2
     MCP_PID=""
+    rm -f "$MCP_PID_FILE"
   fi
   sleep 1
 done
