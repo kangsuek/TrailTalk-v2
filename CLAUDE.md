@@ -16,11 +16,11 @@
 server/   FastAPI 서버(Python 3.12, uv). app/ 코드, migrations/ Alembic, personas/ 캐릭터 YAML, tests/
 web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, src/screens·src/components 화면, e2e/ Playwright
 shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
-scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks가 같은 스크립트를 쓴다. GitHub Actions CI는 두지 않는다: push 전 훅이 같은 전체 검증을 돌린다)
+scripts/  verify.sh 검증 게이트, verify-bg.sh 커밋 뒤 백그라운드 전체 검증과 push 허가 확인(.githooks의 post-commit·post-merge·pre-push가 쓴다. .claude/hooks/gate-git.py는 그 훅이 꺼지거나 우회되지 않게 지킨다). GitHub Actions CI는 두지 않는다
 ```
 
 - 실행·종료: `./run.sh`(`--tmp` 임시 데이터, `--phone` 폰 접속 안내: Tailscale 호스트 허용과 tailnet 전용 HTTPS 8443 켜는 명령), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `.env`(또는 셸 환경 변수)에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄운다(포트 8400, `--tmp`는 제외, `--no-mcp`로 끔, `--mcp`는 명시 실행이라 설정이 없으면 멈춘다), MCP만 끄기는 `./stop.sh --mcp`, 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
-- 검증: `scripts/verify.sh [--quick]`. 문서(`docs/`, `CLAUDE.md`, `README.md`)를 뺀 작업 트리가 같으면 통과한 단계(quick, full)를 `.git/verify-cache/` 기록으로 건너뛴다(commit에서 통과한 코드의 push는 build·E2E만 돈다). 서버·웹 검사는 병렬이고 서버 pytest는 xdist 6 워커다(`VERIFY_PYTEST_WORKERS`로 조정, CPU 수만큼 늘리면 시간에 민감한 테스트가 흔들린다). `VERIFY_NO_CACHE=1`로 기록을 끄고 `VERIFY_SERIAL=1`로 순차 실행한다.
+- 검증: `scripts/verify.sh [--quick]`. 문서(`docs/`, `CLAUDE.md`, `README.md`)를 뺀 작업 트리(커밋 기준 검증은 그 커밋의 트리)가 같으면 통과한 단계(quick, full)를 공용 `.git/verify-cache/` 기록으로 건너뛴다. 커밋·병합 뒤 `.githooks`가 그 커밋의 전체 검증을 격리 워크트리(`~/.cache/trailtalk-verify/`)에서 백그라운드로 돌려 이 기록을 남기고(끝나면 맥 알림, `scripts/verify-bg.sh status`·`retry`), push는 그 기록이 있어야 통과한다. 서버·웹 검사는 병렬이고 서버 pytest는 xdist 6 워커다(`VERIFY_PYTEST_WORKERS`로 조정, CPU 수만큼 늘리면 시간에 민감한 테스트가 흔들린다). `VERIFY_NO_CACHE=1`로 기록을 끄고 `VERIFY_SERIAL=1`로 순차 실행한다.
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
 - 화면을 바꿔 스크린샷 기준이 달라지면 `cd web && npm run e2e:update`로 갱신하고 이미지를 눈으로 확인한 뒤 커밋한다.
@@ -45,6 +45,6 @@ scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks가 같은
 - 작업 범위는 `docs/implementation-plan.md`의 진행 중인 마일스톤 작업 표에서 지금 하는 작업(또는 작업 묶음)의 산출물이다. 범위 밖 파일을 고쳐야 하면 멈추고 보고한다.
 - 버그를 고칠 때는 실패하는 회귀 테스트를 먼저 추가하고 고친다. 커밋은 한 목적씩 작게 나눈다.
 - force push는 `.claude/settings.json`이 거부(deny)하고, `main` push·`git merge`·`reset --hard`·의존성 추가·업그레이드는 확인(ask)을 요청한다. 문서만 바꾸는 직접 `main` 푸시도 이 확인이 뜨며, 이는 위 예외 규칙에 따라 승인하는 자리다(코드 변경은 사용자 승인 없이 승인하지 않는다). 규칙을 우회하지 않는다. 훅은 Edit·Write·MultiEdit만 가로채고 `sed -i` 같은 Bash 수정은 막지 못하므로, 테스트·보호 파일은 도구로 고친다. 게이트 자체(`.claude/`, `scripts/verify.sh`, `.githooks/`, 워크플로)도 보호 파일이다.
-- 변경 후 `scripts/verify.sh`를 실행한다(`--quick`은 타입·린트·단위 테스트, 인자 없이는 빌드·E2E까지). `git commit` 전에는 `--quick`, `git push`·`git merge` 전에는 전체가 훅(`.claude/hooks/gate-git.py`)과 `.githooks/pre-push`로 자동 실행되고 실패하면 막힌다. 개별 명령은 다음과 같다(해당 폴더와 스크립트가 생긴 뒤부터). 서버(`server/`): `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. 웹(`web/`): `npm run typecheck`, `npm run typecheck:core`, `npm run lint`, `npm run test`, `npm run build`, `npm run gen:api -- --check`, `npm run e2e`(Playwright, 전체 모드).
+- 변경 후 `scripts/verify.sh`를 실행한다(`--quick`은 타입·린트·단위 테스트, 인자 없이는 빌드·E2E까지). 커밋·병합 뒤에는 전체 검증이 백그라운드로 자동 시작되고(`.githooks/post-commit`·`post-merge`), `git push` 때는 `.githooks/pre-push`가 올라가는 ref마다 그 커밋의 통과 기록을 확인한다(진행 중이면 기다리고 실패면 막는다). 이 게이트는 clone마다 `git config core.hooksPath .githooks`를 한 번 설정해야 켜지고, Claude의 `gate-git.py`가 꺼져 있거나 `--no-verify`로 우회하려 하면 push를 막는다. 커밋 전 `--quick`은 자동으로 돌지 않으니 필요하면 직접 돌린다. 개별 명령은 다음과 같다(해당 폴더와 스크립트가 생긴 뒤부터). 서버(`server/`): `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. 웹(`web/`): `npm run typecheck`, `npm run typecheck:core`, `npm run lint`, `npm run test`, `npm run build`, `npm run gen:api -- --check`, `npm run e2e`(Playwright, 전체 모드).
 - 테스트나 검증이 실패하면 구현을 멈추고 원인과 영향 범위를 보고한 뒤 지시를 기다린다.
 - `main` 병합 승인을 요청할 때 변경 요약(`git diff --stat`과 핵심 변경), 검증 결과, 서브에이전트 리뷰 결과를 함께 보고한다. 문서만 바꾼 직접 커밋도 커밋 뒤에 변경 요약과 서브에이전트 리뷰 결과(지적과 반영 내용, 재리뷰하지 않은 오타·표현·서식 수정이 있으면 그 내용)를 보고한다.

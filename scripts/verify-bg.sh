@@ -13,6 +13,10 @@
 # 통과하면 scripts/verify.sh가 공용 .git/verify-cache/에 남기는 기록이 push 허가증이다.
 # 끝나면 맥 알림으로 결과를 알린다. 로그와 상태는 .git/verify-bg/<sha>.log·.status.
 set -u
+# git 훅(post-commit·pre-push 등)에서 불리면 GIT_DIR·GIT_INDEX_FILE(상대 경로) 같은 값이 넘어와, 격리 워크트리의
+# git 명령이 엉뚱한 저장소·인덱스를 건드릴 수 있다. 이 스크립트는 경로를 -C로 직접 정하므로 모두 지운다
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_QUARANTINE_PATH GIT_EXEC_PATH
 
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
@@ -28,11 +32,26 @@ has_full() { [ -n "$2" ] && [ -f "$COMMON/verify-cache/full-$2" ]; }
 read_status() { cat "$BG/$1.status" 2>/dev/null || echo none; }
 runner_pid() { cat "$BG/run.pid" 2>/dev/null; }
 runner_sha() { cat "$BG/run.sha" 2>/dev/null; }
+# 실행기가 살아 있는지. PID만 보면 재부팅·오래된 run.pid 뒤에 같은 PID를 쓰는 남의 프로세스를 실행기로 착각해
+# 그 프로세스 그룹을 죽일 수 있으므로, 명령줄이 이 스크립트의 run인지도 확인한다
 runner_alive() {
   local pid
   pid="$(runner_pid)"
-  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null &&
+    ps -o command= -p "$pid" 2>/dev/null | grep -q "verify-bg.sh run"
 }
+
+# start가 겹쳐 run.pid·run.sha를 서로 덮어쓰지 않게 직렬화한다(mkdir은 원자적). 1분 넘은 잠금은 낡은 것으로 본다
+lock_start() {
+  local i
+  for i in $(seq 1 100); do
+    mkdir "$BG/start.lock" 2>/dev/null && return 0
+    find "$BG/start.lock" -maxdepth 0 -mmin +1 -exec rmdir {} \; 2>/dev/null
+    sleep 0.1
+  done
+  return 1
+}
+unlock_start() { rmdir "$BG/start.lock" 2>/dev/null || true; }
 
 # running으로 적혀 있어도 실행기가 죽었거나 다른 커밋을 돌고 있으면 dead
 eff_status() {
@@ -67,13 +86,23 @@ cancel_running() {
 }
 
 cmd_start() {
-  local sha key
+  local sha key rc
   sha="$(resolve "${1:-HEAD}")" || { echo "커밋을 찾을 수 없습니다: ${1:-HEAD}" >&2; return 1; }
   key="$(key_of "$sha")"
   if has_full "$sha" "$key"; then
     echo "= 이미 통과한 코드입니다(${sha:0:7})"
     return 0
   fi
+  lock_start || { echo "다른 검증 시작이 끝나길 기다렸지만 잠금을 얻지 못했습니다(${sha:0:7})." >&2; return 1; }
+  start_locked "$sha"
+  rc=$?
+  unlock_start
+  return "$rc"
+}
+
+# 잠금 안에서: 상태를 확인하고 실행기를 띄운다
+start_locked() {
+  local sha="$1"
   case "$(eff_status "$sha")" in
     running | fail) return 0 ;;
   esac
@@ -135,9 +164,9 @@ cmd_gate() {
   sha="$(resolve "${1:-HEAD}")" || { echo "커밋을 찾을 수 없습니다: ${1:-HEAD}" >&2; return 1; }
   key="$(key_of "$sha")"
   if [ -z "$key" ]; then
-    echo "통과 기록 키를 계산하지 못해 작업 트리 전체 검증을 직접 돌립니다." >&2
-    "$ROOT/scripts/verify.sh"
-    return $?
+    # 작업 트리를 대신 검증하면 올라가는 커밋과 다른 것을 확인하게 되므로 막는다
+    echo "✘ 통과 기록 키를 계산하지 못해 ${sha:0:7}의 검증 여부를 확인할 수 없습니다(git 상태를 확인하세요)." >&2
+    return 1
   fi
   while :; do
     if has_full "$sha" "$key"; then
