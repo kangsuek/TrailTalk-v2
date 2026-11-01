@@ -26,6 +26,7 @@ PROTECTED = [
     ".claude/settings.json",
     ".claude/hooks/*",
     "scripts/verify.sh",
+    "scripts/verify-bg.sh",
     ".githooks/*",
     ".github/workflows/*",
 ]

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { connectMcp, type McpClient } from './mcp.ts'
+import { MCP_PORT } from './ports.ts'
 
 // Claude 앱 연계 E2E(MA-11): 외부 MCP 서버(8401)에 OAuth로 연결해 도구를 부르고, 기존 웹 화면(격리
 // 서버 8100 뒤의 Vite)에 앱에서 저장한 일지·노트가 보이는지, 웹에서 고친 노트가 get_journal에 반영되는지,
@@ -65,10 +66,10 @@ test.describe('Claude 앱 연계', () => {
 
   test('외부 MCP 포트는 웹 API와 웹 화면을 열지 않는다', async ({ request }) => {
     for (const path of ['/api/health', '/api/journal', '/internal/mcp/', '/']) {
-      const response = await request.get(`http://127.0.0.1:8401${path}`)
+      const response = await request.get(`http://127.0.0.1:${MCP_PORT}${path}`)
       expect(response.status(), path).toBe(404)
     }
-    const unauth = await request.post('http://127.0.0.1:8401/mcp', { data: {} })
+    const unauth = await request.post(`http://127.0.0.1:${MCP_PORT}/mcp`, { data: {} })
     expect(unauth.status()).toBe(401)
   })
 })

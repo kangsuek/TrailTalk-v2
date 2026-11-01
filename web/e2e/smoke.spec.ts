@@ -1,6 +1,7 @@
 import { existsSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
+import { API_PORT } from './ports.ts'
 
 test.describe('스모크', () => {
   test('앱이 뜨고 서버 연결됨이 보인다', async ({ page }) => {
@@ -48,7 +49,7 @@ test.describe('스모크', () => {
   test('E2E 서버는 임시 폴더만 쓰고 실제 server/data를 건드리지 않는다', async ({ request }) => {
     const realDb = resolve(import.meta.dirname, '../../server/data/trailtalk.db')
     const before = existsSync(realDb) ? statSync(realDb).mtimeMs : null
-    const response = await request.get('http://127.0.0.1:8100/api/health')
+    const response = await request.get(`http://127.0.0.1:${API_PORT}/api/health`)
     expect(response.status()).toBe(200)
     // 격리 서버는 web/.e2e/data 아래에 DB를 만든다
     expect(existsSync(resolve(import.meta.dirname, '../.e2e/data/trailtalk.db'))).toBe(true)

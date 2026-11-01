@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# 커밋 뒤 전체 검증을 백그라운드로 시작한다(기다리지 않는다. 끝나면 맥 알림).
+# Claude 밖에서 직접 커밋해도 같은 검증이 돈다. 켜는 법: git config core.hooksPath .githooks
+"$(git rev-parse --show-toplevel)/scripts/verify-bg.sh" start HEAD >/dev/null 2>&1
+exit 0
