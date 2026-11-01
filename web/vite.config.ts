@@ -44,6 +44,8 @@ export default defineConfig({
   // 음성 모듈 청크(platform, 화면이 열린 뒤 따로 불러온다)가 약 550KB다
   build: { chunkSizeWarningLimit: 600 },
   server: {
+    // 폰 접속(./run.sh --phone)은 Tailscale 호스트 이름으로 들어오므로 그 이름만 더 받는다(쉼표로 여럿)
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
     // 개발 중 /api 요청은 FastAPI(uvicorn, 기본 8000번)로 넘긴다.
     // 검증용 서버를 따로 띄울 때는 VITE_API_TARGET으로 그 주소를 준다(예: 격리 서버 8100번).
     proxy: { '/api': process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8000' },

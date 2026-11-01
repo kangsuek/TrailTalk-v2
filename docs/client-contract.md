@@ -39,7 +39,7 @@
 
 ### 1.2 폰 접속
 
-서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net/`)로 접속한다. 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(443)와 Funnel의 포트 배치와 폰 접속 주소·`ALLOWED_ORIGINS`는 MA-03에서 확인한 뒤 맞춘다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
+서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net:8443/`)로 접속한다. 443은 외부 MCP의 Funnel이 쓸 수 있어 앱은 8443을 쓴다. `./run.sh --phone`이 이 기기의 호스트를 개발 서버(`VITE_ALLOWED_HOSTS`)에 열고 켜는 명령을 안내한다(Tailscale 설정은 바꾸지 않는다). 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(8443)와 Funnel(443)이 한 기기에서 공존하는지는 MA-12 전에 사용자 승인 아래 확인한다(MCP/design.md 1.1). 이 기기의 현재 설정은 443만 Funnel이다. 서버의 `Origin` 허용 목록(`ALLOWED_ORIGINS`, 1.5)은 아직 구현 전이라 폰 접속에 필요한 것은 개발 서버의 호스트 허용뿐이다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
 
 ### 1.3 Claude 남은 토큰
 

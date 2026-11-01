@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@playwright/test'
 
 // E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(8100)를 띄우고, Claude CLI는
@@ -15,7 +16,23 @@ export default defineConfig({
   // 스크린샷 기준 이미지는 OS마다 다르게 그려지므로 플랫폼별 폴더에 둔다
   snapshotPathTemplate: '{testDir}/__screenshots__/{platform}/{testFilePath}/{arg}{ext}',
   use: { baseURL: `http://127.0.0.1:${WEB_PORT}`, viewport: { width: 360, height: 800 } },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        browserName: 'chromium',
+        // 가짜 마이크: 실제 장치 대신 한국어 음성 wav를 입력으로 쓴다(CLAUDE.md)
+        launchOptions: {
+          args: [
+            '--use-fake-ui-for-media-stream',
+            '--use-fake-device-for-media-stream',
+            `--use-file-for-fake-audio-capture=${fileURLToPath(new URL('e2e/fixtures/speech-ko.wav', import.meta.url))}`,
+          ],
+        },
+        permissions: ['microphone'],
+      },
+    },
+  ],
   webServer: [
     {
       command:
@@ -31,6 +48,8 @@ export default defineConfig({
         `CLAUDE_CLI_PATH="$PWD/tests/fakes/fake-claude" ` +
         `CLI_ENV_PASSTHROUGH="FAKE_CLAUDE_*" FAKE_CLAUDE_FIXTURE=tool_call ` +
         `FAKE_CLAUDE_ONESHOT="$PWD/tests/fixtures/claude_cli/extract.jsonl" ` +
+        // 음성 인식·합성은 과금 없는 가짜(인식 결과는 고정 문장)로 바꾼다
+        `VOICE_BACKEND=fake ` +
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,
