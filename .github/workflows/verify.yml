@@ -52,3 +52,19 @@ jobs:
         working-directory: server
       - name: 검증 게이트
         run: scripts/verify.sh
+      # Linux 시각 기준 이미지가 아직 없으면(M0·M3-16 약속) 시각 시험이 건너뛰어지므로, 이 실행에서 이미지를
+      # 새로 만들어 산출물로 올린다. 받아서 눈으로 확인하고 승인한 것만 web/e2e/__screenshots__/linux/에
+      # 커밋한다(그 폴더가 생기면 이 단계는 더 돌지 않는다). 실패해도 검증 결과에는 영향이 없다.
+      - name: Linux 시각 기준 이미지 생성(기준이 없을 때만)
+        if: ${{ hashFiles('web/playwright.config.ts') != '' && hashFiles('web/e2e/__screenshots__/linux/**') == '' }}
+        continue-on-error: true
+        run: npx playwright test e2e/visual.spec.ts e2e/visual-journal.spec.ts e2e/visual-voice.spec.ts --update-snapshots=all
+        working-directory: web
+      - name: Linux 시각 기준 이미지 업로드
+        if: ${{ hashFiles('web/playwright.config.ts') != '' && hashFiles('web/e2e/__screenshots__/linux/**') == '' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-visual-baseline
+          path: web/e2e/__screenshots__/linux/
+          if-no-files-found: warn

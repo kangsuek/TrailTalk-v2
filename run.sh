@@ -11,6 +11,9 @@
 #                       --mcp로 명시했는데 설정이 없거나 포트가 사용 중이면 안내하고 멈춘다.
 #   ./run.sh --no-mcp   설정이 있어도 외부 MCP 서버를 띄우지 않는다
 #   ./run.sh --mcp-revoke-all  발급된 MCP 토큰을 모두 폐기한다
+#   ./run.sh --phone    폰에서 접속한다. 폰 마이크는 HTTPS가 필요하므로 이 기기의 Tailscale 주소를 허용하고
+#                       tailnet 안에서만 여는 HTTPS 주소(기본 포트 8443, PHONE_HTTPS_PORT로 변경)와 켜는
+#                       명령을 안내한다. Tailscale 설정은 바꾸지 않는다(이미 쓰는 serve·Funnel을 건드리지 않음)
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
@@ -28,6 +31,7 @@ MCP=0
 MCP_AUTO=0
 NO_MCP=0
 MCP_REVOKE=0
+PHONE=0
 MCP_PORT_ENV="${MCP_PORT:-}"
 
 for arg in "$@"; do
@@ -38,8 +42,9 @@ for arg in "$@"; do
     --mcp) MCP=1 ;;
     --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
+    --phone) PHONE=1 ;;
     -h | --help)
-      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -94,6 +99,47 @@ if [ "$node_major" -lt 24 ]; then
   echo "Node.js 24 이상이 필요합니다(현재 $(node -v 2>/dev/null || echo '알 수 없음'))." >&2
   install_hint node >&2
   exit 1
+fi
+
+# 폰 접속(--phone): 폰의 마이크는 HTTPS 페이지에서만 열리므로 Tailscale HTTPS 주소가 필요하다.
+# 여기서는 이 기기의 tailnet 주소를 알아내 개발 서버가 그 호스트를 받게 하고, 켜는 명령을 안내한다.
+# tailscale serve 설정은 바꾸지 않는다(이 기기는 443을 Funnel로 외부 MCP에 쓸 수 있다). Funnel은 쓰지 않는다
+PHONE_URL=""
+PHONE_HTTPS_PORT="${PHONE_HTTPS_PORT:-8443}"
+if [ "$PHONE" = 1 ]; then
+  TS_BIN="${TAILSCALE_BIN:-}"
+  if [ -z "$TS_BIN" ]; then
+    for cand in tailscale /Applications/Tailscale.app/Contents/MacOS/Tailscale; do
+      if command -v "$cand" >/dev/null 2>&1; then TS_BIN="$(command -v "$cand")"; break; fi
+    done
+  fi
+  if [ -z "$TS_BIN" ] || [ ! -x "$TS_BIN" ]; then
+    echo "Tailscale을 찾지 못했습니다. 폰 접속(--phone)에는 Tailscale이 필요합니다." >&2
+    echo "  이 기기와 폰에 Tailscale을 설치하고 같은 계정으로 로그인한 뒤 다시 실행하세요: https://tailscale.com/download" >&2
+    exit 1
+  fi
+  PHONE_HOST="$("$TS_BIN" status --json 2>/dev/null | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{try{console.log((JSON.parse(s).Self.DNSName||"").replace(/\.$/,""))}catch(e){}})' || true)"
+  if [ -z "$PHONE_HOST" ]; then
+    echo "Tailscale 주소를 알아내지 못했습니다. Tailscale에 로그인되어 있는지, MagicDNS·HTTPS 인증서가" >&2
+    echo "  켜져 있는지 확인하세요(관리 콘솔 DNS 설정: https://login.tailscale.com/admin/dns)." >&2
+    exit 1
+  fi
+  PHONE_URL="https://$PHONE_HOST:$PHONE_HTTPS_PORT"
+  export VITE_ALLOWED_HOSTS="$PHONE_HOST"
+  echo "폰 접속 모드: 개발 서버가 $PHONE_HOST 를 받도록 합니다."
+fi
+phone_guide() {
+  echo
+  echo "폰에서 열려면(폰에도 Tailscale을 켜고 같은 계정으로 로그인):"
+  echo "  1) 다른 터미널에서 한 번 실행 — tailnet 안에서만 여는 HTTPS 연결입니다(Funnel이 아님)"
+  echo "       $TS_BIN serve --bg --https=$PHONE_HTTPS_PORT http://127.0.0.1:$WEB_PORT"
+  echo "  2) 폰 브라우저에서 $PHONE_URL 을 열고 마이크를 허용"
+  echo "  끄려면: $TS_BIN serve --https=$PHONE_HTTPS_PORT off"
+  echo "  이미 $PHONE_HTTPS_PORT 번을 쓰고 있으면 PHONE_HTTPS_PORT=<443·8443·10000 중 빈 포트> ./run.sh --phone"
+}
+if [ "$PHONE" = 1 ] && [ "${PHONE_GUIDE_ONLY:-0}" = 1 ]; then # 시험용: 안내만 내고 끝낸다
+  phone_guide
+  exit 0
 fi
 
 # 이 저장소의 run.sh가 이미 떠 있으면 중복 실행하지 않는다
@@ -268,6 +314,7 @@ fi
 URL="http://127.0.0.1:$WEB_PORT"
 echo
 echo "TrailTalk 실행 중: $URL  (서버 http://127.0.0.1:$API_PORT, 종료: Ctrl+C 또는 ./stop.sh)"
+[ "$PHONE" = 1 ] && phone_guide
 # 브라우저 열기에 실패해도 서버는 계속 띄워 둔다
 if [ "$OPEN" = 1 ] && command -v open >/dev/null; then open "$URL" || true; fi
 
