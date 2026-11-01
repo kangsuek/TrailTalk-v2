@@ -16,7 +16,7 @@
 server/   FastAPI 서버(Python 3.12, uv). app/ 코드, migrations/ Alembic, personas/ 캐릭터 YAML, tests/
 web/      React PWA(Vite, TypeScript). src/core 순수 로직, src/api 서버 호출·생성 타입, src/screens·src/components 화면, e2e/ Playwright
 shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
-scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks, .github/workflows가 같은 스크립트를 쓴다)
+scripts/  verify.sh 검증 게이트(.githooks/pre-push, .claude/hooks가 같은 스크립트를 쓴다. GitHub Actions CI는 두지 않는다: push 전 훅이 같은 전체 검증을 돌린다)
 ```
 
 - 실행·종료: `./run.sh`(`--tmp` 임시 데이터, `--phone` 폰 접속 안내: Tailscale 호스트 허용과 tailnet 전용 HTTPS 8443 켜는 명령), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `.env`(또는 셸 환경 변수)에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄운다(포트 8400, `--tmp`는 제외, `--no-mcp`로 끔, `--mcp`는 명시 실행이라 설정이 없으면 멈춘다), 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
