@@ -94,8 +94,10 @@ cmd_start() {
     return 0
   fi
   lock_start || { echo "다른 검증 시작이 끝나길 기다렸지만 잠금을 얻지 못했습니다(${sha:0:7})." >&2; return 1; }
+  trap 'unlock_start; exit 143' INT TERM HUP # 잠금을 쥔 채 죽어 잠금이 남지 않게 한다
   start_locked "$sha"
   rc=$?
+  trap - INT TERM HUP
   unlock_start
   return "$rc"
 }

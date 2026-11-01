@@ -56,7 +56,7 @@ git config core.hooksPath .githooks   # git 훅을 켠다(clone마다 한 번): 
 scripts/verify-bg.sh status           # 백그라운드 검증 상태(통과·진행 중·실패). 실패했으면 고친 뒤 새로 커밋하거나 `scripts/verify-bg.sh retry`
 ```
 
-push 게이트는 `.githooks/pre-push`가 맡고, Claude Code에서는 `.claude/hooks/gate-git.py`가 그 훅이 꺼져 있거나 `--no-verify`로 우회하면 push를 막는다. GitHub Actions CI는 없다. 훅은 이 기기의 git 설정이라 훅을 켜지 않은 기기·`git push --no-verify`·GitHub 웹 편집은 검증을 거치지 않으니, 의심되면 새 폴더에 clone해 `VERIFY_NO_CACHE=1 scripts/verify.sh`를 돌린다. E2E 포트를 바꾸려면 `E2E_API_PORT`·`E2E_WEB_PORT`·`E2E_MCP_PORT`(기본 8100·5174·8401, 백그라운드 검증은 8110·5184·8411).
+push 게이트는 `.githooks/pre-push`가 맡고, Claude Code에서는 `.claude/hooks/gate-git.py`가 그 훅이 꺼져 있거나 `git push --no-verify` 같은 단순한 우회 형태일 때 push를 막는다(보조 장치라 서브셸·alias·다른 저장소 등은 못 막는다). GitHub Actions CI는 없다. 훅은 이 기기의 git 설정이라 훅을 켜지 않은 기기·`git push --no-verify`·GitHub 웹 편집은 검증을 거치지 않으니, 의심되면 새 폴더에 clone해 `VERIFY_NO_CACHE=1 scripts/verify.sh`를 돌린다. E2E 포트를 바꾸려면 `E2E_API_PORT`·`E2E_WEB_PORT`·`E2E_MCP_PORT`(기본 8100·5174·8401, 백그라운드 검증은 8110·5184·8411).
 
 서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`.
 페르소나 톤 평가(실제 Claude CLI를 써서 구독 사용량이 든다): `(cd server && RUN_REAL_CLI=1 uv run python -m tests.persona_eval.run_eval)`. 리포트는 `docs/eval/`에 남는다.

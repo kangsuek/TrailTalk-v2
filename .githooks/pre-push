@@ -7,6 +7,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 zero="0000000000000000000000000000000000000000"
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "$zero" ] && continue
-  "$ROOT/scripts/verify-bg.sh" gate "$local_sha" || exit 1
+  # gate가 이 루프의 stdin(남은 ref 목록)을 읽어 두 번째 ref부터 건너뛰는 일이 없게 stdin을 막는다
+  "$ROOT/scripts/verify-bg.sh" gate "$local_sha" </dev/null || exit 1
 done
 exit 0

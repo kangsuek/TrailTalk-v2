@@ -50,24 +50,48 @@ def _git_info(tokens):
     return tokens[i], tokens[i + 1 :], opts
 
 
+# 저장소·설정을 다른 곳으로 돌려 pre-push 게이트를 비껴가게 하는 환경 변수
+ENV_BYPASS = re.compile(r"^(GIT_DIR|GIT_WORK_TREE|GIT_CONFIG[A-Z_0-9]*|GIT_EXEC_PATH)=")
+SHELL_LEAD = {"{", "(", "!", "then", "do", "else"}
+
+
 def _segment_checks(tokens, depth):
-    """한 명령 조각에서 ('push' | 'ghmerge' | 'bypass', 이유)를 모은 목록."""
+    """한 명령 조각에서 ('push' | 'ghmerge' | 'bypass', 값)를 모은 목록.
+
+    push의 값은 `git -C 경로`가 가리키는 폴더(없으면 빈 문자열), bypass의 값은 이유다.
+    bypass는 같은 명령에 push가 함께 있을 때만 의미가 있다(main이 판정한다).
+    """
+    while tokens and tokens[0] in SHELL_LEAD:  # `{ git push; }`·`! git push` 같은 셸 구문 머리
+        tokens = tokens[1:]
+    if tokens:
+        tokens = [tokens[0].lstrip("({")] + tokens[1:]  # `(git push)`의 여는 괄호
+    env_bypass = []
     while tokens and (tokens[0] in PREFIX or re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", tokens[0])):
-        if "core.hooksPath" in tokens[0]:  # GIT_CONFIG_KEY_0=core.hooksPath 같은 환경 변수로 게이트를 끄는 시도
-            return [("bypass", "환경 변수로 core.hooksPath를 바꾸려는 시도입니다")]
+        if "core.hooksPath" in tokens[0] or ENV_BYPASS.match(tokens[0]):
+            env_bypass.append(("bypass", "환경 변수(%s)로 게이트를 비껴가려는 시도입니다" % tokens[0].split("=")[0]))
         tokens = tokens[1:]
     if not tokens:
-        return []
+        return env_bypass
     head = os.path.basename(tokens[0])
-    found = []
-    if head == "git":
+    found = list(env_bypass)
+    if head in ("export", "declare", "typeset"):
+        if any("core.hooksPath" in t or ENV_BYPASS.match(t) for t in tokens[1:]):
+            found.append(("bypass", "export로 core.hooksPath·GIT_DIR 등을 바꾸려는 시도입니다"))
+    elif head == "git":
         sub, rest, opts = _git_info(tokens[1:])
         if sub == "push" and not any(t in ("--delete", "-d", "--dry-run", "-n") for t in rest):
-            found.append(("push", ""))
-            if "--no-verify" in rest:
+            target = ""
+            for i, opt in enumerate(opts):
+                if opt == "-C" and i + 1 < len(opts):
+                    target = os.path.join(target, opts[i + 1]) if target else opts[i + 1]
+            found.append(("push", target))
+            # git은 옵션의 고유한 접두사(--no-ver)도 받아들인다
+            if any(t.startswith("--no-ver") for t in rest):
                 found.append(("bypass", "git push --no-verify는 pre-push 게이트를 건너뜁니다"))
             if any("core.hooksPath" in t for t in opts):
                 found.append(("bypass", "git -c core.hooksPath=...로 게이트를 끄려는 시도입니다"))
+            if any(o.split("=")[0] in ("--git-dir", "--work-tree") for o in opts):
+                found.append(("bypass", "--git-dir·--work-tree는 확인할 수 없으니 그 폴더로 이동해(cd) push하세요"))
     elif head == "gh" and tokens[1:3] == ["pr", "merge"]:
         found.append(("ghmerge", ""))
     elif head in ("bash", "sh", "zsh") and "-c" in tokens and depth < 3:
@@ -163,12 +187,15 @@ def main():
     root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
     cwd = data.get("cwd") or root
 
-    bypass = [why for kind, why in found if kind == "bypass"]
+    # 우회 시도는 같은 명령에 push가 있을 때만 막는다(그냥 환경 변수를 export하는 것까지 막지는 않는다)
+    bypass = [why for kind, why in found if kind == "bypass"] if "push" in kinds else []
     if bypass:
         deny("푸시 게이트 우회는 허용하지 않습니다: %s" % "; ".join(sorted(set(bypass))))
         return
     if "push" in kinds:
-        enabled, why = hooks_enabled(cwd)
+        # git -C 경로 push는 그 경로의 저장소에 올라가므로 거기서 훅이 켜져 있는지 본다
+        target = next(value for kind, value in found if kind == "push")
+        enabled, why = hooks_enabled(os.path.join(cwd, target) if target else cwd)
         if not enabled:
             deny(
                 "푸시 게이트(.githooks/pre-push)가 꺼져 있어 push를 막습니다. %s\n"

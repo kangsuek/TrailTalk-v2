@@ -68,10 +68,23 @@ def test_other_commands_are_not_push(command):
         "git -c core.hooksPath= push origin main",
         "bash -c 'git push --no-verify origin main'",
         "GIT_CONFIG_KEY_0=core.hooksPath git push",
+        "git push --no-ver",  # git은 옵션의 고유한 접두사도 받아들인다
+        "(git push --no-verify)",
+        "{ git push --no-verify; }",
+        "GIT_DIR=/x git push",
+        "GIT_WORK_TREE=/x git push origin main",
+        "export GIT_CONFIG_KEY_0=core.hooksPath; git push",
+        "git --git-dir=/x push",
     ],
 )
 def test_gate_bypass_is_detected(command):
     assert "bypass" in kinds(command)
+
+
+def test_git_c_path_is_reported_as_push_target():
+    found = dict(gate_git.checks_for("git -C /tmp/other push origin main"))
+    assert found["push"] == "/tmp/other"
+    assert dict(gate_git.checks_for("git push"))["push"] == ""
 
 
 def test_normal_push_is_not_a_bypass():
@@ -177,3 +190,19 @@ def test_hook_ignores_unrelated_commands(tmp_path):
     repo = _repo(tmp_path)
     assert _run_hook("git commit -m x", repo) == ""
     assert _run_hook("ls", repo) == ""
+
+
+def test_hook_does_not_block_exporting_env_without_push(tmp_path):
+    repo = _repo(tmp_path)
+    assert _run_hook("export GIT_DIR=/x", repo) == ""
+    assert _run_hook("GIT_DIR=/x git status", repo) == ""
+
+
+def test_hook_checks_the_repo_that_git_c_points_to(tmp_path):
+    guarded = _repo(tmp_path / "guarded")
+    _executable(guarded / ".githooks" / "pre-push")
+    subprocess.run(["git", "-C", str(guarded), "config", "core.hooksPath", ".githooks"], check=True)
+    other = _repo(tmp_path / "other")  # 훅이 꺼진 다른 저장소
+    out = json.loads(_run_hook(f"git -C {other} push origin main", guarded))
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert _run_hook(f"git -C {guarded} push origin main", other) == ""  # 켜진 쪽을 가리키면 통과
