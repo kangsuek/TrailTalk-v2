@@ -136,7 +136,7 @@ run_parallel() {
   [ "$rc" -eq 0 ] || exit 1
 }
 
-# pytest 워커 수: 기본 6, CPU가 적으면(CI 러너 등) 그 수 이하. VERIFY_PYTEST_WORKERS로 직접 정한다.
+# pytest 워커 수: 기본 6, CPU가 적으면(코어 수가 적은 기기 등) 그 수 이하. VERIFY_PYTEST_WORKERS로 직접 정한다.
 pytest_workers() {
   local cpus workers=6
   if [ -n "${VERIFY_PYTEST_WORKERS:-}" ]; then
