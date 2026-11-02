@@ -9,7 +9,18 @@ const openSettings = async (page: Page) => {
   await expect(page.getByLabel('호칭')).toBeVisible()
 }
 
+// 앞선 시험이 DB에 남긴 값에 기대지 않고, 끝난 뒤에도 남기지 않도록 프로필을 처음 상태로 맞춘다
+const resetProfile = (page: Page) =>
+  page.request.put('/api/profile', { data: { nickname: null, interests: [], chat_model: null } })
+
 test.describe('설정', () => {
+  test.beforeEach(async ({ page }) => {
+    await resetProfile(page)
+  })
+  test.afterEach(async ({ page }) => {
+    await resetProfile(page)
+  })
+
   test('호칭·관심사·대화 모델을 바꾸면 바로 저장되고 새로고침 뒤에도 남는다', async ({ page }) => {
     await openSettings(page)
 
@@ -29,17 +40,6 @@ test.describe('설정', () => {
     await expect(page.getByLabel('호칭')).toHaveValue('다니엘')
     await expect(page.getByRole('list', { name: '관심사 목록' })).toContainText('등산')
     await expect(page.getByRole('radio', { name: /^opus/ })).toHaveAttribute('aria-checked', 'true')
-
-    // 처음 상태로 되돌린다(다른 시험이 같은 DB를 쓴다)
-    await page.getByLabel('호칭').fill('')
-    await page.getByLabel('호칭').press('Enter')
-    await page.getByRole('button', { name: '등산 지우기' }).click()
-    await page.getByRole('radio', { name: /^sonnet/ }).click()
-    await expect(page.getByRole('radio', { name: /^sonnet/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    await expect(page.getByRole('list', { name: '관심사 목록' })).toHaveCount(0)
   })
 
   test('서버가 거절(422)하면 그 필드 옆에 이유를 보이고 값을 되돌린다', async ({ page }) => {
