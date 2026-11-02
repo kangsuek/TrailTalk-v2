@@ -38,6 +38,18 @@ docs/     문서
 
 포트는 `API_PORT`, `WEB_PORT` 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
 
+### 폰에서 접속해 확인하기
+
+폰의 마이크는 HTTPS 페이지에서만 열리므로 Tailscale의 tailnet 전용 HTTPS를 쓴다(공개 Funnel이 아니다).
+
+1. 폰에도 Tailscale을 켜고 이 Mac과 같은 계정으로 로그인한다. Tailscale 관리 콘솔에서 MagicDNS와 HTTPS 인증서가 켜져 있어야 한다.
+2. `./run.sh --phone`으로 실행한다. 개발 서버가 이 Mac의 tailnet 호스트 이름을 받도록 열리고, 아래 3·4번의 명령과 주소가 터미널에 나온다(Tailscale 설정은 바꾸지 않는다).
+3. 다른 터미널에서 안내된 명령을 한 번 실행한다. 예: `tailscale serve --bg --https=8443 http://127.0.0.1:5173`(터미널에 나온 명령을 그대로 따른다. Tailscale 앱 번들만 있으면 명령 경로가 다르고, `WEB_PORT`를 바꿨다면 포트도 다르다). 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 8443을 쓴다(8443 Serve와 443 Funnel이 함께 되는지는 MA-12 전에 확인할 항목이다). 실행하기 전에 `tailscale serve status`로 8443이 이미 쓰이고 있는지 보고, 쓰이고 있으면 기존 설정을 덮어쓰지 않도록 `PHONE_HTTPS_PORT=10000 ./run.sh --phone`처럼 다른 포트를 고른다.
+4. 폰 브라우저에서 `https://<이 Mac의 기기 이름>.<tailnet>.ts.net:8443`을 열고 마이크를 허용한다.
+5. 끝나면 `tailscale serve --https=8443 off`로 끈다.
+
+Tailscale이 없거나 로그인되어 있지 않거나 MagicDNS·HTTPS 인증서가 꺼져 있으면 `./run.sh --phone`이 이유를 알려 주고 멈춘다. 접속 주소 규약은 [client-contract.md](docs/client-contract.md) 1.2에 있다.
+
 ## Claude 앱 연결
 
 음성 대화는 Claude 앱이 맡고, TrailTalk는 앱이 저장한 일지·노트를 웹 일지 화면에 보여 준다([docs/MCP/README.md](docs/MCP/README.md)).
