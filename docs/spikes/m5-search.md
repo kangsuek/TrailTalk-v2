@@ -47,7 +47,7 @@
 ## 계획서 반영
 
 - M5-09: 내부 MCP에 `search_naver`·`search_naver_blog`·`search_google`·`search_google_detail` 넷, `--tools WebSearch`는 폴백으로 켠다. 규칙(`WEB_SEARCH_RULES`)은 "국내 뉴스 → `search_naver`, 국내 후기·경험담 → `search_naver_blog`, 그 밖 → `search_google`(기간은 `tbs`), 실패 시 `WebSearch`"이다. HasData 호출은 서버가 직렬화(동시 1개 제한)하고 시간 제한 뒤 `WebSearch`로 폴백한다.
-- M5-15 ⑥: 외부 MCP 실제 점검 대상은 기본으로 HasData 원격 MCP의 뉴스 도구 하나로 한다(사용자가 다른 서버를 정하면 바꾼다).
+- M5-15 ⑥(외부 MCP 실제 서버 점검)은 하지 않는다(2026-11-02 사용자 결정). FR-25는 가짜 서버 E2E까지만 검증한다.
 
 ## 비밀 정보 주의
 
