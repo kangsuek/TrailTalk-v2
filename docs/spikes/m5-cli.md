@@ -1,6 +1,6 @@
 # M5-01 CLI 도구 권한 스파이크 (2026-11-02)
 
-실제 Claude CLI(haiku, 비대화형 `-p`, `--restricted --strict-mcp-config --setting-sources ""`)로 확인했다. 재현: `cd server && uv run python ../docs/spikes/m5-cli/run_spike.py <allow|fetch|names|latency|events>`. 근거 로그는 [m5-cli/logs/](m5-cli/logs/)(경로·토큰은 가림). 호출은 로그 기준 22회(allow 2, fetch 9, latency 9, events 2)이고, 첫 `allow` 실행은 스크립트 파싱 오류로 결과를 저장하지 못해 그 호출분(최대 2회)이 더 쓰였다. 사례당 표본이 1~3회라 모델 행동의 비결정성은 반영하지 못한다.
+실제 Claude CLI(haiku, 비대화형 `-p`, `--restricted --strict-mcp-config --setting-sources ""`, 단 ⑥은 일부 옵션을 뺐다)로 확인했다. 재현: `cd server && uv run python ../docs/spikes/m5-cli/run_spike.py <allow|fetch|names|latency|events|connectors>`. 근거 로그는 [m5-cli/logs/](m5-cli/logs/)(경로·토큰은 가림). 호출은 로그 기준 24회(allow 2, fetch 9, latency 9, events 2, connectors 2)에 ⑥ 첫 시험 1회가 더 있고, 첫 `allow` 실행은 스크립트 파싱 오류로 결과를 저장하지 못해 그 호출분(최대 2회)이 더 쓰였다. 사례당 표본이 1~3회라 모델 행동의 비결정성은 반영하지 못한다.
 
 ## 결론 요약
 
@@ -11,7 +11,7 @@
 | ③ 이름 64자 | `mcp__<서버>__<도구>` 합계가 64자를 넘으면 안 된다. 서버 이름 32자·도구 이름 40자면 79자다 | M5-12 검증에서 전체 이름 64자 이하를 요구한다(Spec 5.6 그대로) |
 | ④ 도구 정의 많을 때 | 도구 60개(+기본 2)에서도 첫 토큰 지연 증가는 작다(0개 2.0~2.1초, 20개 2.1~2.4초, 60개 2.0~2.9초, 표본 3회씩). 도구 정의 토큰은 늘어난다 | 도구가 몇십 개 수준이면 `ENABLE_TOOL_SEARCH=false`를 유지해도 된다 |
 | ⑤ 이벤트 형식 | 아래 표 | M5-09·11의 요약 추출 방법으로 쓴다 |
-| ⑥ 계정 커넥터(Gmail) (2026-11-02 추가) | 서버 CLI 경로(`-p`)는 claude.ai 계정 커넥터를 로드하지 않는다 | Gmail은 FR-25 설정 파일로도, 계정 커넥터로도 M5에서 붙일 수 없다. 외부 MCP 실제 서버 점검(M5-15 ⑥)은 사용자 결정으로 하지 않는다. Gmail은 Claude 앱 커넥터로 앱이 직접 쓴다 |
+| ⑥ 계정 커넥터(Gmail) (2026-11-02 추가) | 이 환경(이 머신, haiku 1회씩)에서 서버 CLI 경로(`-p`)는 claude.ai 계정 커넥터를 로드하지 않았다 | Gmail은 FR-25 설정 파일로도, 계정 커넥터로도 M5에서 붙일 수 없다. 외부 MCP 실제 서버 점검(M5-15 ⑥)은 사용자 결정으로 하지 않는다. Gmail은 Claude 앱 커넥터로 앱이 직접 쓴다 |
 
 ## ① 허용 밖 도구 (`logs/allow.json`)
 
@@ -57,7 +57,7 @@
 
 ## ⑥ 계정 커넥터(Gmail) 로드 여부 (`logs/connectors.json`)
 
-사용자의 Claude 앱에 Gmail 커넥터가 연결되어 있어(읽기 전용 도구 6개, 앱 설정은 "차단됨") 서버 CLI가 이를 불러올 수 있는지 시험했다. 메일은 읽지 않았고 시작 이벤트(`system init`)의 `mcp_servers`·도구 목록만 보았다. 호출은 모두 3회다(첫 시험 1회, 격리 옵션 유무 비교 2회).
+사용자의 Claude 앱에 Gmail 커넥터가 연결되어 있어 서버 CLI가 이를 불러올 수 있는지 시험했다. 메일은 읽지 않았고 시작 이벤트(`system init`)의 `mcp_servers`·도구 목록만 보았다. 호출은 모두 3회다. 첫 시험 1회(결과는 같았으나 로그 파일을 비교용으로 덮어써 남지 않았다)와 격리 옵션 유무 비교 2회이며, 아래 표와 로그는 비교 2회분이다.
 
 | 조건 | 결과 |
 |---|---|
@@ -65,5 +65,5 @@
 | `--strict-mcp-config`·격리 옵션 모두 없이 | `mcp_servers: []`, MCP 도구 0개 |
 
 - 두 경우 모두 Gmail이 로드되지 않았다. 이 세션(로그인한 대화형 Claude Code)에는 계정 커넥터가 보이지만 서버가 띄우는 `claude -p`에는 보이지 않는다.
-- 원인은 확인하지 못했다. 서버 CLI는 장기 토큰(`CLAUDE_CODE_OAUTH_TOKEN`)으로 인증하므로 그 토큰이 계정 커넥터 권한을 포함하지 않을 가능성이 크다(추론, 환경 변수를 바꿔 가며 시험하지는 않았다).
-- 따라서 Gmail을 쓰려면 Google의 공식 Gmail MCP 서버(`https://gmailmcp.googleapis.com/mcp/v1`, OAuth 2.0만 지원, 개발자 프리뷰)를 FR-25 설정 파일에 붙여야 하는데, 설정 파일은 고정 헤더만 지원하고 OAuth 토큰 갱신이 없어 맞지 않는다. OAuth 갱신 지원이 생길 때 별도 작업으로 다룬다.
+- 원인은 확인하지 못했다. 서버 CLI는 장기 토큰(`CLAUDE_CODE_OAUTH_TOKEN`)으로 인증하므로 그 토큰이 계정 커넥터 권한을 포함하지 않을 가능성이 크다(추론이다. 이 시험에서 `build_env`가 실제로 그 토큰을 넘겼는지는 확인하지 않았고, 환경 변수를 바꿔 가며 시험하지도 않았다).
+- 따라서 Gmail을 쓰려면 [Google의 공식 Gmail MCP 서버](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server)(문서 기준 `https://gmailmcp.googleapis.com/mcp/v1`, OAuth 2.0 인증, 개발자 프리뷰로 표기, 2026-11-02 확인)를 FR-25 설정 파일에 붙여야 하는데, 설정 파일은 고정 헤더만 지원하고 OAuth 토큰 갱신이 없어 맞지 않는다. OAuth 갱신 지원이 생길 때 별도 작업으로 다룬다.
