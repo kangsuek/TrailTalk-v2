@@ -13,8 +13,7 @@ def test_first_get_creates_default_profile(client):
     assert response.status_code == 200
     body = response.json()
     assert body["nickname"] is None
-    assert body["email"] is None
-    assert body["mail_ready"] is False
+    assert "email" not in body and "mail_ready" not in body  # 이메일 기능 제거(2026-11-02)
     assert body["interests"] == []
     assert body["persona_id"] == "jenny"  # 저장값이 없으면 기본 페르소나
     assert body["voice"] is None
@@ -63,19 +62,11 @@ def test_nickname_accepts_twenty_chars_and_null_resets(client):
     assert put(client, nickname=None).json()["nickname"] is None
 
 
-@pytest.mark.parametrize("value", ["a@b.co", "  me@example.com  "])
-def test_email_accepts_address_shape(client, value):
-    assert put(client, email=value).json()["email"] == value.strip()
-
-
-@pytest.mark.parametrize("value", ["no-at-sign", "a@b", "a b@c.com", "", "x" * 250 + "@a.com"])
-def test_email_rejects_bad_shape(client, value):
-    assert put(client, email=value).status_code == 422
-
-
-def test_email_null_clears(client):
-    put(client, email="me@example.com")
-    assert put(client, email=None).json()["email"] is None
+def test_email_is_not_a_profile_field_any_more(client):
+    """이메일 기능을 제거했다(FR-21, 2026-11-02). 보내면 알 수 없는 필드로 422다."""
+    assert put(client, email="me@example.com").status_code == 422
+    assert put(client, email=None).status_code == 422
+    assert "email" not in client.get("/api/profile").json()
 
 
 def test_interests_are_trimmed_and_deduplicated_in_order(client):

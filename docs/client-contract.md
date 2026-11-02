@@ -283,15 +283,13 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 
 ### 4.1 프로필
 
-`GET /api/profile` → `{nickname, email, mail_ready, interests, persona_id, voice, speaking_rate, ack_enabled, keep_audio, chat_model, default_chat_model, client}`(처음 조회하면 기본값으로 만든다). `client`는 7절의 클라이언트 설정값이고 읽기 전용이다(`PUT`에 보내면 422).
+`GET /api/profile` → `{nickname, interests, persona_id, voice, speaking_rate, ack_enabled, keep_audio, chat_model, default_chat_model, client}`(처음 조회하면 기본값으로 만든다). `client`는 7절의 클라이언트 설정값이고 읽기 전용이다(`PUT`에 보내면 422).
 
-`PUT /api/profile`은 보낸 필드만 바꾼다.
+`PUT /api/profile`은 보낸 필드만 바꾼다. `[v2]` 이메일 기능을 2026-11-02에 제거해 `email`·`mail_ready`는 없다(`PUT`에 보내면 알 수 없는 필드로 422).
 
 | 필드 | 규칙 |
 |---|---|
 | `nickname` | 앞뒤 공백을 뺀 1~20자 한 줄. `null`이면 기본 호칭으로 돌아간다. `[v2]` 호칭은 **세션 시작 인사말에서만** 쓰이며, 바꾸면 다음 세션의 첫 인사부터 적용된다(2.2) |
-| `email` | 대화를 보낼 본인 주소(앞뒤 공백을 뺀 이메일 모양 254자 이내, 틀리면 422). `null`이면 설정 안 함 |
-| `mail_ready` | 서버에 메일 보내기(SMTP) 설정이 있는지(읽기 전용) |
 | `interests` | 최대 10개, 각 1~30자, 중복은 제거한다. 다음 대화의 프롬프트부터 쓴다 |
 | `voice`, `speaking_rate` | `voice`는 `GET /api/voices`의 `voices` 안의 이름만(틀리면 422), `speaking_rate`는 0.75~1.5. 둘 다 `null`이면 캐릭터(페르소나 YAML) 기본값. `[v2]` `GET /api/voices`는 M3에서 만들므로 그 전에는 서버가 `voice` 이름이 목록에 있는지 검사하지 않는다(길이 1~100자만). 바꾼 값은 다음 답변(인사말·문장·마무리 멘트)부터 쓴다. 말 속도를 정하면 서버가 음성 말투 지시에도 빠르기를 붙인다 |
 | `ack_enabled` `[v2]` | 기본 `true`. 끄면 클라이언트가 맞장구를 재생하지 않는다(6.4) |

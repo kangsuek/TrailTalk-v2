@@ -633,10 +633,6 @@ export interface components {
         ProfileResponse: {
             /** Nickname */
             nickname: string | null;
-            /** Email */
-            email: string | null;
-            /** Mail Ready */
-            mail_ready: boolean;
             /** Interests */
             interests: string[];
             /** Persona Id */
@@ -660,8 +656,6 @@ export interface components {
         ProfileUpdate: {
             /** Nickname */
             nickname?: string | null;
-            /** Email */
-            email?: string | null;
             /** Interests */
             interests?: string[] | null;
             /** Persona Id */
