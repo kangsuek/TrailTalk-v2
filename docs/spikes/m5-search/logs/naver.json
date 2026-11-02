@@ -1,0 +1,322 @@
+[
+ {
+  "kind": "news",
+  "query": "코스피 마감 시황",
+  "sort": "date",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.11,
+  "total": 136616,
+  "fields": [
+   "description",
+   "link",
+   "originallink",
+   "pubDate",
+   "title"
+  ],
+  "hosts": [
+   "n.news.naver.com",
+   "www.businesskorea.co.kr",
+   "www.joongangenews.com",
+   "www.lcnews.co.kr",
+   "www.newspim.com",
+   "www.newsquest.co.kr",
+   "www.wikitree.co.kr"
+  ],
+  "sample": [
+   {
+    "title": "[개장시황] 코스피, 美 반도체주 급락 여파에 5600선 후퇴",
+    "originallink": "https://www.joongangenews.com/news/articleView.html?idxno=560217",
+    "link": "https://www.joongangenews.com/news/articleView.html?idxno=560217",
+    "description": "|중앙이코노미뉴스 정재혁 기자|코스피는 2일 미국 반도체주 급락 여파로 장 초반 1% 넘게 떨어지며... 00에 마감했다. 인텔은 3분기 실적이 시장 예상을 웃돌",
+    "pubDate": "Mon, 02 Nov 2026 09:50:00 +0900"
+   },
+   {
+    "title": "[개장시황] 코스피, 92.97포인트(-1.62%) 내린 5637.77 출발",
+    "originallink": "https://www.lcnews.co.kr/news/articleView.html?idxno=210649",
+    "link": "https://www.lcnews.co.kr/news/articleView.html?idxno=210649",
+    "description": "라이센스뉴스 = 김재용 기자 | 2일, 코스피가 전 거래일에 비해 92.97포인트(-1.62%) 하락한 5637.77에... 31(-1.09%), S&amp;P5",
+    "pubDate": "Mon, 02 Nov 2026 09:08:00 +0900"
+   },
+   {
+    "title": "[박정식의 국내 주식시황] 美 빅테크 AI 투자 수익성 우려 속 저가 매수...",
+    "originallink": "https://www.newsquest.co.kr/news/articleView.html?idxno=303905",
+    "link": "https://www.newsquest.co.kr/news/articleView.html?idxno=303905",
+    "description": "83%)으로 큰폭 약세 마감했다. 하지만 이러한 기조가 조금 더 이어질 가능성이 있다. 추후 수급 흐름이 어떻게 변화하느냐에 따라 단기 약세 이후 반등 흐름이 정",
+    "pubDate": "Mon, 02 Nov 2026 08:18:00 +0900"
+   }
+  ]
+ },
+ {
+  "kind": "news",
+  "query": "삼성전자 실적",
+  "sort": "sim",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.09,
+  "total": 785903,
+  "fields": [
+   "description",
+   "link",
+   "originallink",
+   "pubDate",
+   "title"
+  ],
+  "hosts": [
+   "n.news.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "'세계 1위' 삼성전자 또 일냈다…애플마저 제친 '뜻밖의 효자'",
+    "originallink": "https://www.hankyung.com/article/202611029878g",
+    "link": "https://n.news.naver.com/mnews/article/015/0005349145?sid=105",
+    "description": "삼성전자도 최근 3분기 실적발표 컨퍼런스콜에서 플래그십과 폴더블 판매 확대를 강조했다. 삼성전자 측은 &quot;플래그십 신모델 출시 효과로 전분기 및 전년 대비",
+    "pubDate": "Mon, 02 Nov 2026 11:19:00 +0900"
+   },
+   {
+    "title": "스마트폰 시장 20% 급감에도…삼성전자, 3분기 세계 1위",
+    "originallink": "https://www.yna.co.kr/view/AKR20261102039400017?input=1195m",
+    "link": "https://n.news.naver.com/mnews/article/001/0016414945?sid=105",
+    "description": "같은 기간 글로벌 스마트폰 출하량이 20% 급감한 것과 비교하면 상대적으로 선방한 실적으로 풀이된다. 삼성전자 시장 점유율은 출하량 기준 약 22.7%로 집계됐다",
+    "pubDate": "Mon, 02 Nov 2026 09:50:00 +0900"
+   },
+   {
+    "title": "“왕좌 지킨 삼성” 애플과 초접전",
+    "originallink": "https://magazine.hankyung.com/business/article/202611029679b",
+    "link": "https://n.news.naver.com/mnews/article/050/0000112712?sid=101",
+    "description": "2일 시장조사업체 옴디아에 따르면 삼성전자의 3분기 스마트폰 출하량은 5780만대로 전년 동기 대비 5% 감소했다. 같은 기간 글로벌 시장 출하량이 20% 급감한",
+    "pubDate": "Mon, 02 Nov 2026 10:28:00 +0900"
+   }
+  ]
+ },
+ {
+  "kind": "blog",
+  "query": "제주도 맛집 후기",
+  "sort": "sim",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.37,
+  "total": 4282522,
+  "fields": [
+   "bloggerlink",
+   "bloggername",
+   "description",
+   "link",
+   "postdate",
+   "title"
+  ],
+  "hosts": [
+   "blog.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "✨제주도 원담식당 고등어회 박뚜기 명란 소금빵 픽업카페송도옥 ....",
+    "link": "https://blog.naver.com/ham___o3o/224461908895",
+    "description": "제주도 유명 맛집 솔직후기!!! 여행 갔을 때 우리의 시간은 소중하니까 제주도 현지인 동생이 ㅊㅊ 해준 곳 원담 회 센터. 고등어 회 맛집 ✨네이버 예약 꼭 미리",
+    "bloggername": "✨햄월드✨",
+    "bloggerlink": "https://blog.naver.com/ham___o3o",
+    "postdate": "20261102"
+   },
+   {
+    "title": "제주도 애월 맛집 갈치관 제주애월본점 내돈내산 솔직후기",
+    "link": "https://blog.naver.com/basketchild/224451503524",
+    "description": "갈치 맛집 제주도 맛집 추천 갈치관 제주애월본점 제주도 갈치 맛집 제주 제주시 애월읍 애월해안로 686... 추천드립니다ㅎㅎ 제주도 1일차 여행코스 글씨를 누르면",
+    "bloggername": "말많은 여행쟁이의 일상",
+    "bloggerlink": "https://blog.naver.com/basketchild",
+    "postdate": "20261024"
+   },
+   {
+    "title": "[제주도 맛집] 제주공항 맛집 &lt;우진 해장국&gt; 고사리 육개장 웨이팅 ....",
+    "link": "https://blog.naver.com/jisoo_x0/224451440503",
+    "description": "제주공항 근처 고사리 육개장으로 유명한 &lt;우진 해장국&gt;에 다녀왔어요 주차, 웨이팅 후기 알려드릴게요! 우진해장국 본관06:00-22:00... 그만큼 ",
+    "bloggername": "지구 여기저기",
+    "bloggerlink": "https://blog.naver.com/jisoo_x0",
+    "postdate": "20261023"
+   }
+  ]
+ },
+ {
+  "kind": "blog",
+  "query": "제주도 맛집 후기",
+  "sort": "date",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.28,
+  "total": 3341834,
+  "fields": [
+   "bloggerlink",
+   "bloggername",
+   "description",
+   "link",
+   "postdate",
+   "title"
+  ],
+  "hosts": [
+   "blog.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "현지인이 찾는 묵직한 국물 맛, '산지해장국 아라점' 다녀왔어요",
+    "link": "https://blog.naver.com/hineko_daily/224462161486",
+    "description": "제주도 오면 아침밥 먹으러 무조건 또 갈 거예요!! (원래 포스팅 안 하려고 했는데, 한 입 먹자마자 너무 반해서 올리는 찐 맛집입니다 ㅎㅎ) 협찬이나 광고 없이",
+    "bloggername": "hineko daily",
+    "bloggerlink": "https://blog.naver.com/hineko_daily",
+    "postdate": "20261102"
+   },
+   {
+    "title": "먹고 야근한 귀신이 때깔도 곱다",
+    "link": "https://blog.naver.com/21savage_989/224462158092",
+    "description": "내가 조아하는 클린식 이날 강남역 쇼핑갔다가 기빨려서 허겁지겁 제주도를 생각보다 많이 다녀왔는데 이 때의 제주가 잊혀지지 않아... 그 날씨.. 온도.. 습도..",
+    "bloggername": "Log n Archive",
+    "bloggerlink": "https://blog.naver.com/21savage_989",
+    "postdate": "20261102"
+   },
+   {
+    "title": "[제주/애월 맛집] 제주 야끼소바 맛집｜하치다찌방 일본 감성 철판....",
+    "link": "https://blog.naver.com/love_u0409/224462158252",
+    "description": "ㅎㅎ ⏳ 하치다찌방 웨이팅 후기 저희가 방문했을 때는 웨이팅이 있었어요.... 하치다찌방은 저에게 그런 맛집이었어요.  제주도에 다시 간다면 꼭 한 번 더 방문하",
+    "bloggername": "오늘도 돼굴돼굴",
+    "bloggerlink": "https://blog.naver.com/love_u0409",
+    "postdate": "20261102"
+   }
+  ]
+ },
+ {
+  "kind": "blog",
+  "query": "아이폰 17 사용 후기",
+  "sort": "sim",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.19,
+  "total": 177901,
+  "fields": [
+   "bloggerlink",
+   "bloggername",
+   "description",
+   "link",
+   "postdate",
+   "title"
+  ],
+  "hosts": [
+   "blog.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "아이폰17pro 256GB 실버 자급제 내돈내산 언박싱 및 두 달 사용 후기ㅣ....",
+    "link": "https://blog.naver.com/dptmtdl/224459148243",
+    "description": "오늘은 아이폰17pro 언박싱 및 두달 사용 후기를 남겨보려고 해요. 현재 18pro가 나온 시점에 지금 사도 늦지 않았을지.. 제 의견 한번 봐주심 감사하겠습니",
+    "bloggername": "Life is egg",
+    "bloggerlink": "https://blog.naver.com/dptmtdl",
+    "postdate": "20261030"
+   },
+   {
+    "title": "아이폰17 라벤더 256GB 1년 사용 후기, 예쁜 색상에 반했지만 실제 만....",
+    "link": "https://blog.naver.com/newprimian/224455130419",
+    "description": "매일 사용하면서 가장 만족한 건 화면 아이폰17을 사용하면서 의외로 만족도가 높았던 부분은 디스플레이였습니다. 6.3인치 화면에 최대 120Hz ProMotion",
+    "bloggername": "아이진 [ This or That] 이거나저거",
+    "bloggerlink": "https://blog.naver.com/newprimian",
+    "postdate": "20261027"
+   },
+   {
+    "title": "아이폰 17 프로 맥스 1년 사용 후기, 18 프로로 바꿀 필요 있을까?",
+    "link": "https://blog.naver.com/yoonkm00/224445009980",
+    "description": "2,290,000 #아이폰 #아이폰17 #아이폰18 #아이폰17프로 #아이폰18프로 #아이폰17프로맥스 #아이폰18프로맥스 #아이폰17프로후기 #아이폰17프로맥스",
+    "bloggername": "숫자로 읽는 세상",
+    "bloggerlink": "https://blog.naver.com/yoonkm00",
+    "postdate": "20261018"
+   }
+  ]
+ },
+ {
+  "kind": "blog",
+  "query": "서울 한강공원 피크닉 경험담",
+  "sort": "date",
+  "display": 30,
+  "status": 200,
+  "elapsed_s": 0.2,
+  "total": 40590,
+  "fields": [
+   "bloggerlink",
+   "bloggername",
+   "description",
+   "link",
+   "postdate",
+   "title"
+  ],
+  "hosts": [
+   "blog.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "후우",
+    "link": "https://blog.naver.com/se6in/224462155740",
+    "description": "광호공 피크닉 다음 날에는 광교호수공원으로 피크닉을 다녀왔습니다. 광호공에서 세용이랑 세용이... 여의도 한강공원 피크닉 또크닉이지만 다른 회크닉하러 여한공 진숙",
+    "bloggername": "걸어서 세빈속으로",
+    "bloggerlink": "https://blog.naver.com/se6in",
+    "postdate": "20261102"
+   },
+   {
+    "title": "수원천에 너구리도 살고 수달도 산다는데 내가 순식간에 본 건 뭘까....",
+    "link": "https://blog.naver.com/flowitch22/224462117137",
+    "description": "밤엔 저기서 뭐가 튀어나올지 무서울 정도다. (이 정도 되면 민원이 들어가 찹초 제거 작업이... 최근에는 서식지 파괴와 먹이 공급으로 인해 서울 한강 등 도심 ",
+    "bloggername": "계약사의 똑똑 건강 상담실",
+    "bloggerlink": "https://blog.naver.com/flowitch22",
+    "postdate": "20261102"
+   },
+   {
+    "title": "26년 10월,",
+    "link": "https://blog.naver.com/sni04034/224462093429",
+    "description": "누가 봐도 한강 피크닉 가는 사람, 돗자리까지 야무지게 챙겨왔습니다 으악 내 뮤츠 너무 귀엽자나... 지영이 서울 올라왔다는 말에 퇴근 후 옷만 갈아입고 지영이 ",
+    "bloggername": "2",
+    "bloggerlink": "https://blog.naver.com/sni04034",
+    "postdate": "20261102"
+   }
+  ]
+ },
+ {
+  "kind": "blog",
+  "query": "Nvidia earnings",
+  "sort": "sim",
+  "display": 10,
+  "status": 200,
+  "elapsed_s": 0.16,
+  "total": 10691,
+  "fields": [
+   "bloggerlink",
+   "bloggername",
+   "description",
+   "link",
+   "postdate",
+   "title"
+  ],
+  "hosts": [
+   "blog.naver.com"
+  ],
+  "sample": [
+   {
+    "title": "NVIDIA Earned $96 Billion and Committed $279 Billion — The Scarier Number Isn't Revenue,..",
+    "link": "https://blog.naver.com/ondongnemarket/224391638891",
+    "description": "Three-line summary What happened — NVIDIA reported fiscal 2027 second-quarter revenue of..",
+    "bloggername": "일상 AI",
+    "bloggerlink": "https://blog.naver.com/ondongnemarket",
+    "postdate": "20260827"
+   },
+   {
+    "title": "Nvidia Faces Major Growth Test as Next-Generation Rubin Chips Prepare to Launch",
+    "link": "https://blog.naver.com/hans_life78/224390763972",
+    "description": "second-quarter earnings and the upcoming launch of its next-generation Vera Rubin AI proce",
+    "bloggername": "한스 에디트",
+    "bloggerlink": "https://blog.naver.com/hans_life78",
+    "postdate": "20260826"
+   },
+   {
+    "title": "Nvidia Eases AI Bubble Fears with Strong Earnings",
+    "link": "https://blog.naver.com/amorinsight/224121509136",
+    "description": "Nvidia Eases AI Bubble Fears with Strong Earnings (엔비디아, 강력한 실적으로 ‘AI 버블’ 우려 완화)  English ",
+    "bloggername": "Amor Insight",
+    "bloggerlink": "https://blog.naver.com/amorinsight",
+    "postdate": "20251224"
+   }
+  ]
+ }
+]
