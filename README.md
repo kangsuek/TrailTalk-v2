@@ -14,12 +14,15 @@
 server/   FastAPI 서버 (Python 3.12, uv)
 web/      React PWA (Vite, TypeScript)
 shared/   서버와 웹이 함께 읽는 값 (client-defaults.json)
+scripts/  검증 게이트(verify.sh)와 커밋 뒤 백그라운드 검증(verify-bg.sh)
 docs/     문서
 ```
 
+`.githooks/`(git 훅)와 `.claude/`(Claude Code 훅·설정)는 검증 게이트의 일부다(아래 "검증").
+
 ## 필요 도구
 
-[uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 음성 대화에는 OpenAI 키(`OPENAI_API_KEY`)가 필요하다. ogg 등 변환이 필요한 오디오를 받으려면 ffmpeg도 있어야 한다(`brew install ffmpeg`, MacPorts는 `sudo port install ffmpeg`, 없어도 웹이 보내는 webm·wav는 동작한다). 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
+[uv](https://docs.astral.sh/uv/)(Python 3.12는 uv가 받는다), Node.js 24. 자체 음성 대화(현재 보류 중이지만 코드는 있다)에는 OpenAI 키(`OPENAI_API_KEY`)가 필요하다. ogg 등 변환이 필요한 오디오를 받으려면 ffmpeg도 있어야 한다(`brew install ffmpeg`, MacPorts는 `sudo port install ffmpeg`, 없어도 웹이 보내는 webm·wav는 동작한다). 설정은 `cp .env.example .env` 뒤 필요한 값만 채운다.
 
 ## 실행
 
@@ -36,7 +39,7 @@ docs/     문서
 
 `HTTP_PROXY`·`HTTPS_PROXY`가 설정된 환경에서는 서버가 자기 도구 서버(`127.0.0.1`)를 부를 때 프록시가 가로채 막힐 수 있다. 실행 전에 `NO_PROXY=127.0.0.1`을 함께 설정한다.
 
-포트는 `API_PORT`, `WEB_PORT` 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
+포트는 `API_PORT`, `WEB_PORT`(외부 MCP는 `MCP_PORT`) 환경 변수로 바꾼다. 처음 실행하면 의존성을 설치한다(`uv sync`, `npm ci`).
 
 ### 폰에서 접속해 확인하기
 
@@ -73,4 +76,4 @@ push 게이트는 `.githooks/pre-push`가 맡고, Claude Code에서는 `.claude/
 서버만 따로: `(cd server && uv run pytest && uv run ruff check . && uv run ruff format --check .)`.
 페르소나 톤 평가(실제 Claude CLI를 써서 구독 사용량이 든다): `(cd server && RUN_REAL_CLI=1 uv run python -m tests.persona_eval.run_eval)`. 리포트는 `docs/eval/`에 남는다.
 일지 정리 평가(같은 사용량 주의): 추출 품질 `(cd server && RUN_REAL_CLI=1 uv run python -m tests.extract_eval.run_eval)`, 실제 글 대화 3개(다시 열기 포함) `(cd server && RUN_REAL_CLI=1 uv run python -m tests.journal_eval.run_journal)`. 둘 다 임시 데이터 격리 서버를 쓰고 리포트를 `docs/eval/`에 남긴다.
-웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`, `e2e`(Playwright. 처음에는 `npx playwright install chromium`. 임시 폴더 `web/.e2e/`의 격리 서버 8100과 웹 5174를 자동으로 띄운다. 스크린샷 기준 이미지는 OS별(`e2e/__screenshots__/<OS>/`)이라 기준이 없는 OS에서는 시각 비교를 건너뛴다. 갱신은 `npm run e2e:update`로 하고 눈으로 확인한 뒤 커밋). 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. GitHub Actions CI는 두지 않는다. push 전 훅(`.githooks/pre-push`, `.claude/hooks/gate-git.py`)이 같은 전체 검증을 돌린다. 원격 서버 쪽 검증이 없어 `--no-verify`·훅을 설정하지 않은 기기·깨끗한 체크아웃 검증은 보장되지 않으니, 다른 기기에서는 먼저 `git config core.hooksPath .githooks`를 설정하고 의심되면 새 폴더에 clone해 `VERIFY_NO_CACHE=1 scripts/verify.sh`를 돌린다.
+웹(`web/`): `npm ci` 뒤 `npm run typecheck`, `typecheck:core`, `lint`, `test`, `build`, `gen:api -- --check`, `e2e`(Playwright. 처음에는 `npx playwright install chromium`. 임시 폴더 `web/.e2e/`의 격리 서버 8100과 웹 5174를 자동으로 띄운다. 스크린샷 기준 이미지는 OS별(`e2e/__screenshots__/<OS>/`)이라 기준이 없는 OS에서는 시각 비교를 건너뛴다. 갱신은 `npm run e2e:update`로 하고 눈으로 확인한 뒤 커밋). 개발 서버는 `npm run dev`(`/api`를 `VITE_API_TARGET`, 기본 `http://127.0.0.1:8000`으로 넘긴다). 서버 API를 바꾸면 `npm run gen:api`로 `src/api/schema.d.ts`를 다시 만든다. 검증 게이트와 훅의 한계는 위 "검증"을 따른다.

@@ -1,6 +1,6 @@
 # Claude 앱 MCP 연계
 
-작성일: 2026-10-30. 상태: **구현·`main` 병합 완료(2026-10-30, 후속 수정 2026-10-31), 폰 실측(MA-12)과 출처 표시 UI(MA-13) 대기**. 진행 상태의 정본은 [implementation-plan.md](implementation-plan.md)다. 기존 문서(Intent·Spec·구현 계획서·클라이언트 계약)에는 [doc-changes.md](doc-changes.md)의 반영안을 2026-10-30에 옮겼다(MA-00b 완료, 화면 시안은 제외). 이 폴더 자체는 문서만 바꾸는 변경이라 서브에이전트 diff 리뷰 뒤 `main`에 바로 커밋한다(CLAUDE.md, 2026-10-30 사용자 확인).
+작성일: 2026-10-30. 상태: **구현·`main` 병합 완료(2026-10-30, 후속 수정 2026-10-31·2026-11-01), 폰 실측(MA-12)과 출처 표시 UI(MA-13) 대기**. 진행 상태의 정본은 [implementation-plan.md](implementation-plan.md)다. 기존 문서(Intent·Spec·구현 계획서·클라이언트 계약)에는 [doc-changes.md](doc-changes.md)의 반영안을 2026-10-30에 옮겼다(MA-00b 완료, 화면 시안은 제외). 이 폴더 자체는 문서만 바꾸는 변경이라 서브에이전트 diff 리뷰 뒤 `main`에 바로 커밋한다(CLAUDE.md, 2026-10-30 사용자 확인).
 
 ## 한 줄 요약
 

@@ -1,6 +1,6 @@
 # TrailTalk × Claude 앱 MCP 연계 Spec
 
-작성일: 2026-10-30. 상태: **구현·병합 완료(2026-10-30, 후속 수정 2026-10-31), 폰 실측 대기**. 이 문서는 [Intent.md](Intent.md)의 의도를 구현 가능한 명세로 풀어 쓴다. 구조·데이터 매핑은 [design.md](design.md), 도구별 입력·규칙은 [tools.md](tools.md), 작업·진행은 [implementation-plan.md](implementation-plan.md), 결정은 [README.md](README.md)가 근거다. 기존 [docs/Spec.md](../Spec.md)(이하 "기존 Spec")와 [client-contract.md](../client-contract.md)(이하 "계약")를 고치지 않고 덧붙이며, 승인 뒤 반영할 곳은 [doc-changes.md](doc-changes.md)에 있다.
+작성일: 2026-10-30. 상태: **구현·병합 완료(2026-10-30, 후속 수정 2026-10-31·2026-11-01), 폰 실측 대기**. 이 문서는 [Intent.md](Intent.md)의 의도를 구현 가능한 명세로 풀어 쓴다. 구조·데이터 매핑은 [design.md](design.md), 도구별 입력·규칙은 [tools.md](tools.md), 작업·진행은 [implementation-plan.md](implementation-plan.md), 결정은 [README.md](README.md)가 근거다. 기존 [docs/Spec.md](../Spec.md)(이하 "기존 Spec")와 [client-contract.md](../client-contract.md)(이하 "계약")를 고치지 않고 덧붙이며, 승인 뒤 반영할 곳은 [doc-changes.md](doc-changes.md)에 있다.
 
 - **기존 규칙 계승**: 일지·노트 규칙(제목 길이, 노트 1~500자, 삭제 규칙, 시간대)은 기존 Spec·계약을 그대로 따른다. 이 문서가 바꾸는 곳은 앱 출처 규칙뿐이며 그때는 `[MCP]`로 표시한다.
 - **ID**: 요구사항은 `MFR-xx`(기능)·`MNFR-xx`(비기능), 결정은 `MD-xx`로 매겨 기존 ID와 겹치지 않게 한다. 기존 FR-19(일지 조회 MCP, P2)는 이 연계로 확장되어 P1로 올린다([doc-changes.md](doc-changes.md) 2절).
@@ -74,7 +74,7 @@ Claude 앱 ──HTTPS 443(Funnel)──> MCP 전용 ASGI 앱 ──> services/ 
 - **분리**: 외부 MCP는 같은 코드베이스의 **별도 ASGI 앱·별도 포트**(예: 8400)다. 기존 서버(8000)를 Funnel에 열지 않는다. 대안(프록시 허용 목록)은 설정 실수가 곧 노출 사고라서 채택하지 않는다(MD-01).
 - **공유 서비스**: `server/app/services/`에 일지·노트·기억·호칭 규칙을 한 번만 두고 내부 MCP·외부 MCP·웹 API가 호출한다. 노트 저장은 세션을 인자로 받는다(내부는 런타임 세션, 외부는 앱 메모 세션).
 - **코드 배치**: 외부 앱·OAuth·도구 등록은 `server/app/mcp_external/`에 있다.
-- **포트 배치(확인 필요)**: 기존 계약은 Serve가 443으로 tailnet에 PWA를 연다. Serve와 Funnel은 외부 포트를 공유하므로 Funnel(443)은 MCP 전용 포트만, 사설 PWA는 다른 포트로 두는 배치가 전제다. MA-03에서 Funnel 443이 MCP 포트만 가리킴을 확인했다(PWA 8443 Serve 공존은 MA-12 전 확인).
+- **포트 배치(확인 필요)**: 작성 당시 계약은 Serve가 443으로 tailnet에 PWA를 열었고 지금은 8443이다. Serve와 Funnel은 외부 포트를 공유하므로 Funnel(443)은 MCP 전용 포트만, 사설 PWA는 다른 포트로 두는 배치가 전제다. MA-03에서 Funnel 443이 MCP 포트만 가리킴을 확인했다(PWA 8443 Serve 공존은 MA-12 전 확인).
 - **DB**: 두 프로세스가 같은 SQLite를 쓴다. WAL·재시도·경합 시험으로 확인하고, 문제면 같은 프로세스의 별도 포트 리스너로 바꾼다.
 
 ## 5. 핵심 동작 명세
@@ -99,7 +99,7 @@ Claude 앱 ──HTTPS 443(Funnel)──> MCP 전용 ASGI 앱 ──> services/ 
 
 | 항목 | 규칙 |
 |---|---|
-| 입력 | `title`(1~100자), `summary`(≤1,000자), `ideas`·`todos`·`memos`(문자열 목록, 항목 ≤500자), `tags`(≤10개, 항목 ≤30자), `transcript`(≤20,000자). 시그니처 상세는 [tools.md](tools.md) |
+| 입력 | `title`(1~100자), `summary`(≤1,000자), `ideas`·`todos`·`memos`(문자열 목록, 목록당 ≤20개, 항목 1~500자), `tags`(≤10개, 항목 ≤30자), `transcript`(≤20,000자). 시그니처 상세는 [tools.md](tools.md) |
 | 신규·갱신 | 서버 시간대(`Asia/Seoul`)의 현지 날짜 + `mode=claude_app`·`app_kind=journal` + 제목으로 조회한다. 없으면 새로 만들고(이때 `summary` 필요), 있으면 `summary`·`tags`·`transcript`는 넘긴 것만 바꾼다(생략=그대로, `tags=[]`=비움). 조회는 `app_kind=journal`만 대상으로 하고 `app_day`·제목 유일 인덱스가 중복을 막는다 |
 | 세션 값 | `mode=claude_app`, `status=ended`, `started_at=ended_at=저장 시각`, `extract_status=done`, `checks=[]`(null이 아니어야 웹이 새 형식으로 그리고 "다시 정리" 대상이 되지 않는다), `app_kind=journal`, `app_day`=저장 시각의 현지 날짜, `persona_id`·`system_prompt`·`cli_session_id`=null, `title_edited=false` |
 | 요약 | 문자열(Text)로 저장한다. 웹 규약은 첫 줄이 결론이라 도구 설명이 첫 줄을 결론으로 쓰게 안내한다. 줄 목록 변환은 기존 규칙 |

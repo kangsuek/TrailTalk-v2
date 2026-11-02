@@ -9,6 +9,15 @@
 - 규약을 바꾸면 같은 커밋에서 이 문서, 서버 스키마(`npm run gen:api`로 웹 타입 갱신), 전이 표를 함께 고친다.
 - 서버가 새 이벤트·필드를 먼저 더할 수 있으므로 클라이언트는 모르는 이벤트 `type`, 필드, `summary.kind`를 무시한다(앱이 멈추지 않게).
 - 한도·기본값의 정본은 서버다. 클라이언트는 `GET /api/profile`의 `client`로 받아 쓴다.
+- 이 문서는 구현이 끝난 것과 앞으로 만들 것(M4·M5·M6·P2)을 함께 적는 목표 규약이다. 서버에 아직 없는 것은 아래 표의 "미구현"이고, 만드는 작업의 커밋에서 이 표를 고친다(2026-11-02 기준, 서버가 내는 OpenAPI와 대조).
+
+| 항목 | 상태 |
+|---|---|
+| `POST /api/sessions/prepare`(2.1), `POST /api/sessions/{id}/turns/audio/record`(2.14), `POST /api/sessions/{id}/turns/{turn_id}/cancel`(2.12) | 미구현(M4, 자체 음성 보류 D9) |
+| `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13), `GET /api/usage`(1.3) | 미구현(M5) |
+| 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 미구현(M6) |
+| `GET /api/journal?q=`, `GET /api/journal/{id}/export.md`(3절) | 미구현(P2) |
+| 그 밖의 `/api` 경로(세션 시작·종료·다시 열기, 글·음성 턴, 지연 보고, 일지·노트, 프로필, 보이스, 지연 요약, health) | 구현됨 |
 
 ### v2 변경 요약
 
@@ -39,7 +48,7 @@
 
 ### 1.2 폰 접속
 
-서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net:8443/`)로 접속한다. 443은 외부 MCP의 Funnel이 쓸 수 있어 앱은 8443을 쓴다. `./run.sh --phone`이 이 기기의 호스트를 개발 서버(`VITE_ALLOWED_HOSTS`)에 열고 켜는 명령을 안내한다(Tailscale 설정은 바꾸지 않는다). 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(8443)와 Funnel(443)이 한 기기에서 공존하는지는 MA-12 전에 사용자 승인 아래 확인한다(MCP/design.md 1.1). 이 기기의 현재 설정은 443만 Funnel이다. 서버의 `Origin` 허용 목록(`ALLOWED_ORIGINS`, 1.5)은 아직 구현 전이라 폰 접속에 필요한 것은 개발 서버의 호스트 허용뿐이다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
+서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net:8443/`)로 접속한다. 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 앱은 8443을 쓴다. `./run.sh --phone`이 이 기기의 호스트를 개발 서버(`VITE_ALLOWED_HOSTS`)에 열고 켜는 명령을 안내한다(Tailscale 설정은 바꾸지 않는다). 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(8443)와 Funnel(443)이 한 기기에서 공존하는지는 MA-12 전에 사용자 승인 아래 확인한다(MCP/design.md 1.1). 서버의 `Origin` 허용 목록(`ALLOWED_ORIGINS`, 1.5)은 아직 구현 전이라 폰 접속에 필요한 것은 개발 서버의 호스트 허용뿐이다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
 
 ### 1.3 Claude 남은 토큰
 
@@ -71,7 +80,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 대화 화면이 "시작 전"이나 "끝남" 상태가 되면 `POST /api/sessions/prepare {mode}` → 204를 보낸다. 서버가 다음 대화의 CLI를 미리 띄워 인사말 대기를 약 1.4초 줄인다.
 
 - 대화 탭이 보일 때만 보내고, 화면이 열려 있는 동안 4분마다 다시 보낸다. 결과를 기다리지 않고 실패는 무시한다.
-- `[v2]` 서버는 M3~M4에서 이 API를 만든다. 그 전에는 404일 수 있으나 클라이언트는 실패를 무시하므로 영향이 없다.
+- `[v2]` 서버는 M4(자체 음성 보류 중)에서 이 API를 만든다. 지금은 404이지만 클라이언트는 실패를 무시하므로 영향이 없다.
 - 같은 조건이면 여러 번 불러도 하나만 준비된다. 준비된 지 5분이 지나면 다음 요청 때 새 시각으로 다시 띄우고, 쓰지 않으면 닫힌다.
 - 준비 뒤 프롬프트(관심사·페르소나 등)나 날짜·오전/오후가 바뀌면 시작할 때 새로 띄운다. `[v2]` 호칭은 프롬프트에 들어가지 않고 인사말을 만들 때만 붙으므로 호칭이 바뀌어도 다시 띄우지 않는다.
 

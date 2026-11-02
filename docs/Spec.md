@@ -104,9 +104,11 @@
 
 ```
 server/   app/{api,voice,persona,llm,mcp,mcp_external `[MCP]`,services,jobs,db}, personas/, migrations/, tests/
-web/      src/{core,platform,screens,api}, e2e/
+web/      src/{core,platform,screens,components,hooks,design,api}, e2e/
 shared/   sounds/, fixtures/transitions.json, client-defaults.json
-docs/     Intent.md, Spec.md, client-contract.md, implementation-plan.md, design/ (마일스톤 검증 기록은 필요할 때 추가)
+scripts/  verify.sh(검증 게이트), verify-bg.sh(커밋 뒤 백그라운드 검증)
+.githooks/ post-commit·post-merge·pre-push(git 훅), .claude/ Claude Code 훅·설정
+docs/     Intent.md, Spec.md, client-contract.md, implementation-plan.md, design/(시안), MCP/(Claude 앱 연계), eval/(평가·실측 보고서)
 ```
 
 ### 4.3 계층 규칙
@@ -286,7 +288,7 @@ ID는 UUID 문자열, 시각은 UTC. 열거값은 DB CHECK 제약, 스키마 변
 | `oauth_*` `[MCP]` | 외부 MCP의 OAuth 테이블 3종(클라이언트·인가 코드·토큰, 토큰은 해시 저장). 열·제약은 [MCP/design.md](MCP/design.md) |
 | `briefing` (P2) | id, week_start, script_text, audio_path, sources_json |
 
-v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_metrics` 훅은 v2에 이식하지 않는다. 끼어들기 기록이 필요해지면 M4에서 추가한다. `persona_id`는 일지 전문의 화자 이름이 현재 페르소나가 아닌 그 세션의 페르소나를 따르게 하려는 것이다. 프로필 값의 제약(호칭 1~20자, 관심사 10개 등)은 `client-contract.md` 이식으로 갈음한다.
+v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_metrics` 훅은 v2에 이식하지 않는다. 끼어들기 기록이 필요해지면 M4(보류)에서 추가한다. `persona_id`는 일지 전문의 화자 이름이 현재 페르소나가 아닌 그 세션의 페르소나를 따르게 하려는 것이다. 프로필 값의 제약(호칭 1~20자, 관심사 10개 등)은 `client-contract.md` 이식으로 갈음한다.
 
 ## 7. 서버 API
 
@@ -314,6 +316,8 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | GET | /voices, /voices/{voice}/sample | 보이스 목록·미리 듣기 |
 | GET | /attachments/{id} | 첨부(`?thumb=1`) |
 | GET | /latency, /usage, /health | 지연 요약, Claude 한도, 상태 |
+
+이 표는 목표 API이고 아직 서버에 없는 경로(`prepare`·`turns/audio/record`·`cancel`은 M4 보류, `turns/files`·`/attachments`·`/usage`는 M5, `export.md`와 `?q=`는 P2)는 [client-contract.md](client-contract.md) 0절의 "구현 상태" 표에서 구분한다.
 
 **SSE 이벤트**: `transcript`(음성 턴에서만 첫 이벤트) → `turn` → (`sentence` · `tool`)* → `done` 또는 `error`. 클라이언트는 모르는 `type`·필드·`summary.kind`를 무시한다. 시작 전 오류는 SSE가 아니라 JSON 오류다. 오디오: 업로드 16kHz 모노 Opus(webm, 불가 시 WAV), 응답 문장별 MP3(base64).
 
