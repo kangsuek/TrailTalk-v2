@@ -1940,3 +1940,52 @@ p.closing-sub {
   border-radius: 2px;
   background: currentColor;
 }
+
+/* 헤더 오른쪽: 남은 토큰 막대(시안 .use) + 연결 아이콘 */
+.app-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.usage {
+  width: 108px;
+  text-align: right;
+}
+
+.usage-head {
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--text-sub);
+}
+
+.usage-bar {
+  height: 6px;
+  margin: 4px 0 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.usage-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+}
+
+.usage[data-level='low'] .usage-bar > i {
+  background: var(--amber);
+}
+
+.usage[data-level='out'] .usage-bar > i {
+  background: var(--brick);
+}
+
+.usage-foot {
+  min-height: 13px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-sub);
+}

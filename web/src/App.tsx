@@ -13,6 +13,7 @@ import {
   writeRememberedSession,
 } from './hooks/rememberedSession.ts'
 import { useRoute } from './hooks/useRoute.ts'
+import { UsageContext, useUsage } from './hooks/useUsage.ts'
 
 const TABS: { tab: Tab; name: string }[] = [
   { tab: 'chat', name: '대화' },
@@ -58,10 +59,20 @@ function useConnection(): Connection {
   return connection
 }
 
+// 남은 토큰 막대(헤더)가 쓰는 한도 값을 연결 상태와 함께 공급한다
 export default function App() {
+  const connection = useConnection()
+  const usage = useUsage(connection)
+  return (
+    <UsageContext.Provider value={usage}>
+      <AppBody connection={connection} />
+    </UsageContext.Provider>
+  )
+}
+
+function AppBody({ connection }: { connection: Connection }) {
   const [route, navigate] = useRoute()
   const tab = tabOf(route)
-  const connection = useConnection()
   const label = TABS.find((item) => item.tab === tab)?.name ?? ''
   // 이 화면(대화 화면)이 지금 들고 있는 진행 중 대화. 일지 목록이 "대화로 돌아가기"를 정한다
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
