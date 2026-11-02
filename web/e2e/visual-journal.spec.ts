@@ -109,6 +109,10 @@ async function mockApi(page: Page) {
   await page.route('**/api/notes/open-ideas*', (route) => route.fulfill({ json: OPEN_IDEAS }))
   await page.route('**/api/journal', (route) => route.fulfill({ json: ITEMS }))
   await page.route('**/api/journal/v-done', (route) => route.fulfill({ json: DETAIL }))
+  // 앞선 시험이 서버에 남긴 한도 값이 헤더 막대에 보이지 않게 첫 답변 전 상태로 고정한다
+  await page.route('**/api/usage', (route) =>
+    route.fulfill({ json: { status: null, five_hour: null, seven_day: null, updated_at: null } }),
+  )
 }
 
 for (const scheme of ['light', 'dark'] as const) {
