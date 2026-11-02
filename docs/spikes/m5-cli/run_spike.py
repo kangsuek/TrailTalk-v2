@@ -99,7 +99,7 @@ async def run_cli(
     finally:
         try:  # 자식(stdio MCP 서버 등)까지 프로세스 그룹째 종료
             os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             pass
         await proc.wait()
         shutil.rmtree(cwd, ignore_errors=True)
