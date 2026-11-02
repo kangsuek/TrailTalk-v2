@@ -11,7 +11,7 @@
 | # | 결정 |
 |---|---|
 | 1 | 음성 대화는 Claude 앱이 맡고 v2는 MCP로 연계한다 |
-| 2 | 자체 음성 개발은 완전 제거가 아니라 **보류**한다. 이미 `main`에 병합된 M3-01~15 코드는 그대로 두고, M3-16~19와 M4의 음성 항목을 보류로 표시한다 |
+| 2 | 자체 음성 개발은 완전 제거가 아니라 **보류**한다. 이미 `main`에 병합된 M3-01~15 코드는 그대로 두고, M3-16~19와 M4의 음성 항목을 보류로 표시한다(2026-11-01: M3-16·17·19는 해제되어 완료, M3-18 실측과 M4 음성 항목만 보류) |
 | 3 | `trailTalk-MCP`의 `spike.db`에 쌓인 일지는 v2로 **옮기지 않는다** |
 | 4 | 외부 MCP 도구는 13개: `save_journal`, `list_journals`, `get_journal`, `search_conversations`, `delete_journal`, `rename_journal`, `save_note`, `search_notes`, `list_notes`, `update_note`, `delete_note`, `get_memory`, `set_nickname`(호칭 변경, 2026-10-30 추가) |
 | 5 | `get_memory`는 호칭·최근 일지(제목·요약)·아직 닫지 않은 아이디어·**아직 닫지 않은 할 일(최근 5개까지)**을 돌려준다(할 일 포함은 2026-10-30 확정). 관심사는 넣지 않는다 |
