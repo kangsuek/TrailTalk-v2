@@ -42,7 +42,7 @@
 | [Spec.md](Spec.md) | 연계의 명세: 요구사항, 아키텍처, 동작 규칙, 데이터·API 변경, 보안, 테스트, 결정 |
 | [design.md](design.md) | 구조, 인증, 데이터 매핑, 보안, 코드 배치, 검증, 마일스톤 |
 | [tools.md](tools.md) | 도구 13개의 입력·출력·규칙 |
-| [doc-changes.md](doc-changes.md) | Intent·Spec·계획서·계약에 반영할 변경안(시안 제외) |
+| [doc-changes.md](doc-changes.md) | Intent·Spec·계획서·계약에 반영한 변경 기록(시안 제외) |
 | [implementation-plan.md](implementation-plan.md) | 구현 계획: 묶음·작업 ID·상태·완료 기준·진행 대시보드 |
 
 ## 참고 자료
