@@ -8,9 +8,9 @@
 |---|---|
 | `search_naver`(뉴스) | v1 결과 그대로 쓴다. 응답 0.09~0.11초, 필드 `title`·`description`·`originallink`·`link`·`pubDate`. v1의 정렬·거름 전략(기간 있으면 `date` 50건 거르기, 없으면 `sim`)을 이식한다 |
 | `search_naver_blog`(블로그) | 새로 만든다. 응답 0.16~0.37초(5회 중앙값 0.20초), 필드 `title`·`description`·`bloggername`·`bloggerlink`·`link`·`postdate`(YYYYMMDD). 호스트는 전부 `blog.naver.com`이라 출처 표시는 호스트 대신 `bloggername`을 쓴다. **날짜 필터는 없고** `sort=date`가 최신순이다. 영어 질의도 결과가 있다 |
-| 해외·그 밖의 검색 | **내장 `WebSearch`를 기본으로 한다.** 출처 URL을 `tool_use_result`에서 뽑을 수 있어 `turn.sources`·인용(M5-10)이 된다 |
-| HasData | **잠정 채택(보조)**. 구글 검색 품질이 좋고 `tbs`로 기간 필터(`qdr:h/d/w/m/y`)를 줄 수 있다. 외부 MCP 서버 이름은 `hasdata`, 허용 도구는 `hasdata_google_serp_serp_light_getSearchResults`(검색)와 `hasdata_web_scraping_web_scraping_scrapeWebPage`(상세 내용, 아래)로 시작한다(`mcp__hasdata__` 포함 전체 이름 각 61자로 64자 이하). **도구 이름은 Claude 커넥터가 보여 준 이름이며 원격 서버 `tools/list`의 이름과 같은지는 아직 확인하지 못했다(M5-15 ⑥에서 확인하고 다르면 허용 목록을 고친다).** URL은 `?apis=google_serp_serp_light,web_scraping_web_scraping`으로 도구를 제한한다(스크래핑을 쓰지 않을 때는 앞의 것만). 이름 변경(`google_search`)은 하지 않는다(원격 서버 도구 이름을 바꿀 수 없고 불필요) |
-| 외부 도구의 출처 인용 | 외부 MCP 결과는 `turn.sources`에 넣지 않는다(서버마다 결과 구조가 달라 URL을 해석하지 않는 M5-13 규칙 유지). 화면은 M5-13대로 "`<도구>` 사용 중"과 결과를 글자 그대로 보인다 |
+| 해외·그 밖의 검색 | **HasData 검색을 기본으로 한다(2026-11-02 사용자 결정).** 내장 `WebSearch`는 HasData가 설정되지 않았거나 오류일 때의 폴백이다(`--tools WebSearch`는 켜 둔다) |
+| HasData | **잠정 채택(해외·일반 검색의 기본)**. 구글 검색 품질이 좋고 `tbs`로 기간 필터(`qdr:h/d/w/m/y`)를 줄 수 있다. 외부 MCP 서버 이름은 `hasdata`, 허용 도구는 `hasdata_google_serp_serp_light_getSearchResults`(검색)와 `hasdata_web_scraping_web_scraping_scrapeWebPage`(상세 내용, 아래)로 시작한다(`mcp__hasdata__` 포함 전체 이름 각 61자로 64자 이하). **도구 이름은 Claude 커넥터가 보여 준 이름이며 원격 서버 `tools/list`의 이름과 같은지는 아직 확인하지 못했다(M5-15 ⑥에서 확인하고 다르면 허용 목록을 고친다).** URL은 `?apis=google_serp_serp_light,web_scraping_web_scraping`으로 도구를 제한한다(스크래핑을 쓰지 않을 때는 앞의 것만). 이름 변경(`google_search`)은 하지 않는다(원격 서버 도구 이름을 바꿀 수 없고 불필요) |
+| 외부 도구의 출처 인용 | 일반 외부 MCP 결과는 `turn.sources`에 넣지 않는다(서버마다 결과 구조가 달라 URL을 해석하지 않는 M5-13 규칙 유지). **예외로 기본 검색인 HasData 검색 도구만**, 결과 구조가 확인돼 있으므로(`organicResults[].link`) 서버의 도구별 어댑터가 호스트를 뽑아 `turn.sources`에 넣는다(M5-10). 그래야 해외·일반 검색에도 FR-20의 출처 표기와 일지 인용이 된다. 화면은 M5-13대로 "`<도구>` 사용 중"과 결과를 글자 그대로 보인다 |
 
 ## 네이버 ([로그](m5-search/logs/naver.json))
 
@@ -46,7 +46,7 @@
 
 ## 계획서 반영
 
-- M5-09: 내부 MCP는 `search_naver`·`search_naver_blog` 둘, 해외·일반은 `--tools WebSearch`(내장)로 한다. 규칙(`WEB_SEARCH_RULES`)은 "국내 뉴스 → `search_naver`, 국내 후기·경험담 → `search_naver_blog`, 그 밖 → `WebSearch`, 구글 기간 필터가 필요하면 HasData"로 다시 쓴다.
+- M5-09: 내부 MCP는 `search_naver`·`search_naver_blog` 둘, 해외·일반은 HasData 검색(외부 MCP)을 기본으로, 내장 `--tools WebSearch`를 폴백으로 둔다. 규칙(`WEB_SEARCH_RULES`)은 "국내 뉴스 → `search_naver`, 국내 후기·경험담 → `search_naver_blog`, 그 밖(해외·일반, 기간 지정은 `tbs`) → HasData 검색, HasData 오류·미설정 시 `WebSearch`"로 다시 쓴다.
 - M5-12·15: `mcp-servers.example.yaml`의 예시와 실제 연동은 `hasdata`(http, `x-api-key` 헤더를 `${MCP_HASDATA_API_KEY}`로 치환, 허용 도구는 검색·스크래핑 두 개)로 한다.
 
 ## 비밀 정보 주의

@@ -51,7 +51,7 @@
 | FR-17 | 설정: 호칭, 관심사, 보이스(미리 듣기), 말 속도, 맞장구 켜기·끄기, 대화 모델, 음성 원본 보관, 화면 모드(보이스·말 속도·맞장구·음성 원본 보관은 **보류**) | P1 | 계승 |
 | FR-18 | 주간 트렌드·행사 브리핑. 세션 시작 인사 뒤 "이번 주 소식 들을래요?"라고 묻고 사용자가 원할 때만 재생한다 | P2 | 계승(v1 미구현) |
 | FR-19 | Claude 앱에서 일지·노트를 조회·저장·수정·삭제하는 MCP 서버(외부 MCP `/mcp`, OAuth 보호, 도구 13개). 요구사항·결정은 [MCP/Spec.md](MCP/Spec.md) | P1 | `[MCP]` 2026-10-30에 P2에서 P1로 확장 |
-| FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`(뉴스)·`search_naver_blog`(블로그 후기·경험담), 그 밖(해외 포함)은 내장 `WebSearch`(또는 채택한 외부 MCP 검색, M5-02)로 하고, `search_naver` 오류 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
+| FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`(뉴스)·`search_naver_blog`(블로그 후기·경험담), 그 밖(해외 포함)은 외부 MCP 검색 HasData로 하고, 검색 도구 오류·미설정 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
 | FR-21 | ~~"이메일로 보내줘"에 설정한 본인 주소로 요약·노트·전문을 보낸다~~ **제거(2026-11-02 사용자 결정)**. `send_email`·SMTP·프로필 `email`·`mail_ready`를 만들지 않는다. 해외 검색 전용 `search_USA`(Tavily)도 같은 날 제거했다 | - | 제거 |
 | FR-22 | 글 대화에서 이미지(png·jpg·webp·gif)·텍스트(txt·md·csv·json)·PDF를 첨부해 질문한다 (한도: 메시지당 3개, PDF는 1개·10쪽) | P1 | 계승 |
 | FR-23 | 시작 화면에 "지난 아이디어 이어 가기" 카드, 서버 연결 상태, Claude 남은 토큰 막대를 보인다("음성으로" 시작 선택 등 자체 음성 항목은 **보류**) | P1 | 계승 |
@@ -396,7 +396,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | D5 | 데이터는 새로 시작할까, v1 DB·첨부를 이관할까? | **확정(2026-10-22)**: 이관 도구 없이 새로 시작 |
 | D6 | 브리핑 관심사 초기 목록(P2) | P2 때 정한다 |
 | D7 | CLI 내장 `WebFetch`는 서버가 가로챌 수 없다. `localhost`·사설 대역 차단 수단 | **확정(2026-10-22)**: M5 스파이크에서 CLI 권한 규칙으로 가능한지 확인하고, 불가능하면 내장 `WebFetch`를 끄고 서버가 검사하는 MCP `web_fetch`를 만든다 |
-| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 검색용으로 HasData(서버 이름 `hasdata`, 도구 `hasdata_google_serp_serp_light_getSearchResults`·상세 내용용 `hasdata_web_scraping_web_scraping_scrapeWebPage`, 도구 이름은 커넥터 기준이며 원격 `tools/list` 대조는 M5-15 ⑥)를 잠정 채택, 이름 변경 없음, 외부 도구 결과는 `turn.sources`에 넣지 않고 "`<도구>` 사용 중"으로 표시. 해외·일반 검색은 내장 `WebSearch`가 기본 |
+| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 검색용으로 HasData(서버 이름 `hasdata`, 도구 `hasdata_google_serp_serp_light_getSearchResults`·상세 내용용 `hasdata_web_scraping_web_scraping_scrapeWebPage`, 도구 이름은 커넥터 기준이며 원격 `tools/list` 대조는 M5-15 ⑥)를 잠정 채택, 이름 변경 없음, 일반 외부 도구 결과는 `turn.sources`에 넣지 않고(HasData 검색만 도구별 어댑터로 호스트를 넣는다) "`<도구>` 사용 중"으로 표시. **해외·일반 검색은 HasData가 기본(2026-11-02 사용자 결정), 내장 `WebSearch`는 폴백** |
 | D9 | 음성 대화를 어떻게 할까? | **확정(2026-10-30)**: 음성은 Claude 앱 연계(외부 MCP `/mcp`, 별도 ASGI 앱·포트)가 맡고 자체 음성(M3-16~19, M4 음성 항목)은 **보류**한다. 병합된 M3-01~15는 유지(2026-11-01: 보류했던 M3-16·17·19는 사용자 지시로 해제되어 완료했고, M3-18 실측과 M4 음성 항목만 보류). 앱이 수정·삭제할 수 있는 범위는 노트는 출처 무관, 일지는 앱 출처만이고, 삭제는 서버가 강제하는 2단계 확인이다. 근거와 세부는 [MCP/README.md](MCP/README.md) 결정 1·2·7·9·10·12 |
 
 ## 14. 성공 기준
