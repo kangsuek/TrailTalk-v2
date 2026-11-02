@@ -30,7 +30,7 @@
 | 영역 | 기능 |
 |---|---|
 | 대화 | 음성 대화(무음 1.8초 자동 전송, 끼어들기, 쉬기, 오프라인 보관 후 전송; **자체 음성은 보류**, 음성은 Claude 앱 연계), 글 대화, 파일 첨부(이미지·텍스트·PDF) |
-| 제니 도구 | 노트 저장, 지난 노트·대화 검색, 세션 요약, 쉬기·종료, 호칭·모델 변경, 웹 검색(국내 `search_naver`·`search_naver_blog`, 그 밖은 외부 MCP 검색 HasData, 폴백 `WebSearch`) |
+| 제니 도구 | 노트 저장, 지난 노트·대화 검색, 세션 요약, 쉬기·종료, 호칭·모델 변경, 웹 검색(국내 `search_naver`·`search_naver_blog`, 그 밖은 `search_google`·`search_google_detail`(HasData), 폴백 `WebSearch`) |
 | 일지 | 날짜별 목록, 제목 수정, 삭제(단건·선택), 상세(결론·알게 된 것·확인할 것·아이디어·할 일·메모·인용·전문), 같은 세션 이어서 하기, 다시 정리 |
 | 설정 | 호칭, 관심사, 보이스(미리 듣기), 말 속도, 음성 원본 30일 보관(이 셋은 **보류**), 대화 모델 |
 | 시작 화면 | 지난 아이디어 이어 가기 카드, 서버 연결 상태, Claude 남은 토큰 막대 |
@@ -55,7 +55,7 @@
  VAD·녹음·재생            페르소나 조립, STT/TTS,        │
  오프라인 큐              일지 추출, MCP 도구 서버       └─ MCP 도구(save_note, 검색 등)
                           SQLite(Alembic 마이그레이션)
-외부: OpenAI STT/TTS, 네이버 검색, 외부 MCP 서버(후보 HasData)
+외부: OpenAI STT/TTS, 네이버 검색, HasData(구글 검색·상세), 외부 MCP 서버
 ```
 
 - 서버: `app/api`(라우터), `app/services/conversation.py`(세션·턴 SSE), `app/llm`(CLI 관리), `app/mcp`(제니 도구), `app/persona`(프롬프트), `app/jobs`(세션 종료 추출·무발화 타임아웃·정리), `app/voice`(STT·TTS·문장 분할).

@@ -51,7 +51,7 @@
 | FR-17 | 설정: 호칭, 관심사, 보이스(미리 듣기), 말 속도, 맞장구 켜기·끄기, 대화 모델, 음성 원본 보관, 화면 모드(보이스·말 속도·맞장구·음성 원본 보관은 **보류**) | P1 | 계승 |
 | FR-18 | 주간 트렌드·행사 브리핑. 세션 시작 인사 뒤 "이번 주 소식 들을래요?"라고 묻고 사용자가 원할 때만 재생한다 | P2 | 계승(v1 미구현) |
 | FR-19 | Claude 앱에서 일지·노트를 조회·저장·수정·삭제하는 MCP 서버(외부 MCP `/mcp`, OAuth 보호, 도구 13개). 요구사항·결정은 [MCP/Spec.md](MCP/Spec.md) | P1 | `[MCP]` 2026-10-30에 P2에서 P1로 확장 |
-| FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`(뉴스)·`search_naver_blog`(블로그 후기·경험담), 그 밖(해외 포함)은 외부 MCP 검색 HasData로 하고, 검색 도구 오류·미설정 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
+| FR-20 | 최신 정보·사실 확인은 웹 검색 후 출처를 짧게 밝혀 답한다. 국내는 `search_naver`(뉴스)·`search_naver_blog`(블로그 후기·경험담), 그 밖(해외 포함)은 `search_google`(HasData 구글 검색, 상세 내용은 `search_google_detail`)으로 하고, 검색 도구 오류·미설정·시간 초과 시 내장 `WebSearch`로 폴백한다 | P1 | 계승 |
 | FR-21 | ~~"이메일로 보내줘"에 설정한 본인 주소로 요약·노트·전문을 보낸다~~ **제거(2026-11-02 사용자 결정)**. `send_email`·SMTP·프로필 `email`·`mail_ready`를 만들지 않는다. 해외 검색 전용 `search_USA`(Tavily)도 같은 날 제거했다 | - | 제거 |
 | FR-22 | 글 대화에서 이미지(png·jpg·webp·gif)·텍스트(txt·md·csv·json)·PDF를 첨부해 질문한다 (한도: 메시지당 3개, PDF는 1개·10쪽) | P1 | 계승 |
 | FR-23 | 시작 화면에 "지난 아이디어 이어 가기" 카드, 서버 연결 상태, Claude 남은 토큰 막대를 보인다("음성으로" 시작 선택 등 자체 음성 항목은 **보류**) | P1 | 계승 |
@@ -81,7 +81,7 @@
  VAD·녹음·재생            페르소나 조립, STT/TTS,        │
  오프라인 큐              일지 추출, MCP 도구 서버       └─ MCP 도구(save_note, 검색 등)
                           SQLite(Alembic)
-외부: OpenAI STT/TTS, 네이버 검색, 외부 MCP 서버(FR-25, 후보 HasData)
+외부: OpenAI STT/TTS, 네이버 검색, HasData(구글 검색·상세), 외부 MCP 서버(FR-25)
 
 [MCP] Claude 앱 ──HTTPS(Funnel, MCP 전용 포트)──> 외부 MCP 앱(별도 ASGI 앱·포트, /mcp, OAuth)
                                                   └─ app/services/(일지·노트·기억, 웹 API·내부 MCP와 공유) ── 같은 SQLite
@@ -243,6 +243,7 @@ v1 서버가 남긴 `turn_latency` 기록(2026-10-18~21, 실제 사용 314행 �
 | `pause_session` / `end_session` | 쉬기 / 종료 | 사용자 발화에 근거가 있을 때만 |
 | `set_nickname` / `set_model` | 호칭·대화 모델 변경 | 이번 사용자 발화에 값이 나올 때만(첨부·웹 내용에서 받지 않음). 호칭은 프로필에 저장되어 다음 세션의 첫 인사부터 쓰이며, 변경을 알리는 답변에서만 새 호칭을 한 번 말해도 된다 |
 | `search_naver` / `search_naver_blog` | 국내 뉴스 / 블로그(네이버) 검색 | 오류 시 내장 `WebSearch` 폴백. 클라이언트에는 같은 `web_search` 요약으로 보인다 |
+| `search_google` / `search_google_detail` | 해외·일반 구글 검색(HasData) / 검색 결과 페이지의 상세 내용(HasData 웹 스크래핑) `[v2]` | 오류·미설정·시간 초과 시 내장 `WebSearch` 폴백. HasData 동시 요청 1개 제한을 서버가 직렬화한다. 같은 `web_search` 요약, `search_google_detail`은 `web_fetch`가 못 가져오는 페이지용 보조 |
 | `WebSearch` / `WebFetch` (CLI 내장) | 폴백·페이지 읽기 | 파일·셸 도구는 모두 끈다(외부 MCP는 아래 "외부 MCP" 절의 예외). `localhost`·사설 대역으로의 fetch 차단 수단은 D7에서 정한다 `[v2]` |
 
 내장 도구는 `--tools "WebSearch,WebFetch"`로 제한하고(웹 검색을 만드는 M5 전까지는 `--tools ""`로 내장 도구를 모두 끄고 `--allowedTools`에는 `mcp__trailtalk__*`만 둔다. `--tools`는 외부 MCP 도구와 무관하다), 외부 서버가 없을 때 `--allowedTools "mcp__trailtalk__*,WebSearch,WebFetch"`로 허용 범위를 정한다(외부 서버가 있을 때는 아래 "외부 MCP" 절). MCP 도구가 보이도록 `ENABLE_TOOL_SEARCH=false`를 준다. CLI는 빈 전용 작업 폴더에서 실행하고 버전을 고정한다. 웹 페이지·첨부 속 지시는 사실 정보로만 다루고 따르지 않는다(프롬프트 규칙).
@@ -338,7 +339,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 
 ## 9. 보안과 개인정보
 
-- 데이터는 본인 서버에만 둔다. 키(OpenAI, 네이버, 외부 MCP 서버용 HasData)와 Claude 토큰은 서버 `.env`에만 둔다(`.env`는 읽지 않고, 값이 없어도 서버는 시작한다).
+- 데이터는 본인 서버에만 둔다. 키(OpenAI, 네이버, HasData)와 Claude 토큰은 서버 `.env`에만 둔다(`.env`는 읽지 않고, 값이 없어도 서버는 시작한다).
 - Tailscale Serve로 tailnet 안에서만 HTTPS를 연다. 공개 Funnel은 MCP·OAuth 전용 포트에만 쓰고 `/api`·웹·`/internal`은 공개하지 않는다(`[MCP]`, 포트 배치는 MCP/design.md 1.1). `/internal/*`(앱 도구 경로)은 프록시 경유 요청을 403으로 막는다.
 - `[v2]` **CSRF 방어(NFR-10)** (D3): 변경성 요청(POST/PUT/PATCH/DELETE)은 ① 커스텀 헤더 `X-TrailTalk: 1`을 가져야 한다. 이 헤더가 교차 출처 요청에 CORS 사전 요청을 강제하고 CORS는 열지 않으므로 이것이 주된 방어선이다. ② `Origin`이 있으면 허용 목록(`ALLOWED_ORIGINS`, 기본은 서버 자신의 Tailscale 주소·`127.0.0.1:8000`, 개발 중에는 `localhost:5173`)에 있어야 한다. `Origin`이 없는 요청은 ①을 만족하면 받는다. ③ 본문이 있는 요청은 `Content-Type`이 `application/json`·`multipart/form-data`·지정한 오디오 형식이어야 한다(본문 없는 요청에는 적용하지 않는다). 면제: `/internal/*`(루프백만, 프록시 경유 403), `GET /api/health`. 오디오 업로드처럼 본문이 바이트인 요청도 ①을 요구한다. 수락 기준: 다른 출처 페이지에서 보낸 단순 POST/DELETE가 모두 거절되는 시험.
 - 첨부: 서버가 이미지를 재인코딩(EXIF 제거), 텍스트는 `<attachment>` 래퍼로 감싸 안의 지시를 따르지 않게 한다. `GET /attachments/{id}`는 UUID 추측 불가성과 네트워크 경계로 보호한다(`<img>`가 헤더를 못 붙인다). 항상 `X-Content-Type-Options: nosniff`.
@@ -396,7 +397,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | D5 | 데이터는 새로 시작할까, v1 DB·첨부를 이관할까? | **확정(2026-10-22)**: 이관 도구 없이 새로 시작 |
 | D6 | 브리핑 관심사 초기 목록(P2) | P2 때 정한다 |
 | D7 | CLI 내장 `WebFetch`는 서버가 가로챌 수 없다. `localhost`·사설 대역 차단 수단 | **확정(2026-10-22)**: M5 스파이크에서 CLI 권한 규칙으로 가능한지 확인하고, 불가능하면 내장 `WebFetch`를 끄고 서버가 검사하는 MCP `web_fetch`를 만든다 |
-| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 검색용으로 HasData(서버 이름 `hasdata`, 도구 `hasdata_google_serp_serp_light_getSearchResults`·상세 내용용 `hasdata_web_scraping_web_scraping_scrapeWebPage`, 도구 이름은 커넥터 기준이며 원격 `tools/list` 대조는 M5-15 ⑥)를 잠정 채택, 이름 변경 없음, 일반 외부 도구 결과는 `turn.sources`에 넣지 않고(HasData 검색만 도구별 어댑터로 호스트를 넣는다) "`<도구>` 사용 중"으로 표시. **해외·일반 검색은 HasData가 기본(2026-11-02 사용자 결정), 내장 `WebSearch`는 폴백** |
+| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 해외·일반 검색은 HasData 구글 검색이 기본이고 내장 `WebSearch`가 폴백이다. 이름을 우리가 정하고 출처 인용·응답 정리·동시 요청 직렬화·시간 제한을 위해 **외부 MCP가 아니라 내부 도구**로 만든다: `search_google`(구글 검색), `search_google_detail`(검색 결과 페이지의 상세 내용, HasData 웹 스크래핑). 서버가 HasData REST API를 직접 호출하며 키는 서버 `.env`에만 둔다. 외부 MCP(FR-25)의 실제 점검 대상은 HasData 원격 MCP의 뉴스 도구 등 다른 서버로 정한다(M5-15 ⑥). 일반 외부 도구 결과는 `turn.sources`에 넣지 않고 "`<도구>` 사용 중"으로 표시한다 |
 | D9 | 음성 대화를 어떻게 할까? | **확정(2026-10-30)**: 음성은 Claude 앱 연계(외부 MCP `/mcp`, 별도 ASGI 앱·포트)가 맡고 자체 음성(M3-16~19, M4 음성 항목)은 **보류**한다. 병합된 M3-01~15는 유지(2026-11-01: 보류했던 M3-16·17·19는 사용자 지시로 해제되어 완료했고, M3-18 실측과 M4 음성 항목만 보류). 앱이 수정·삭제할 수 있는 범위는 노트는 출처 무관, 일지는 앱 출처만이고, 삭제는 서버가 강제하는 2단계 확인이다. 근거와 세부는 [MCP/README.md](MCP/README.md) 결정 1·2·7·9·10·12 |
 
 ## 14. 성공 기준
