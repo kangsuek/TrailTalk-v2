@@ -1,4 +1,4 @@
-"""M5-02 네이버 뉴스·블로그 검색 API 확인 스크립트. 호출은 질의당 1회씩 약 10회다.
+"""M5-02 네이버 뉴스·블로그 검색 API 확인 스크립트. 호출은 질의당 1회씩 7회다.
 
 키는 환경 변수 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET로만 받고 파일·출력에 남기지 않는다.
 사용: NAVER_CLIENT_ID=... NAVER_CLIENT_SECRET=... uv run python naver_spike.py

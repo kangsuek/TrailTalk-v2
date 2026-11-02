@@ -396,7 +396,7 @@ v1의 `barge_in_event` 테이블과 `POST /api/barge-in-events`, `window.__tt_me
 | D5 | 데이터는 새로 시작할까, v1 DB·첨부를 이관할까? | **확정(2026-10-22)**: 이관 도구 없이 새로 시작 |
 | D6 | 브리핑 관심사 초기 목록(P2) | P2 때 정한다 |
 | D7 | CLI 내장 `WebFetch`는 서버가 가로챌 수 없다. `localhost`·사설 대역 차단 수단 | **확정(2026-10-22)**: M5 스파이크에서 CLI 권한 규칙으로 가능한지 확인하고, 불가능하면 내장 `WebFetch`를 끄고 서버가 검사하는 MCP `web_fetch`를 만든다 |
-| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 검색용으로 HasData(서버 이름 `hasdata`, 도구 `hasdata_google_serp_serp_light_getSearchResults`)를 보조로 채택, 이름 변경 없음, 외부 도구 결과는 `turn.sources`에 넣지 않고 "`<도구>` 사용 중"으로 표시. 해외·일반 검색은 내장 `WebSearch`가 기본 |
+| D8 | 외부 MCP 서버 등록 방식 | **확정(2026-10-23)**: 서버 설정 파일 직접 등록 + 도구 허용 목록, M5. **스파이크 결정(2026-11-02, [m5-search.md](spikes/m5-search.md))**: 검색용으로 HasData(서버 이름 `hasdata`, 도구 `hasdata_google_serp_serp_light_getSearchResults`·상세 내용용 `hasdata_web_scraping_web_scraping_scrapeWebPage`, 도구 이름은 커넥터 기준이며 원격 `tools/list` 대조는 M5-15 ⑥)를 잠정 채택, 이름 변경 없음, 외부 도구 결과는 `turn.sources`에 넣지 않고 "`<도구>` 사용 중"으로 표시. 해외·일반 검색은 내장 `WebSearch`가 기본 |
 | D9 | 음성 대화를 어떻게 할까? | **확정(2026-10-30)**: 음성은 Claude 앱 연계(외부 MCP `/mcp`, 별도 ASGI 앱·포트)가 맡고 자체 음성(M3-16~19, M4 음성 항목)은 **보류**한다. 병합된 M3-01~15는 유지(2026-11-01: 보류했던 M3-16·17·19는 사용자 지시로 해제되어 완료했고, M3-18 실측과 M4 음성 항목만 보류). 앱이 수정·삭제할 수 있는 범위는 노트는 출처 무관, 일지는 앱 출처만이고, 삭제는 서버가 강제하는 2단계 확인이다. 근거와 세부는 [MCP/README.md](MCP/README.md) 결정 1·2·7·9·10·12 |
 
 ## 14. 성공 기준

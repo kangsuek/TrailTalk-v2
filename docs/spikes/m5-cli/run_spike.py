@@ -3,7 +3,7 @@
 서버 코드(app.llm.claude_cli)의 환경 구성·CLI 경로를 그대로 쓰고 `Settings()`가 .env를 읽는다
 (이 스크립트는 값을 출력하지 않는다). 모든 호출은 haiku, 한 턴, 짧은 프롬프트다.
 
-사용: cd server && uv run python ../docs/spikes/m5-cli/run_spike.py <check> [--keep]
+사용: cd server && uv run python ../docs/spikes/m5-cli/run_spike.py <check>
   allow     ① 허용 밖 MCP 도구 호출 차단 여부(가짜 stdio 서버, 호출 기록 파일로 판정)
   fetch     ② 내장 WebFetch가 localhost·사설·메타데이터 주소에 가는지(로컬 HTTP 서버 적중 여부)
   names     ③ 전체 도구 이름 64자 한도(CLI 호출 없음. 이름 길이 계산)
@@ -18,7 +18,10 @@ import argparse
 import asyncio
 import http.server
 import json
+import os
 import re
+import shutil
+import signal
 import sys
 import tempfile
 import threading
@@ -65,11 +68,12 @@ async def run_cli(
     if mcp_config:
         cmd += ["--mcp-config", str(mcp_config)]
     env = build_env(settings) | (extra_env or {})
-    cwd = Path(tempfile.mkdtemp(prefix="m5spike-"))
+    cwd = Path(tempfile.mkdtemp(prefix="m5spike-"))  # 끝나면 지운다
     started = time.monotonic()
     proc = await asyncio.create_subprocess_exec(
         *cmd, cwd=cwd, env=env, stdin=asyncio.subprocess.DEVNULL,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        start_new_session=True,
     )  # fmt: skip
     first_delta = None
     events: list[dict] = []
@@ -91,8 +95,14 @@ async def run_cli(
     try:
         await asyncio.wait_for(read(), TIMEOUT_S)
     except TimeoutError:
-        proc.kill()
-    await proc.wait()
+        pass
+    finally:
+        try:  # 자식(stdio MCP 서버 등)까지 프로세스 그룹째 종료
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        await proc.wait()
+        shutil.rmtree(cwd, ignore_errors=True)
     token = settings.claude_code_oauth_token
     secret = token.get_secret_value() if token else None
     dump = scrub(json.dumps(events, ensure_ascii=False))
@@ -201,6 +211,14 @@ class _Hit(http.server.BaseHTTPRequestHandler):
 async def check_fetch() -> None:
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Hit)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        await _check_fetch(server)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+async def _check_fetch(server: http.server.ThreadingHTTPServer) -> None:
     port = server.server_address[1]
     summary = {}
     targets = {
@@ -228,7 +246,6 @@ async def check_fetch() -> None:
                 "result": result["result_text"],
             }
             print(f"{rname} | {tname} → 적중 {_Hit.hits}")
-    server.shutdown()
     write_log("fetch", summary)
 
 
