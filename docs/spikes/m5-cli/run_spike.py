@@ -142,7 +142,9 @@ def tool_events(events: list[dict]) -> list[dict]:
     """assistant tool_use와 user tool_result만 추려 판정 근거로 남긴다."""
     out = []
     for e in events:
-        for block in (e.get("message") or {}).get("content") or []:
+        message = e.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        for block in content if isinstance(content, list) else []:
             if isinstance(block, dict) and block.get("type") in ("tool_use", "tool_result"):
                 out.append(
                     {
