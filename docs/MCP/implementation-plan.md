@@ -1,6 +1,6 @@
 # 구현 계획서: Claude 앱 MCP 연계 (마일스톤 MA)
 
-작성일: 2026-10-30. 설계는 [design.md](design.md), 도구 명세는 [tools.md](tools.md), 결정은 [README.md](README.md), 기존 문서 반영안은 [doc-changes.md](doc-changes.md)에 있다. 이 문서는 **작업 ID·상태·완료 기준**의 정본이다. 기존 `docs/implementation-plan.md`(M0~M6)와 별개이며, 착수가 승인되면 그 문서의 대시보드·7.1절·8절에 한 줄 요약으로 연결한다([doc-changes.md](doc-changes.md) 4절).
+작성일: 2026-10-30. 설계는 [design.md](design.md), 도구 명세는 [tools.md](tools.md), 결정은 [README.md](README.md), 기존 문서 반영안은 [doc-changes.md](doc-changes.md)에 있다. 이 문서는 **작업 ID·상태·완료 기준**의 정본이다. 기존 `docs/implementation-plan.md`(M0~M6)와 별개이며, 착수가 승인되면 그 문서의 대시보드·10절·12절에 한 줄 요약으로 연결한다([doc-changes.md](doc-changes.md) 4절).
 
 ## 1. 사용법과 갱신 규칙
 
