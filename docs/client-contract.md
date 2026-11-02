@@ -119,7 +119,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 `name`은 다음 중 하나이거나, `[v2]` 외부 MCP 도구(M5)의 `mcp__<서버>__<도구>`다: `save_note`, `search_notes`, `search_conversations`(지난 대화 전체의 주고받은 말 찾기), `summarize_session`, `pause_session`, `end_session`, `set_nickname`, `set_model`, `web_search`, `web_fetch`.
 
-`web_search`는 내장 웹 검색이거나 검색 API 도구 `search_naver`(국내 뉴스)다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
+`web_search`는 내장 웹 검색이거나 검색 API 도구 `search_naver`(국내 뉴스)·`search_naver_blog`(국내 블로그)·`search_google`(해외·일반)·`search_google_detail`(검색 결과 상세 내용)이다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
 
 `[v2]` 외부 MCP 도구(M5)는 `name`에 접두사를 포함한 전체 이름이 온다(자체 도구는 서버가 `mcp__trailtalk__` 접두사를 떼고 위 목록의 이름으로 보내므로 접두사가 있는 이름은 외부 도구다). 화면은 서버 이름을 보이지 않고 "`<도구>` 사용 중"으로 보인다. 외부 도구의 `input`은 `null`이다. M5 스파이크 전까지 `end`의 `summary`는 `result` kind(결과 문자열, 서버가 2000자로 자름)이고, 스파이크에서 `web_search` 요약으로 바꾸기로 하면 이 문단을 고친다. 클라이언트는 모르는 이름도 이벤트를 버리지 않는다.
 
