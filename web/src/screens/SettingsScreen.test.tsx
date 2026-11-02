@@ -136,6 +136,36 @@ describe('SettingsScreen', () => {
     await waitFor(() => expect(puts[1]).toEqual({ interests: ['전시', '등산'] }))
   })
 
+  it('저장 중에 관심사를 연달아 지워도 앞의 변경이 되살아나지 않는다', async () => {
+    const profile = baseProfile({ interests: ['전시', '테크', '등산'] })
+    let current = profile
+    const puts: Record<string, unknown>[] = []
+    let releaseFirst: () => void = () => {}
+    const firstHeld = new Promise<void>((resolve) => (releaseFirst = resolve))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === 'PUT') {
+          const body = JSON.parse(String(init.body)) as Record<string, unknown>
+          puts.push(body)
+          if (puts.length === 1) await firstHeld // 첫 저장이 끝나기 전에 다음 클릭이 들어오게 붙잡는다
+          current = { ...current, ...body } as Profile
+        }
+        return new Response(JSON.stringify(current), { status: 200 })
+      }),
+    )
+    render(<SettingsScreen connection="connected" />)
+    await userEvent.click(await screen.findByRole('button', { name: '전시 지우기' }))
+    await userEvent.click(screen.getByRole('button', { name: '테크 지우기' }))
+    releaseFirst()
+    await waitFor(() => expect(puts).toHaveLength(2))
+    expect(puts[0]).toEqual({ interests: ['테크', '등산'] })
+    expect(puts[1]).toEqual({ interests: ['등산'] }) // 첫 저장 결과를 바탕으로 만든 목록
+    await waitFor(() =>
+      expect(screen.getByRole('list', { name: '관심사 목록' })).toHaveTextContent(/^등산$/),
+    )
+  })
+
   it('중복·빈 값·개수 초과 관심사는 서버에 보내지 않고 이유를 보인다', async () => {
     const puts = mockProfile(baseProfile())
     render(<SettingsScreen connection="connected" />)

@@ -138,3 +138,13 @@ def test_rate_limit_events_go_to_the_callback_only():
     )
     assert parser.feed('{"type": "rate_limit_event", "rate_limit_info": "x"}') == []
     assert seen == [{"status": "allowed"}]
+
+
+def test_rate_limit_callback_errors_do_not_break_parsing():
+    def boom(info: dict) -> None:
+        raise RuntimeError("기록 실패")
+
+    parser = StreamJsonParser(boom)
+    assert (
+        parser.feed('{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}}') == []
+    )

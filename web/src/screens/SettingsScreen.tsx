@@ -59,6 +59,8 @@ export default function SettingsScreen({ connection }: Props) {
   // 저장은 한 번에 하나씩 순서대로 보낸다(빠르게 연달아 바꿔도 앞의 값이 뒤를 덮지 않게)
   const queue = useRef<Promise<unknown>>(Promise.resolve())
   const latest = useRef<Profile | null>(null)
+  const pending = useRef(0) // 보내려고 줄 선 저장 수
+  const nicknameText = useRef('') // 호칭 입력의 현재 값(저장이 끝난 뒤 그 사이 더 입력했는지 보려고)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -68,6 +70,7 @@ export default function SettingsScreen({ connection }: Props) {
         if (!Array.isArray(loaded?.interests)) throw new Error('unexpected profile response')
         latest.current = loaded
         setProfile(loaded)
+        nicknameText.current = loaded.nickname ?? ''
         setNickname(loaded.nickname ?? '')
       })
       .catch((error) => {
@@ -76,44 +79,64 @@ export default function SettingsScreen({ connection }: Props) {
     return () => controller.abort()
   }, [attempt])
 
-  /** 바뀐 필드만 저장한다. 성공하면 true, 실패하면 그 필드 옆에 이유를 보이고 false */
-  const commit = (field: Field, patch: ProfilePatch): Promise<boolean> => {
+  /**
+   * 바뀐 필드만 저장한다. 보낼 값은 차례가 됐을 때의 최신 프로필로 만든다(앞의 저장이 끝난 결과를 바탕으로
+   * 해야 연달아 누른 변경이 서로 덮어쓰지 않는다). build가 null이면 저장할 것이 없는 것이고, 오류 문구를
+   * 주면 서버에 보내지 않고 그 필드 옆에 보인다. 성공(또는 할 일 없음)이면 true
+   */
+  const commit = (
+    field: Field,
+    build: (current: Profile) => ProfilePatch | { error: string } | null,
+  ): Promise<boolean> => {
+    pending.current += 1
     setSave('saving')
     const run = queue.current.then(async () => {
+      let ok = true
       try {
-        const next = await updateProfile(patch)
-        latest.current = next
-        setProfile(next)
-        setErrors((current) => ({ ...current, [field]: undefined }))
-        setSave('saved')
-        return true
+        const current = latest.current
+        const patch = current ? build(current) : null
+        if (patch !== null && 'error' in patch && typeof patch.error === 'string') {
+          setErrors((e) => ({ ...e, [field]: patch.error as string }))
+          ok = false
+        } else if (patch !== null) {
+          const next = await updateProfile(patch as ProfilePatch)
+          latest.current = next
+          setProfile(next)
+          setErrors((e) => ({ ...e, [field]: undefined }))
+        } else {
+          setErrors((e) => ({ ...e, [field]: undefined }))
+        }
       } catch (error) {
-        setErrors((current) => ({ ...current, [field]: errorText(error) }))
-        setSave('failed')
-        return false
+        setErrors((e) => ({ ...e, [field]: errorText(error) }))
+        ok = false
       }
+      // 대기 중인 저장이 모두 끝났을 때만 결과를 보인다
+      pending.current -= 1
+      if (pending.current === 0) setSave(ok ? 'saved' : 'failed')
+      return ok
     })
     queue.current = run
     return run
   }
 
   const saveNickname = async () => {
-    const current = latest.current
-    if (!current) return
-    const parsed = nicknameToSave(nickname)
+    if (!latest.current) return
+    const sent = nickname
+    const parsed = nicknameToSave(sent)
     if ('error' in parsed) {
       setErrors((e) => ({ ...e, nickname: parsed.error }))
-      setNickname(current.nickname ?? '') // 값을 되돌린다
+      nicknameText.current = latest.current.nickname ?? ''
+      setNickname(nicknameText.current) // 값을 되돌린다
       return
     }
-    if (parsed.value === current.nickname) {
-      setErrors((e) => ({ ...e, nickname: undefined }))
-      setNickname(current.nickname ?? '')
-      return
+    await commit('nickname', (current) =>
+      parsed.value === current.nickname ? null : { nickname: parsed.value },
+    )
+    // 그 사이 더 입력하지 않았을 때만 서버가 받은 값(공백을 뺀 값, 거절됐으면 이전 값)으로 입력을 맞춘다
+    if (nicknameText.current === sent) {
+      nicknameText.current = latest.current?.nickname ?? ''
+      setNickname(nicknameText.current)
     }
-    await commit('nickname', { nickname: parsed.value })
-    // 서버가 받은 값(공백을 뺀 값)으로, 받지 않았으면 이전 서버 값으로 입력을 맞춘다
-    setNickname(latest.current?.nickname ?? '')
   }
 
   const onNicknameKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -125,14 +148,12 @@ export default function SettingsScreen({ connection }: Props) {
   }
 
   const add = async () => {
-    const current = latest.current
-    if (!current) return
-    const added = addInterest(current.interests, interestInput)
-    if ('error' in added) {
-      setErrors((e) => ({ ...e, interests: added.error }))
-      return
-    }
-    if (await commit('interests', { interests: added.interests })) setInterestInput('')
+    const value = interestInput
+    const ok = await commit('interests', (current) => {
+      const added = addInterest(current.interests, value)
+      return 'error' in added ? { error: added.error } : { interests: added.interests }
+    })
+    if (ok) setInterestInput((now) => (now === value ? '' : now))
   }
 
   const onInterestKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -144,17 +165,14 @@ export default function SettingsScreen({ connection }: Props) {
   }
 
   const remove = (item: string) => {
-    const current = latest.current
-    if (!current) return
-    void commit('interests', { interests: removeInterest(current.interests, item) })
+    void commit('interests', (current) => ({ interests: removeInterest(current.interests, item) }))
   }
 
   const chooseModel = (choice: ChatModel) => {
-    const current = latest.current
-    if (!current) return
-    const next = modelToSave(choice, current.default_chat_model)
-    if (next === current.chat_model) return
-    void commit('chat_model', { chat_model: next })
+    void commit('chat_model', (current) => {
+      const next = modelToSave(choice, current.default_chat_model)
+      return next === current.chat_model ? null : { chat_model: next }
+    })
   }
 
   const chooseTheme = (mode: ThemeMode) => {
@@ -217,7 +235,10 @@ export default function SettingsScreen({ connection }: Props) {
               placeholder="기본 호칭"
               aria-invalid={errors.nickname ? true : undefined}
               aria-describedby="set-nickname-hint"
-              onChange={(event) => setNickname(event.target.value)}
+              onChange={(event) => {
+                nicknameText.current = event.target.value
+                setNickname(event.target.value)
+              }}
               onBlur={() => void saveNickname()}
               onKeyDown={onNicknameKey}
             />

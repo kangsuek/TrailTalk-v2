@@ -81,7 +81,10 @@ class StreamJsonParser:
         if kind == "rate_limit_event":
             info = event.get("rate_limit_info")
             if self._on_rate_limit is not None and isinstance(info, dict):
-                self._on_rate_limit(info)
+                try:
+                    self._on_rate_limit(info)
+                except Exception:  # 사용량 기록 실패가 턴 해석을 막지 않게 한다
+                    logger.warning("사용 한도 콜백 실패", exc_info=True)
         return []
 
     @staticmethod
