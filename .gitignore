@@ -29,3 +29,6 @@ server/data/
 .e2e/
 .run-fake/
 .run/
+
+# 외부 MCP 서버 설정(비밀 변수 이름·경로를 포함하므로 커밋하지 않는다. 예시는 mcp-servers.example.yaml)
+server/mcp-servers.yaml
