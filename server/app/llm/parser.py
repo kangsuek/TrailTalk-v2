@@ -2,11 +2,13 @@
 
 턴 경계는 result 이벤트다. system/init은 턴마다 다시 오고, assistant 메시지는 블록 종료
 이벤트보다 먼저 올 수 있으며, thinking 블록·status·rate_limit 이벤트가 섞인다.
-rate_limit 이벤트는 M5(사용량 막대)까지 버린다.
+rate_limit 이벤트는 턴 이벤트로 내보내지 않고 on_rate_limit 콜백으로 마지막 값만 넘긴다
+(구독 사용 한도, app/llm/usage.py).
 """
 
 import json
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from app.llm.events import (
@@ -38,6 +40,9 @@ def _tool_summary(raw: Any) -> dict[str, Any] | None:
 
 
 class StreamJsonParser:
+    def __init__(self, on_rate_limit: Callable[[dict[str, Any]], None] | None = None) -> None:
+        self._on_rate_limit = on_rate_limit
+
     def feed(self, line: str) -> list[LlmEvent]:
         line = line.strip()
         if not line:
@@ -73,6 +78,10 @@ class StreamJsonParser:
             return self._tool_results(event)
         if kind == "result":
             return [self._result(event)]
+        if kind == "rate_limit_event":
+            info = event.get("rate_limit_info")
+            if self._on_rate_limit is not None and isinstance(info, dict):
+                self._on_rate_limit(info)
         return []
 
     @staticmethod
