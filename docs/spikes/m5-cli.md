@@ -11,6 +11,7 @@
 | ③ 이름 64자 | `mcp__<서버>__<도구>` 합계가 64자를 넘으면 안 된다. 서버 이름 32자·도구 이름 40자면 79자다 | M5-12 검증에서 전체 이름 64자 이하를 요구한다(Spec 5.6 그대로) |
 | ④ 도구 정의 많을 때 | 도구 60개(+기본 2)에서도 첫 토큰 지연 증가는 작다(0개 2.0~2.1초, 20개 2.1~2.4초, 60개 2.0~2.9초, 표본 3회씩). 도구 정의 토큰은 늘어난다 | 도구가 몇십 개 수준이면 `ENABLE_TOOL_SEARCH=false`를 유지해도 된다 |
 | ⑤ 이벤트 형식 | 아래 표 | M5-09·11의 요약 추출 방법으로 쓴다 |
+| ⑥ 계정 커넥터(Gmail) (2026-11-02 추가) | 서버 CLI 경로(`-p`)는 claude.ai 계정 커넥터를 로드하지 않는다 | Gmail은 FR-25 설정 파일로도, 계정 커넥터로도 M5에서 붙일 수 없다. M5-15 ⑥은 HasData 뉴스 도구 점검으로 유지한다 |
 
 ## ① 허용 밖 도구 (`logs/allow.json`)
 
@@ -53,3 +54,16 @@
 | `WebFetch` | `{url, prompt}` | `tool_use_result`: `{bytes, code, codeText, result, durationMs, url}` |
 
 서버가 `web_search` 요약(`query`·`links` 최대 10·`sources` 호스트 최대 3)을 만들 때는 `tool_use_result.results[].content[]`의 `url`을 쓴다(문자열 파싱보다 안정적이다). 이벤트에 `rate_limit_event`도 나온다(M5-03에서 쓴다).
+
+## ⑥ 계정 커넥터(Gmail) 로드 여부 (`logs/connectors.json`)
+
+사용자의 Claude 앱에 Gmail 커넥터가 연결되어 있어(읽기 전용 도구 6개, 앱 설정은 "차단됨") 서버 CLI가 이를 불러올 수 있는지 시험했다. 메일은 읽지 않았고 시작 이벤트(`system init`)의 `mcp_servers`·도구 목록만 보았다. 호출 2회(첫 시험 1회 + 격리 옵션 유무 비교 2회 중 첫 시험 포함 총 3회).
+
+| 조건 | 결과 |
+|---|---|
+| `--strict-mcp-config` 없이, 서버 CLI와 같은 격리(`--restricted`, `--setting-sources ""`) | `mcp_servers: []`, MCP 도구 0개 |
+| `--strict-mcp-config`·격리 옵션 모두 없이 | `mcp_servers: []`, MCP 도구 0개 |
+
+- 두 경우 모두 Gmail이 로드되지 않았다. 이 세션(로그인한 대화형 Claude Code)에는 계정 커넥터가 보이지만 서버가 띄우는 `claude -p`에는 보이지 않는다.
+- 원인은 확인하지 못했다. 서버 CLI는 장기 토큰(`CLAUDE_CODE_OAUTH_TOKEN`)으로 인증하므로 그 토큰이 계정 커넥터 권한을 포함하지 않을 가능성이 크다(추론, 환경 변수를 바꿔 가며 시험하지는 않았다).
+- 따라서 Gmail을 쓰려면 Google의 공식 Gmail MCP 서버(`https://gmailmcp.googleapis.com/mcp/v1`, OAuth 2.0만 지원, 개발자 프리뷰)를 FR-25 설정 파일에 붙여야 하는데, 설정 파일은 고정 헤더만 지원하고 OAuth 토큰 갱신이 없어 맞지 않는다. OAuth 갱신 지원이 생길 때 별도 작업으로 다룬다.

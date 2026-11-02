@@ -1,0 +1,14 @@
+{
+ "서버 CLI와 같은 격리(--restricted, --setting-sources '')": {
+  "mcp_servers": [],
+  "mcp_tools": [],
+  "tool_count": 0,
+  "result": "네"
+ },
+ "격리 옵션 없음": {
+  "mcp_servers": [],
+  "mcp_tools": [],
+  "tool_count": 0,
+  "result": "네"
+ }
+}

@@ -52,15 +52,21 @@ async def run_cli(
     disallowed: str = "",
     mcp_config: Path | None = None,
     extra_env: dict[str, str] | None = None,
+    strict_mcp: bool = True,
+    isolated: bool = True,
 ) -> dict:
     """claude -p 한 턴을 stream-json으로 실행하고 이벤트·지연을 돌려준다."""
     settings = Settings()
     cmd = [
         settings.claude_cli_path, "-p", prompt,
         "--output-format", "stream-json", "--verbose", "--include-partial-messages",
-        "--model", MODEL, "--tools", tools, "--restricted", "--strict-mcp-config",
-        "--setting-sources", "", "--no-session-persistence",
+        "--model", MODEL, "--tools", tools,
+        "--no-session-persistence",
     ]  # fmt: skip
+    if isolated:  # 서버 CLI와 같은 격리 옵션
+        cmd += ["--restricted", "--setting-sources", ""]
+    if strict_mcp:
+        cmd += ["--strict-mcp-config"]
     if allowed:
         cmd += ["--allowedTools", allowed]
     if disallowed:
@@ -304,16 +310,50 @@ async def check_events() -> None:
     write_log("events", summary)
 
 
+async def check_connectors() -> None:
+    """⑥ 계정 커넥터(Gmail)가 --strict-mcp-config 없이 `-p`에서 로드되는지. 도구는 호출하지 않는다."""  # noqa: E501
+    summary = {}
+    for label, isolated in (
+        ("서버 CLI와 같은 격리(--restricted, --setting-sources '')", True),
+        ("격리 옵션 없음", False),
+    ):
+        summary[label] = await _connectors_once(isolated)
+    print(json.dumps(summary, ensure_ascii=False, indent=1))
+    write_log("connectors", summary)
+
+
+async def _connectors_once(isolated: bool) -> dict:
+    result = await run_cli(
+        "도구를 호출하지 말고 '네'라고만 답해줘.",
+        allowed="mcp__claude_ai_Gmail__search_threads",
+        strict_mcp=False,
+        isolated=isolated,
+    )
+    init = next(
+        (e for e in result["events"] if e.get("type") == "system" and e.get("subtype") == "init"),
+        {},
+    )
+    return {
+        "mcp_servers": init.get("mcp_servers"),
+        "mcp_tools": [t for t in init.get("tools", []) if str(t).startswith("mcp__")],
+        "tool_count": len(init.get("tools", [])),
+        "result": result["result_text"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("check", choices=["allow", "fetch", "names", "latency", "events"])
+    parser.add_argument(
+        "check", choices=["allow", "fetch", "names", "latency", "events", "connectors"]
+    )
     args = parser.parse_args()
     if args.check == "names":
         check_names()
     else:
         asyncio.run(
             {"allow": check_allow, "fetch": check_fetch,
-             "latency": check_latency, "events": check_events}[args.check]()
+             "latency": check_latency, "events": check_events,
+             "connectors": check_connectors}[args.check]()
         )  # fmt: skip
 
 
