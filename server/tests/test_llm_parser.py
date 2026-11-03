@@ -12,7 +12,7 @@ from app.llm.events import (
     TurnFinished,
     TurnStarted,
 )
-from app.llm.parser import StreamJsonParser, _tool_summary
+from app.llm.parser import StreamJsonParser, _tool_summary, tool_sources
 
 FIXTURES = Path(__file__).parent / "fixtures" / "claude_cli"
 KNOWN_EVENTS = (TurnStarted, TextDelta, ToolStarted, ToolCalled, ToolFinished, TurnFinished)
@@ -245,3 +245,36 @@ def test_public_tool_names_merge_search_tools():
     assert public_tool_name("mcp__trailtalk__web_fetch") == "web_fetch"
     assert public_tool_name("mcp__trailtalk__save_note") == "save_note"
     assert public_tool_name("mcp__maps__search") == "mcp__maps__search"  # 외부 MCP는 그대로
+
+
+def test_tool_sources_from_search_and_fetch_results():
+    search = {
+        "query": "q",
+        "results": [
+            {
+                "content": [
+                    {"title": "릴리스", "url": "https://www.github.com/a"},
+                    {"title": None, "url": "https://docs.astral.sh/uv/"},
+                ]
+            }
+        ],
+    }
+    assert tool_sources(search) == (
+        {"title": "릴리스", "url": "https://www.github.com/a", "host": "github.com"},
+        {"title": None, "url": "https://docs.astral.sh/uv/", "host": "docs.astral.sh"},
+    )
+    structured = {
+        "structuredContent": {"query": "q", "results": [{"title": "글", "url": "https://a.test/1"}]}
+    }
+    assert [s["url"] for s in tool_sources(structured)] == ["https://a.test/1"]
+    fetched = {"code": 200, "bytes": 10, "url": "https://www.a.test/p"}
+    assert tool_sources(fetched) == (
+        {"title": None, "url": "https://www.a.test/p", "host": "a.test"},
+    )
+
+
+def test_tool_sources_skip_failed_fetch_and_other_results():
+    assert tool_sources({"code": 404, "bytes": 10, "url": "https://a.test/p"}) == ()
+    assert tool_sources({"structuredContent": {"result": "저장 완료"}}) == ()
+    assert tool_sources(None) == ()
+    assert tool_sources({"query": "q", "results": []}) == ()

@@ -101,6 +101,26 @@ def _tool_summary(raw: Any) -> dict[str, Any] | None:
     return {"kind": "result", "result": content}
 
 
+def tool_sources(raw: Any) -> tuple[dict[str, str | None], ...]:
+    """도구 결과에서 답변의 출처(turn.sources)가 될 항목 [{title, url, host}]을 뽑는다. 웹 검색
+    결과 링크(최대 10개)와 web_fetch로 읽은 페이지(HTTP 400 미만)만 해당한다. host는 화면에 보일
+    출처 호스트(www. 뗌)이며 요약의 sources와 같은 규칙이다."""
+    summary = _tool_summary(raw)
+    if summary is None:
+        return ()
+    if summary["kind"] == "web_fetch":
+        url, code = summary["url"], summary["code"]
+        if not url or (code is not None and code >= 400):
+            return ()
+        return ({"title": None, "url": url, "host": summary["host"]},)
+    if summary["kind"] != "web_search":
+        return ()
+    return tuple(
+        {"title": link["title"], "url": link["url"], "host": host_of(link["url"])}
+        for link in summary["links"]
+    )
+
+
 class StreamJsonParser:
     def __init__(self, on_rate_limit: Callable[[dict[str, Any]], None] | None = None) -> None:
         self._on_rate_limit = on_rate_limit
@@ -189,6 +209,7 @@ class StreamJsonParser:
                         tool_use_id=block.get("tool_use_id", ""),
                         is_error=bool(block.get("is_error")),
                         summary=_tool_summary(event.get("tool_use_result")),
+                        sources=tool_sources(event.get("tool_use_result")),
                     )
                 )
         return events

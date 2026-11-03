@@ -3,8 +3,8 @@
 
 날짜는 서버 시간대(settings.timezone)의 현지 날짜다. 목록 항목에 현지 날짜(date)를 실어 클라이언트가
 시간대 계산 없이 날짜별로 묶게 한다. 요약은 줄 목록으로 준다.
-검색 출처 인용(summary_cites·citations·노트 cites)과 첨부(turns[].attachments)는 검색·첨부가
-생기는 M5 전까지 빈 목록이다.
+검색 출처 인용(summary_cites·citations·노트 cites)은 일지 정리가 대화의 turn.sources에 맞춰
+채우고, 검색하지 않은 대화는 빈 목록이다. 턴의 sources는 답변에 쓴 출처의 호스트다.
 """
 
 from datetime import date, datetime
@@ -32,6 +32,7 @@ from app.services import journal as journal_service
 from app.services import notes as note_service
 from app.services.conversation import SessionNotEnded
 from app.services.journal import TITLE_MAX_CHARS
+from app.services.search import host_of
 
 router = APIRouter(tags=["journal"])
 
@@ -93,6 +94,21 @@ class AttachmentOut(BaseModel):
     thumb: bool  # 썸네일이 있다(이미지)
 
 
+MAX_TURN_SOURCE_NAMES = 5
+
+
+def source_names(sources: list | None) -> list[str]:
+    """turn.sources([{title, url, host}])에서 화면에 보일 출처 이름(host)을 중복 없이 모은다."""
+    names: dict[str, None] = {}
+    for source in sources or []:
+        if not isinstance(source, dict):
+            continue
+        host = source.get("host") or host_of(source.get("url"))
+        if isinstance(host, str) and host:
+            names.setdefault(host)
+    return list(names)[:MAX_TURN_SOURCE_NAMES]
+
+
 class TurnOut(BaseModel):
     id: str
     seq: int
@@ -102,6 +118,8 @@ class TurnOut(BaseModel):
     merged_from: str | None  # 병합된 뒷말이면 앞말 턴 ID(두 행을 한 말풍선으로)
     created_at: datetime
     attachments: list[AttachmentOut]
+    # 답변에서 본 검색·읽기 출처의 호스트(블로그는 블로거 이름). 없으면 빈 목록
+    sources: list[str]
 
     @classmethod
     def of(cls, turn: Turn) -> "TurnOut":
@@ -113,6 +131,7 @@ class TurnOut(BaseModel):
             interrupted=turn.interrupted,
             merged_from=turn.merged_from,
             created_at=turn.created_at,
+            sources=source_names(turn.sources),
             attachments=[
                 AttachmentOut(
                     id=a.id, name=a.name, mime=a.mime, size=a.size, thumb=a.thumb_path is not None

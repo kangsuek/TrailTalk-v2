@@ -13,8 +13,8 @@
 없는 대화는 표시하지 않는다(앞부분 노트가 빠지지 않게).
 상태(conversation_session.extract_status, API journal_status)는 pending → done/failed다.
 
-검색 출처 인용(sources·citations)은 검색 도구가 생기는 M5부터 채워진다. 그 전에는 turn.sources가
-비어 있어 출처 번호를 모두 버린다(인용 없음).
+검색 출처 인용: 대화의 turn.sources(M5-10, 검색·읽기 결과의 {title, url, host})를 번호 붙여 모델에
+알리고, 돌려받은 번호는 그 목록에 있는 것만 남긴다(출처가 없으면 인용 없음).
 """
 
 import asyncio

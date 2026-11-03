@@ -11,6 +11,8 @@
 (여러 문장 답변용).
 "__say_then_crash__:<글>"은 글을 보낸 뒤 죽고, "__say_then_hang__:<글>"은 글을 보낸 뒤
 "__hang_until_interrupt__"처럼 멈춘다(답변 도중 끊김·서버 강제 종료 시험용).
+"__play__:<녹화 이름>"이면 그 녹화(tests/fixtures/claude_cli)의 첫 턴을 재생한다(검색 도구를 쓴
+답변을 한 서버 설정으로 섞어 시험할 때).
 content가 블록 배열이면(첨부, M5) 텍스트 블록만 모아 지시어를 뽑는다.
 FAKE_CLAUDE_CONTENT_LOG 파일에는 받은 content를 JSON 한 줄로 남긴다(첨부를 보내는 M5에서
 이미지 원문이 커지면 길이·해시만 남기게 고친다).
@@ -262,8 +264,11 @@ def main() -> None:
                 }
             )
             continue
-        turn = turns[min(index, len(turns) - 1)]
-        index += 1
+        if directive == "__play__":  # 이름 붙은 녹화의 첫 턴을 한 번 재생한다(턴 순서는 안 센다)
+            turn = load_turns(text)[0]
+        else:
+            turn = turns[min(index, len(turns) - 1)]
+            index += 1
         for event in turn:
             if "session_id" in event:
                 event = {**event, "session_id": session_id}

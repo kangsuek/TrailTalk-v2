@@ -912,6 +912,8 @@ export interface components {
             created_at: string;
             /** Attachments */
             attachments: components["schemas"]["AttachmentOut"][];
+            /** Sources */
+            sources: string[];
         };
         /** UploadAudioConfig */
         UploadAudioConfig: {

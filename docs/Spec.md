@@ -278,7 +278,7 @@ ID는 UUID 문자열, 시각은 UTC. 열거값은 DB CHECK 제약, 스키마 변
 | 테이블 | 주요 컬럼 |
 |---|---|
 | `conversation_session` | id, mode(text/voice/claude_app `[MCP]`), started_at, ended_at, status(active/paused/ended), title, summary, tags, summary_cites, citations, checks, extract_status(pending/done/failed/null; API 필드명은 `journal_status`), title_edited, reopened_at, persona_id `[v2]`, system_prompt(시작 때 고정), cli_session_id, app_kind(journal/memo/null)·app_day `[MCP]` |
-| `turn` | id, session_id, seq, role, text, audio_path, interrupted, greeting, sources(출처 JSON), merged_from `[v2]`, created_at |
+| `turn` | id, session_id, seq, role, text, audio_path, interrupted, greeting, sources(출처 JSON `[{title, url, host}]`: 어시스턴트 턴이 그 답변에서 본 검색·읽기 결과, M5-10), merged_from `[v2]`, created_at |
 | `attachment` | id, turn_id(CASCADE), name, mime, size, path, thumb_path, chars, pages. 파일은 `attachments_dir/{session_id}/`(폴더 0700·파일 0600) |
 | `note` | id, session_id, turn_id, kind(idea/todo/memo), content, cites, starred, done, created_at |
 | `turn_latency` | turn_id, session_id, 서버 단계 ms(upload/stt/first_token/first_queued/first_synth/synth_wait/first_sentence/done), open_llm_ms, cli_resumed, cli_age_ms, cli_abort, cancel_wait_ms, cancel_outcome, sentence_count, reply_chars, tool_count, search_used, 클라이언트 보고 ms, first_sound_notice, ack_ms `[v2]`, tts_model `[v2]` |
