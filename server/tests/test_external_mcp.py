@@ -461,3 +461,17 @@ def test_secret_variables_come_from_the_process_environment(make_settings, write
 
 def test_non_string_url_rejected(write):
     rejects(write, [http(url=7)], "url은 문자열")
+
+
+def test_dotenv_values_are_not_interpolated(tmp_path, monkeypatch):
+    """.env 안의 `${다른변수}`를 풀어 주지 않는다(서버 비밀 차단을 우회하는 간접 참조 금지)."""
+    import app.config
+    from app.external_mcp import _default_environ
+
+    (tmp_path / ".env").write_text(
+        "MCP_OWNER_PASSWORD=server-secret\nMCP_FOO_X=${MCP_OWNER_PASSWORD}\n"
+    )
+    monkeypatch.setattr(app.config, "REPO_DIR", tmp_path)
+    monkeypatch.delenv("MCP_OWNER_PASSWORD", raising=False)
+    monkeypatch.delenv("MCP_FOO_X", raising=False)
+    assert _default_environ()["MCP_FOO_X"] == "${MCP_OWNER_PASSWORD}"

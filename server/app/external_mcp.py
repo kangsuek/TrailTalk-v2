@@ -130,12 +130,15 @@ def check_file_permissions(path: Path) -> list[str]:
 
 
 def _default_environ() -> Mapping[str, str]:
-    """비밀 변수를 찾는 곳: 프로세스 환경 변수가 우선이고, 없으면 저장소 루트 .env."""
+    """비밀 변수를 찾는 곳: 프로세스 환경 변수가 우선이고, 없으면 저장소 루트 .env(`${}` 보간은 하지
+    않는다. 간접 참조로 서버 자신의 비밀 변수 차단을 우회하지 못하게)."""
     from dotenv import dotenv_values
 
     from app.config import REPO_DIR
 
-    merged: dict[str, str] = {k: v for k, v in dotenv_values(REPO_DIR / ".env").items() if v}
+    merged: dict[str, str] = {
+        k: v for k, v in dotenv_values(REPO_DIR / ".env", interpolate=False).items() if v
+    }
     merged.update(os.environ)
     return merged
 
