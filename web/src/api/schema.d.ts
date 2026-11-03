@@ -588,6 +588,7 @@ export interface components {
             ack_ms: components["schemas"]["Stat"] | null;
             search: components["schemas"]["TotalStats"];
             tts: components["schemas"]["TtsStats"];
+            text: components["schemas"]["TextStats"];
         };
         /** LatencyTurn */
         LatencyTurn: {
@@ -771,6 +772,13 @@ export interface components {
             /** Memo */
             memo: number;
         };
+        /** ServerStats */
+        ServerStats: {
+            /** Count */
+            count: number;
+            first_token_ms: components["schemas"]["Stat"] | null;
+            done_ms: components["schemas"]["Stat"] | null;
+        };
         /**
          * SessionClosed
          * @description 끝내기 응답. closing은 캐릭터가 하는 마무리 멘트, saved는 이 대화에서 저장한 노트 개수다.
@@ -852,6 +860,17 @@ export interface components {
             median: number;
             /** P90 */
             p90: number;
+        };
+        /**
+         * TextStats
+         * @description 글 대화 턴의 서버 구간 기준선(M5-16). 검색 턴은 따로 센다. 음성 판정 값이 아니다.
+         */
+        TextStats: {
+            /** Count */
+            count: number;
+            first_token_ms: components["schemas"]["Stat"] | null;
+            done_ms: components["schemas"]["Stat"] | null;
+            search: components["schemas"]["ServerStats"];
         };
         /** TotalStats */
         TotalStats: {

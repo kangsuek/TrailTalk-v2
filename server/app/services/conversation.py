@@ -788,7 +788,7 @@ async def _run_turn(
             audio_bytes=voice.audio_bytes,
         )
         if voice is not None
-        else None
+        else LatencyTracker(started=turn_started, mode="text")  # 글 대화: 서버 구간만(규약 2.15)
     )
     reply_chars = 0
     latency_saved = False
