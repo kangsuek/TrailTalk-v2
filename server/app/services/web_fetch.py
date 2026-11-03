@@ -41,6 +41,8 @@ _TEXT_TYPES = ("text/", "application/xhtml+xml", "application/json", "applicatio
 _HEADERS = {
     "User-Agent": "TrailTalk-web-fetch/2",
     "Accept": "text/html,text/plain,application/xhtml+xml,application/json;q=0.9,*/*;q=0.1",
+    # 압축 폭탄이 청크마다 풀리며 메모리를 채우지 못하게 압축하지 않은 본문만 받는다
+    "Accept-Encoding": "identity",
 }
 
 
@@ -79,11 +81,17 @@ def _embedded_v4(ip: ipaddress.IPv6Address) -> list[ipaddress.IPv4Address]:
     return found
 
 
+# Python의 is_global·is_private이 놓치는 대역(폐지된 site-local, 6to4 릴레이 애니캐스트)
+_EXTRA_BLOCKED = (ipaddress.ip_network("fec0::/10"), ipaddress.ip_network("192.88.99.0/24"))
+
+
 def is_blocked_ip(value: str) -> bool:
     """내부망·특수 용도 주소인가(읽지 못하는 주소). 해석할 수 없는 값도 막는다."""
     try:
         ip = ipaddress.ip_address(value.split("%", 1)[0])
     except ValueError:
+        return True
+    if any(ip.version == net.version and ip in net for net in _EXTRA_BLOCKED):
         return True
     if isinstance(ip, ipaddress.IPv6Address):
         if any(is_blocked_ip(str(v4)) for v4 in _embedded_v4(ip)):
@@ -262,6 +270,10 @@ class WebFetcher:
         host = (parts.hostname or "").rstrip(".").lower()
         if not host:
             raise FetchError("invalid_url", "주소에 호스트가 없습니다.")
+        try:  # 한글·일본어 도메인은 IDNA(punycode)로 바꿔 해석하고 Host·SNI에도 그 이름을 쓴다
+            host = host.encode("idna").decode("ascii")
+        except UnicodeError:
+            raise FetchError("invalid_url", "주소 형식이 올바르지 않습니다.") from None
         if parts.username is not None or parts.password is not None:
             raise FetchError("invalid_url", "사용자 정보가 든 주소는 읽을 수 없습니다.")
         if host == "localhost" or host.endswith(".localhost"):

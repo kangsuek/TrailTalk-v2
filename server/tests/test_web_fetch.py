@@ -70,6 +70,7 @@ def never(request):
         "::1", "::", "fc00::1", "fd12:3456::1", "fe80::1", "ff02::1", "::ffff:127.0.0.1",
         "::ffff:10.0.0.1", "::ffff:169.254.169.254", "2002:7f00:1::", "64:ff9b::a00:1",
         "::127.0.0.1", "fe80::1%en0", "not-an-ip", "",
+        "fec0::1", "192.88.99.1",  # site-local(폐지), 6to4 릴레이
     ],
 )  # fmt: skip
 def test_blocked_ips(ip):
@@ -443,3 +444,38 @@ def test_from_settings():
         Settings(_env_file=None, web_fetch_timeout_s=3, web_fetch_max_bytes=77)
     )
     assert fetcher._timeout_s == 3 and fetcher._max_bytes == 77 and fetcher._max_redirects == 4
+
+
+async def test_unicode_host_is_converted_to_punycode_for_resolver_host_and_sni():
+    """한글·일본어 도메인은 IDNA로 바꿔 해석하고 Host·SNI에도 쓴다(UnicodeEncodeError 금지)."""
+    seen = {}
+
+    def handler(request):
+        seen["host"] = request.headers["host"]
+        seen["sni"] = request.extensions.get("sni_hostname")
+        return html("<p>안녕</p>")
+
+    punycode = "xn--r8jz45g.jp"  # 例え.jp
+    resolver = Resolver({punycode: [PUBLIC]})
+    result = await make(handler, resolver).fetch("http://例え.jp/")
+    assert result.code == 200 and "안녕" in result.text
+    assert seen == {"host": punycode, "sni": punycode}
+    assert resolver.calls_for(punycode)
+
+
+async def test_host_that_cannot_be_converted_to_idna_is_an_invalid_url():
+    with pytest.raises(FetchError) as info:
+        await make(never).fetch("http://" + "가" * 64 + ".example/")  # 한 레이블이 63자를 넘는다
+    assert info.value.code == "invalid_url"
+
+
+async def test_requests_ask_for_uncompressed_bodies():
+    """압축 폭탄이 풀리며 메모리를 채우지 않도록 압축하지 않은 본문만 요청한다."""
+    seen = {}
+
+    def handler(request):
+        seen["encoding"] = request.headers.get("accept-encoding")
+        return html("ok")
+
+    await make(handler).fetch("http://example.test/")
+    assert seen["encoding"] == "identity"

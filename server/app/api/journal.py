@@ -118,7 +118,7 @@ class TurnOut(BaseModel):
     merged_from: str | None  # 병합된 뒷말이면 앞말 턴 ID(두 행을 한 말풍선으로)
     created_at: datetime
     attachments: list[AttachmentOut]
-    # 답변에서 본 검색·읽기 출처의 호스트(블로그는 블로거 이름). 없으면 빈 목록
+    # 답변에서 본 검색·읽기 출처의 호스트(www. 뗌, 중복 없이 최대 5개). 없으면 빈 목록
     sources: list[str]
 
     @classmethod
