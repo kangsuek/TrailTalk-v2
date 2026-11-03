@@ -24,7 +24,8 @@ test.describe('스모크', () => {
         // 일지 목록 화면은 M2에서 만들었다(자세한 시험은 단위 시험과 journal 화면 E2E)
         await expect(page.getByRole('heading', { name: '일지', level: 1 })).toBeVisible()
       } else {
-        await expect(page.getByText(`${name} 화면은 준비 중입니다.`)).toBeVisible()
+        // 설정 화면은 M5에서 만들었다(자세한 시험은 settings.spec.ts)
+        await expect(page.getByRole('heading', { name: '설정', level: 1 })).toBeVisible()
       }
     }
   })

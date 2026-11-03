@@ -1,6 +1,5 @@
 """프로필 API (client-contract 4.1)."""
 
-import re
 from typing import Annotated
 
 from fastapi import APIRouter, Request
@@ -24,8 +23,6 @@ from app.voice.text import OPENAI_VOICES
 
 router = APIRouter()
 
-_EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
-
 
 def _stripped(value: str) -> str:
     return value.strip()
@@ -46,8 +43,6 @@ Voice = Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length
 
 class ProfileResponse(BaseModel):
     nickname: str | None
-    email: str | None
-    mail_ready: bool  # 서버에 메일 보내기(SMTP) 설정이 있는지. M5 전까지 항상 false
     interests: list[str]
     persona_id: str  # 저장값이 없으면 서버 기본 페르소나
     voice: str | None
@@ -65,7 +60,6 @@ class ProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nickname: Nickname | None = None
-    email: Annotated[str, AfterValidator(_stripped), Field(max_length=254)] | None = None
     interests: list[Interest] | None = None
     persona_id: str | None = None
     voice: Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length=100)] | None = (
@@ -75,13 +69,6 @@ class ProfileUpdate(BaseModel):
     ack_enabled: StrictBool | None = None
     keep_audio: StrictBool | None = None
     chat_model: ChatModel | None = None
-
-    @field_validator("email")
-    @classmethod
-    def _email_shape(cls, value: str | None) -> str | None:
-        if value is not None and not _EMAIL.fullmatch(value):
-            raise ValueError("이메일 주소 형식이 아닙니다")
-        return value
 
     @field_validator("interests")
     @classmethod
@@ -109,8 +96,6 @@ def _response(request: Request, profile: UserProfile) -> ProfileResponse:
     settings: Settings = request.app.state.settings
     return ProfileResponse(
         nickname=profile.nickname,
-        email=profile.email,
-        mail_ready=False,
         interests=list(profile.interests or []),
         persona_id=profile.persona_id or settings.default_persona,
         voice=profile.voice,

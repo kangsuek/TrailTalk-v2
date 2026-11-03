@@ -1,0 +1,2052 @@
+{
+ "WebSearch": {
+  "tool 이벤트": [
+   {
+    "type": "tool_use",
+    "name": "WebSearch",
+    "input": {
+     "query": "파이썬 3.14 출시일",
+     "mode": "standard"
+    }
+   },
+   {
+    "type": "tool_result",
+    "content": "Web search results for query: \"파이썬 3.14 출시일\"\n\nLinks: [{\"title\":\"Python 3.14.0a6\",\"url\":\"https://www.python.org/downloads/release/python-3140a6/\"},{\"title\":\"Following system colour scheme Selected dark colour scheme Selected light colour scheme\",\"url\":\"https://peps.python.org/745\"},{\"title\":\"Python 3.14.0a4\",\"url\":\"https://www.python.org/downloads/release/python-3140a4/\"},{\"title\":\"Tuesday, June 17, 2025\",\"url\":\"https://blog.python.org/2025/06\"},{\"title\":\"Following system colour scheme Selected dark colour scheme Selected light colour scheme\",\"url\":\"https://peps.python.org/pep-745/\"},{\"title\":\"discuss.python.org\",\"url\":\"https://discuss.python.org/t/python-3-14-0-alpha-4/77112?u=hugovk\"},{\"title\":\"blog.python.org\",\"url\":\"https://blog.python.org/2025/03\"},{\"title\":\"Python 3.14.0a1\",\"url\":\"https://www.python.org/downloads/release/python-3140a1/\"},{\"title\":\"Python 3.14.0rc1\",\"url\":\"https://www.python.org/downloads/release/python-3140rc1/\"},{\"title\":\"Python Monthly News\",\"url\":\"https://realpython.com/python-news-august-2025/\"},{\"title\":\"Not one, not two, not three, not four, not five, but six releases! Is this the most in a single day?\",\"url\":\"https://blog.python.org/2025/04\"},{\"title\":\"Python 3.14.0b4\",\"url\":\"https://www.python.org/downloads/release/python-3140b4\"},{\"title\":\"Python 3.14.4\",\"url\":\"https://www.python.org/downloads/release/python-3144/\"},{\"title\":\"Python 3.14.0a7, 3.13.3, 3.12.10, 3.11.12, 3.10.17 and 3.9.22 are now available\",\"url\":\"https://discuss.python.org/t/python-3-14-0a7-3-13-3-3-12-10-3-11-12-3-10-17-and-3-9-22-are-now-available/87580\"},{\"title\":\"[RELEASE] Python 3.14.0 alpha 1 is now available\",\"url\":\"https://mail.python.org/pipermail/python-list/2024-October/912867.html\"},{\"title\":\"Python 3.14.0rc3\",\"url\":\"https://www.python.org/downloads/release/python-3140rc3\"},{\"title\":\"Python 3.14.1\",\"url\":\"https://www.python.org/downloads/release/python-3141/\"}]\n\n파이썬 3.14의 정식 출시일은 **2025년 10월 7일(화)로 예정**되어 있었습니다. 검색 결과에서 확인되는 내용은 다음과 같습니다.\n\n- **정식 출시 예정일:** 3.14.0 정식판은 2025년 10월 7일 화요일로 계획되었다고 3.14.0rc3 공지에 나와 있습니다. The next release of Python 3.14 will be the final release, 3.14.0, scheduled for Tuesday, 2025-10-07. Real Python 뉴스도 같은 날짜를 언급합니다. This marks the penultimate step before the final release, which is scheduled for October 7, 2025.\n- **주요 단계:** 첫 릴리스 후보(rc1)는 2025년 7월 22일에 나왔습니다(Release date: July 22, 2025).\n- **이후 유지보수 릴리스:** 3.14.1은 Dec. 2, 2025에, 3.14.4는 April 7, 2026에 출시되었습니다.\n\n참고로 검색 결과에서는 3.14.0 정식판이 실제로 예정일에 출시되었다는 직접적인 확인 페이지는 찾지 못했습니다. 다만 이후 유지보수 버전이 나온 점을 볼 때 정식판은 출시된 것으로 보입니다. 정확한 실제 출시 기록은 python.org의 3.14.0 릴리스 페이지에서 확인하시는 것이 좋겠습니다.\n\n\nREMINDER: You MUST include the sources above in your response to the user using markdown hyperlinks."
+   }
+  ],
+  "전체 이벤트(원문)": [
+   {
+    "type": "system",
+    "subtype": "init",
+    "cwd": "<path>",
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "tools": [
+     "WebSearch"
+    ],
+    "mcp_servers": [],
+    "model": "claude-haiku-5-5",
+    "permissionMode": "default",
+    "slash_commands": [
+     "design",
+     "design-sync",
+     "dataviz",
+     "update-config",
+     "verify",
+     "debug",
+     "code-review",
+     "simplify",
+     "batch",
+     "fewer-permission-prompts",
+     "doctor",
+     "loop",
+     "schedule",
+     "claude-api",
+     "run",
+     "run-skill-generator",
+     "plugin-authoring",
+     "advisor",
+     "agents",
+     "auto-mode-setup",
+     "autocompact",
+     "clear",
+     "color",
+     "compact",
+     "config",
+     "output-style",
+     "context",
+     "effort",
+     "fast",
+     "focus",
+     "heapdump",
+     "init",
+     "mcp",
+     "import",
+     "model",
+     "__remote-workflow",
+     "workflow-launch-exec",
+     "reload-plugins",
+     "reload-skills",
+     "rename",
+     "ultrareview",
+     "security-review",
+     "usage-credits",
+     "extra-usage",
+     "usage",
+     "insights",
+     "recap",
+     "skill-doctor",
+     "goal",
+     "design-consent",
+     "design-revoke",
+     "list-agents",
+     "team-onboarding"
+    ],
+    "terminal_slash_commands": [
+     "doctor",
+     "color",
+     "focus",
+     "reload-plugins"
+    ],
+    "apiKeySource": "none",
+    "claude_code_version": "2.1.316",
+    "output_style": "default",
+    "agents": [
+     "claude",
+     "Explore",
+     "general-purpose",
+     "Plan",
+     "statusline-setup",
+     "web-fetch"
+    ],
+    "skills": [
+     "design",
+     "design-sync",
+     "dataviz",
+     "update-config",
+     "verify",
+     "debug",
+     "code-review",
+     "simplify",
+     "batch",
+     "fewer-permission-prompts",
+     "doctor",
+     "loop",
+     "schedule",
+     "claude-api",
+     "run",
+     "run-skill-generator",
+     "plugin-authoring"
+    ],
+    "plugins": [
+     {
+      "name": "cc-plugin-agents-md",
+      "path": "builtin",
+      "source": "cc-plugin-agents-md@builtin"
+     },
+     {
+      "name": "cc-plugin-telemetry",
+      "path": "builtin",
+      "source": "cc-plugin-telemetry@builtin"
+     },
+     {
+      "name": "cc-plugin-plugin-authoring",
+      "path": "builtin",
+      "source": "cc-plugin-plugin-authoring@builtin"
+     }
+    ],
+    "capabilities": [
+     "interrupt_receipt_v1",
+     "interrupt_cancel_queued_v1",
+     "interrupt_send_now_v1",
+     "interrupt_requeue_taken_v1",
+     "msg_lifecycle_v1",
+     "request_marker_lists_v1",
+     "ask_user_question_unanswered_v1",
+     "lifecycle_wakeup_source_v1",
+     "sdk_mcp_tools_list_changed",
+     "sdk_mcp_manifests",
+     "mcp_read_resource_v1",
+     "mcp_tool_ui_meta_v1",
+     "ui_surface_v1",
+     "mcp_call_result_not_for_model_v1"
+    ],
+    "analytics_disabled": false,
+    "product_feedback_disabled": false,
+    "uuid": "3eb592ff-0673-4633-83a3-f8588577f669",
+    "original_cwd": "<path>",
+    "additional_directories": [],
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "per_turn_effort_active": true,
+    "ultrathink_available": false,
+    "view_mode": "default"
+   },
+   {
+    "type": "system",
+    "subtype": "status",
+    "status": "requesting",
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "8401b888-c4a0-472d-9a21-147f0ef260a7"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_start",
+     "message": {
+      "model": "claude-haiku-5-5",
+      "id": "msg_011CgdSSPmZ9RZ33z855VRUU",
+      "type": "message",
+      "role": "assistant",
+      "content": [],
+      "container": null,
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+       "input_tokens": 2,
+       "cache_creation_input_tokens": 2455,
+       "cache_read_input_tokens": 1397,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 2455
+       },
+       "output_tokens": 24,
+       "service_tier": "standard",
+       "inference_geo": "global",
+       "speed": "standard"
+      },
+      "input_transformations": [],
+      "diagnostics": null,
+      "context_management": null
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "423ff3fa-63ff-4218-90a7-36a3d807e452",
+    "ttft_ms": 757,
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_start",
+     "index": 0,
+     "content_block": {
+      "type": "tool_use",
+      "id": "toolu_01C5QdiNHT2JCm4nDFHDHERx",
+      "name": "WebSearch",
+      "input": {},
+      "caller": {
+       "type": "direct"
+      }
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "de4c9ce5-7cf6-4f7e-997f-f01ccc462b44",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": ""
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "b4a38d78-15c5-49e1-b9bc-91b0ad14bf36",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "{\"query\": \"파이"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "706039dd-6ea6-4473-bc57-791481fd45ad",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "썬 3.14 출시"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "929396b0-04c8-4792-a935-a45f2df29872",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "일"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "ce1519af-4731-454e-8f68-f0666bc3efdf",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "\", \"mode\": \"standard"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "945b8bf7-4ddc-42b1-8a1c-c41ff9f70778",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "\"}"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "4117fef5-f50b-4168-a999-2664f2ecc83d",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "assistant",
+    "message": {
+     "model": "claude-haiku-5-5",
+     "id": "msg_011CgdSSPmZ9RZ33z855VRUU",
+     "type": "message",
+     "role": "assistant",
+     "content": [
+      {
+       "type": "tool_use",
+       "id": "toolu_01C5QdiNHT2JCm4nDFHDHERx",
+       "name": "WebSearch",
+       "input": {
+        "query": "파이썬 3.14 출시일",
+        "mode": "standard"
+       },
+       "caller": {
+        "type": "direct"
+       }
+      }
+     ],
+     "container": null,
+     "stop_reason": null,
+     "stop_sequence": null,
+     "stop_details": null,
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 2455,
+      "cache_read_input_tokens": 1397,
+      "cache_creation": {
+       "ephemeral_5m_input_tokens": 0,
+       "ephemeral_1h_input_tokens": 2455
+      },
+      "output_tokens": 24,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+     },
+     "input_transformations": [],
+     "diagnostics": null,
+     "context_management": null
+    },
+    "parent_tool_use_id": null,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "80069f04-2f41-45d7-9053-5135cae1e392",
+    "timestamp": "2026-11-02T04:04:52.095Z",
+    "request_id": "req_011CgdSSPZAMzLSpQ7Vt1wYm",
+    "wire_tool_inputs": {
+     "toolu_01C5QdiNHT2JCm4nDFHDHERx": {
+      "query": "파이썬 3.14 출시일",
+      "mode": "standard"
+     }
+    }
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_stop",
+     "index": 0
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "1f479106-40f0-4429-924c-5812dae3e45c",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_delta",
+     "delta": {
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "container": null
+     },
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 2455,
+      "cache_read_input_tokens": 1397,
+      "output_tokens": 83,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "iterations": [
+       {
+        "input_tokens": 2,
+        "output_tokens": 83,
+        "cache_read_input_tokens": 1397,
+        "cache_creation_input_tokens": 2455,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 2455
+        },
+        "type": "message"
+       }
+      ]
+     },
+     "context_management": {
+      "applied_edits": []
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "de048a6a-db04-46ac-9b96-8f5d85a714bd",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_stop"
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "fe348b24-913e-4a5f-9fc7-6d9a055d0dd7",
+    "api_message_id": "msg_011CgdSSPmZ9RZ33z855VRUU"
+   },
+   {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": "allowed",
+     "resetsAt": 1793601600,
+     "rateLimitType": "five_hour",
+     "overageStatus": "rejected",
+     "overageDisabledReason": "org_level_disabled",
+     "isUsingOverage": false,
+     "unifiedWindows": {
+      "five_hour": {
+       "utilization": 0.57,
+       "resetsAt": 1793601600,
+       "status": "allowed"
+      },
+      "seven_day": {
+       "utilization": 0.41,
+       "resetsAt": 1793887200,
+       "status": "allowed"
+      }
+     }
+    },
+    "uuid": "7a816a6a-da40-4163-a93b-154b72597e2f",
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95"
+   },
+   {
+    "type": "user",
+    "message": {
+     "role": "user",
+     "content": [
+      {
+       "tool_use_id": "toolu_01C5QdiNHT2JCm4nDFHDHERx",
+       "type": "tool_result",
+       "content": "Web search results for query: \"파이썬 3.14 출시일\"\n\nLinks: [{\"title\":\"Python 3.14.0a6\",\"url\":\"https://www.python.org/downloads/release/python-3140a6/\"},{\"title\":\"Following system colour scheme Selected dark colour scheme Selected light colour scheme\",\"url\":\"https://peps.python.org/745\"},{\"title\":\"Python 3.14.0a4\",\"url\":\"https://www.python.org/downloads/release/python-3140a4/\"},{\"title\":\"Tuesday, June 17, 2025\",\"url\":\"https://blog.python.org/2025/06\"},{\"title\":\"Following system colour scheme Selected dark colour scheme Selected light colour scheme\",\"url\":\"https://peps.python.org/pep-745/\"},{\"title\":\"discuss.python.org\",\"url\":\"https://discuss.python.org/t/python-3-14-0-alpha-4/77112?u=hugovk\"},{\"title\":\"blog.python.org\",\"url\":\"https://blog.python.org/2025/03\"},{\"title\":\"Python 3.14.0a1\",\"url\":\"https://www.python.org/downloads/release/python-3140a1/\"},{\"title\":\"Python 3.14.0rc1\",\"url\":\"https://www.python.org/downloads/release/python-3140rc1/\"},{\"title\":\"Python Monthly News\",\"url\":\"https://realpython.com/python-news-august-2025/\"},{\"title\":\"Not one, not two, not three, not four, not five, but six releases! Is this the most in a single day?\",\"url\":\"https://blog.python.org/2025/04\"},{\"title\":\"Python 3.14.0b4\",\"url\":\"https://www.python.org/downloads/release/python-3140b4\"},{\"title\":\"Python 3.14.4\",\"url\":\"https://www.python.org/downloads/release/python-3144/\"},{\"title\":\"Python 3.14.0a7, 3.13.3, 3.12.10, 3.11.12, 3.10.17 and 3.9.22 are now available\",\"url\":\"https://discuss.python.org/t/python-3-14-0a7-3-13-3-3-12-10-3-11-12-3-10-17-and-3-9-22-are-now-available/87580\"},{\"title\":\"[RELEASE] Python 3.14.0 alpha 1 is now available\",\"url\":\"https://mail.python.org/pipermail/python-list/2024-October/912867.html\"},{\"title\":\"Python 3.14.0rc3\",\"url\":\"https://www.python.org/downloads/release/python-3140rc3\"},{\"title\":\"Python 3.14.1\",\"url\":\"https://www.python.org/downloads/release/python-3141/\"}]\n\n파이썬 3.14의 정식 출시일은 **2025년 10월 7일(화)로 예정**되어 있었습니다. 검색 결과에서 확인되는 내용은 다음과 같습니다.\n\n- **정식 출시 예정일:** 3.14.0 정식판은 2025년 10월 7일 화요일로 계획되었다고 3.14.0rc3 공지에 나와 있습니다. The next release of Python 3.14 will be the final release, 3.14.0, scheduled for Tuesday, 2025-10-07. Real Python 뉴스도 같은 날짜를 언급합니다. This marks the penultimate step before the final release, which is scheduled for October 7, 2025.\n- **주요 단계:** 첫 릴리스 후보(rc1)는 2025년 7월 22일에 나왔습니다(Release date: July 22, 2025).\n- **이후 유지보수 릴리스:** 3.14.1은 Dec. 2, 2025에, 3.14.4는 April 7, 2026에 출시되었습니다.\n\n참고로 검색 결과에서는 3.14.0 정식판이 실제로 예정일에 출시되었다는 직접적인 확인 페이지는 찾지 못했습니다. 다만 이후 유지보수 버전이 나온 점을 볼 때 정식판은 출시된 것으로 보입니다. 정확한 실제 출시 기록은 python.org의 3.14.0 릴리스 페이지에서 확인하시는 것이 좋겠습니다.\n\n\nREMINDER: You MUST include the sources above in your response to the user using markdown hyperlinks."
+      }
+     ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "7eebf178-d3d3-4d10-b958-aa5ac978d645",
+    "timestamp": "2026-11-02T04:04:57.527Z",
+    "tool_use_result": {
+     "query": "파이썬 3.14 출시일",
+     "results": [
+      {
+       "tool_use_id": "srvtoolu_01B3wDXoRX5Ar5MLehAZC1Yo",
+       "content": [
+        {
+         "title": "Python 3.14.0a6",
+         "url": "https://www.python.org/downloads/release/python-3140a6/"
+        },
+        {
+         "title": "Following system colour scheme Selected dark colour scheme Selected light colour scheme",
+         "url": "https://peps.python.org/745"
+        },
+        {
+         "title": "Python 3.14.0a4",
+         "url": "https://www.python.org/downloads/release/python-3140a4/"
+        },
+        {
+         "title": "Tuesday, June 17, 2025",
+         "url": "https://blog.python.org/2025/06"
+        },
+        {
+         "title": "Following system colour scheme Selected dark colour scheme Selected light colour scheme",
+         "url": "https://peps.python.org/pep-745/"
+        },
+        {
+         "title": "discuss.python.org",
+         "url": "https://discuss.python.org/t/python-3-14-0-alpha-4/77112?u=hugovk"
+        },
+        {
+         "title": "blog.python.org",
+         "url": "https://blog.python.org/2025/03"
+        },
+        {
+         "title": "Python 3.14.0a1",
+         "url": "https://www.python.org/downloads/release/python-3140a1/"
+        },
+        {
+         "title": "Python 3.14.0rc1",
+         "url": "https://www.python.org/downloads/release/python-3140rc1/"
+        },
+        {
+         "title": "Python Monthly News",
+         "url": "https://realpython.com/python-news-august-2025/"
+        },
+        {
+         "title": "Not one, not two, not three, not four, not five, but six releases! Is this the most in a single day?",
+         "url": "https://blog.python.org/2025/04"
+        },
+        {
+         "title": "Python 3.14.0b4",
+         "url": "https://www.python.org/downloads/release/python-3140b4"
+        },
+        {
+         "title": "Python 3.14.4",
+         "url": "https://www.python.org/downloads/release/python-3144/"
+        },
+        {
+         "title": "Python 3.14.0a7, 3.13.3, 3.12.10, 3.11.12, 3.10.17 and 3.9.22 are now available",
+         "url": "https://discuss.python.org/t/python-3-14-0a7-3-13-3-3-12-10-3-11-12-3-10-17-and-3-9-22-are-now-available/87580"
+        },
+        {
+         "title": "[RELEASE] Python 3.14.0 alpha 1 is now available",
+         "url": "https://mail.python.org/pipermail/python-list/2024-October/912867.html"
+        },
+        {
+         "title": "Python 3.14.0rc3",
+         "url": "https://www.python.org/downloads/release/python-3140rc3"
+        },
+        {
+         "title": "Python 3.14.1",
+         "url": "https://www.python.org/downloads/release/python-3141/"
+        }
+       ]
+      },
+      "파이썬 3.14의 정식 출시일은 **2025년 10월 7일(화)로 예정**되어 있었습니다. 검색 결과에서 확인되는 내용은 다음과 같습니다.\n\n- **정식 출시 예정일:** 3.14.0 정식판은 2025년 10월 7일 화요일로 계획되었다고 3.14.0rc3 공지에 나와 있습니다. The next release of Python 3.14 will be the final release, 3.14.0, scheduled for Tuesday, 2025-10-07. Real Python 뉴스도 같은 날짜를 언급합니다. This marks the penultimate step before the final release, which is scheduled for October 7, 2025.\n- **주요 단계:** 첫 릴리스 후보(rc1)는 2025년 7월 22일에 나왔습니다(Release date: July 22, 2025).\n- **이후 유지보수 릴리스:** 3.14.1은 Dec. 2, 2025에, 3.14.4는 April 7, 2026에 출시되었습니다.\n\n참고로 검색 결과에서는 3.14.0 정식판이 실제로 예정일에 출시되었다는 직접적인 확인 페이지는 찾지 못했습니다. 다만 이후 유지보수 버전이 나온 점을 볼 때 정식판은 출시된 것으로 보입니다. 정확한 실제 출시 기록은 python.org의 3.14.0 릴리스 페이지에서 확인하시는 것이 좋겠습니다."
+     ],
+     "durationSeconds": 5.420209146,
+     "searchCount": 1
+    },
+    "tool_result_meta": [
+     {
+      "id": "toolu_01C5QdiNHT2JCm4nDFHDHERx",
+      "permission_decision": {
+       "decision": "accept",
+       "source": "config",
+       "reason_type": "rule"
+      }
+     }
+    ]
+   },
+   {
+    "type": "system",
+    "subtype": "status",
+    "status": "requesting",
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "0a892f29-6fa0-4041-8f80-24747e25600e"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_start",
+     "message": {
+      "model": "claude-haiku-5-5",
+      "id": "msg_011CgdSSsLFSu7TdbNNBCwhF",
+      "type": "message",
+      "role": "assistant",
+      "content": [],
+      "container": null,
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+       "input_tokens": 2,
+       "cache_creation_input_tokens": 1520,
+       "cache_read_input_tokens": 3852,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 1520
+       },
+       "output_tokens": 2,
+       "service_tier": "standard",
+       "inference_geo": "global",
+       "speed": "standard"
+      },
+      "input_transformations": [],
+      "diagnostics": null,
+      "context_management": null
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "588faea4-eed5-4e0e-a297-cc0113fec934",
+    "ttft_ms": 845,
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_start",
+     "index": 0,
+     "content_block": {
+      "type": "thinking",
+      "thinking": "",
+      "signature": ""
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "5e875c44-f8a5-44fe-b625-5bebc12779ba",
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "estimated_tokens": 50,
+    "estimated_tokens_delta": 50,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "17255760-9a5e-40c7-9a67-44baa654044f"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "thinking_delta",
+      "thinking": "",
+      "estimated_tokens": 50
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "8c2a093b-53ff-4c93-98a4-02029986bbb3",
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "thinking_delta",
+      "thinking": "",
+      "estimated_tokens": null
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "e8158fde-41e0-44d0-bb21-67810a682c1d",
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "system",
+    "subtype": "thinking_tokens",
+    "estimated_tokens": 225,
+    "estimated_tokens_delta": 175,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "874539cd-3fcb-4a56-8bb9-905399799063"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "signature_delta",
+      "signature": "CAQS/QYKEAgTGAI4AUIIdGhpbmtpbmcSDPAQGyU60nypN87ZdhoMLDiEiAzKX5uaynsdIjB9VR+UB0aZA84KWekjZgddW+MvU3gHtzeEdZmKqXPVdn6HcRnuwl1Mp0KBOtLrf8QqmgaMxD0jd/qeX4yj4WoL1Yn49wHAlZfR00U9Didkj4iKjm9svNR5G+5YCd7kRMdyOOfkHFaq7U7XXiUQgs+3REfUl8fxtgS/5p6RDJFrsrmRvE9u1oiQQHZ4IxU5bg0gvUYzBSNIWLDseE6qowo0ATMr26x1f0Zc0V1ng8TK4566r/YS5kFbx9oF0Mkv5o1zOWALP/cvFDwCrqQB6tfU5pD990fTNPFlKlEmLZhpCV4ipIhyR0UeArW0ftkn1HlnisVhulks+eBQq6PE4Jv6+20nJ+H5xDHMBcA/KH43Ft5qhS3HaHMJNRQp3WvR0zawu3rgAr6hB5wDYzlcMuY1uMIW9sWVbJi/t/RXSR3eV68Fz1l6fcIS6MNCJ0sQhHPHh5N5aXhebWDozAOI8b7qhqjSOyu9NQgZfjTSiBUUMJU7biHK5R5haFYXZ0HRxGw5frxV76r8afTcaoJQE77riuyqoM2xZnppkSN9aNZDtHlFll+1/5aJCY5LYGih+nHX6v7yq/KZF/drVnmM2CvpXTCBa/vyHHymcnpmQ6MAsOi5p+TjcpY52/4MqPnpjTvOYEEHVKHvNFAkROVmJLKuIUNo3A12VJX35RYV4dRcyKjcxZXVF84i/QidagYCNrIcu1iGIjSWGMtLZzzH4Mp79zFsyZiRCbgpvoI5enc1mpApN0qUhYgnCYmdDh8x0swN0wEaqTor2MXbqTL0hDQJ6UE312nEh9FadTu3Er055FDnsllphmW3Wli20AmuxCBEG8kt9ZmYqRQvbMD3ESKeUVfxeO/X3YB+7wbsEN9k1tk3644eWVIXzblHxAFATiDLCB20DwFe9yc1HQ70IV7ZIc8QT6ISe334zCK2/dLYkK+4IU9TqRnWB2INBkjn7VTAe+SikEWLhdAMKugPgkN7YfcV5+/6oexCM7YiVnGny4J0pHuD7zyvwRwm8TdoI/c6Q/kG0wMayGlKqJzJFOvjETK1z0s/pufnqQfEHU93k+hUR2jtBhyVoUTcNgXbYJKp+TptepITw2b1VnjBZYNwPYPSHgld6S+ekOxTpxgB"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "66526952-8795-47cf-8915-e9cad2692d33",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "assistant",
+    "message": {
+     "model": "claude-haiku-5-5",
+     "id": "msg_011CgdSSsLFSu7TdbNNBCwhF",
+     "type": "message",
+     "role": "assistant",
+     "content": [
+      {
+       "type": "thinking",
+       "thinking": "",
+       "signature": "CAQS/QYKEAgTGAI4AUIIdGhpbmtpbmcSDPAQGyU60nypN87ZdhoMLDiEiAzKX5uaynsdIjB9VR+UB0aZA84KWekjZgddW+MvU3gHtzeEdZmKqXPVdn6HcRnuwl1Mp0KBOtLrf8QqmgaMxD0jd/qeX4yj4WoL1Yn49wHAlZfR00U9Didkj4iKjm9svNR5G+5YCd7kRMdyOOfkHFaq7U7XXiUQgs+3REfUl8fxtgS/5p6RDJFrsrmRvE9u1oiQQHZ4IxU5bg0gvUYzBSNIWLDseE6qowo0ATMr26x1f0Zc0V1ng8TK4566r/YS5kFbx9oF0Mkv5o1zOWALP/cvFDwCrqQB6tfU5pD990fTNPFlKlEmLZhpCV4ipIhyR0UeArW0ftkn1HlnisVhulks+eBQq6PE4Jv6+20nJ+H5xDHMBcA/KH43Ft5qhS3HaHMJNRQp3WvR0zawu3rgAr6hB5wDYzlcMuY1uMIW9sWVbJi/t/RXSR3eV68Fz1l6fcIS6MNCJ0sQhHPHh5N5aXhebWDozAOI8b7qhqjSOyu9NQgZfjTSiBUUMJU7biHK5R5haFYXZ0HRxGw5frxV76r8afTcaoJQE77riuyqoM2xZnppkSN9aNZDtHlFll+1/5aJCY5LYGih+nHX6v7yq/KZF/drVnmM2CvpXTCBa/vyHHymcnpmQ6MAsOi5p+TjcpY52/4MqPnpjTvOYEEHVKHvNFAkROVmJLKuIUNo3A12VJX35RYV4dRcyKjcxZXVF84i/QidagYCNrIcu1iGIjSWGMtLZzzH4Mp79zFsyZiRCbgpvoI5enc1mpApN0qUhYgnCYmdDh8x0swN0wEaqTor2MXbqTL0hDQJ6UE312nEh9FadTu3Er055FDnsllphmW3Wli20AmuxCBEG8kt9ZmYqRQvbMD3ESKeUVfxeO/X3YB+7wbsEN9k1tk3644eWVIXzblHxAFATiDLCB20DwFe9yc1HQ70IV7ZIc8QT6ISe334zCK2/dLYkK+4IU9TqRnWB2INBkjn7VTAe+SikEWLhdAMKugPgkN7YfcV5+/6oexCM7YiVnGny4J0pHuD7zyvwRwm8TdoI/c6Q/kG0wMayGlKqJzJFOvjETK1z0s/pufnqQfEHU93k+hUR2jtBhyVoUTcNgXbYJKp+TptepITw2b1VnjBZYNwPYPSHgld6S+ekOxTpxgB"
+      }
+     ],
+     "container": null,
+     "stop_reason": null,
+     "stop_sequence": null,
+     "stop_details": null,
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 1520,
+      "cache_read_input_tokens": 3852,
+      "cache_creation": {
+       "ephemeral_5m_input_tokens": 0,
+       "ephemeral_1h_input_tokens": 1520
+      },
+      "output_tokens": 2,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+     },
+     "input_transformations": [],
+     "diagnostics": null,
+     "context_management": null
+    },
+    "parent_tool_use_id": null,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "a43302d4-759a-4146-bbd1-215017db3bef",
+    "timestamp": "2026-11-02T04:04:58.967Z",
+    "request_id": "req_011CgdSSs67T2c2yfsasxTpf",
+    "thinking_duration_ms": 581,
+    "thinking_display": "updates"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_stop",
+     "index": 0
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "a20435c0-f4b2-4bb8-8c62-7adf016810c7",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_start",
+     "index": 1,
+     "content_block": {
+      "type": "text",
+      "text": ""
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "922560c2-17ea-42a0-8329-9c1722fc4eaa",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "파"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "ee778bc3-48aa-4a60-973c-2657ca7f2b09",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "이썬 3.14."
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "19882b10-3036-4a4a-b133-71df7c835848",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "0 "
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "b5a50483-1368-4ba2-8b51-44c782d0f931",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "정식 출시일은 "
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "cf7fa1ad-da45-48f7-b43f-af2c3dd47ecf",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "2025년 10월 7"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "9504a9e6-f613-4667-a24d-08cc19576789",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "일(화)로 예정"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "e593f6a5-955f-4e0e-b1be-39087c54674f",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "되어 있었"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "ce938146-fe86-4186-a5e5-5afdf6068cc6",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "습니다. "
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "df3d9ea3-7fc5-42bd-a4c6-48082130dae2",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "([출처](https://www."
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "0a3cb455-af1f-477b-b1db-5126760dc689",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "python.org/downloads/"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "49c417de-a7d7-4115-85f0-49d43ce31b87",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "release/python-3140a6"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "4f16d2f3-9a97-4149-9ec0-553c73d65e5c",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 1,
+     "delta": {
+      "type": "text_delta",
+      "text": "/))"
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "567e2027-62cd-4d26-b47d-b0ae473d2b58",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "assistant",
+    "message": {
+     "model": "claude-haiku-5-5",
+     "id": "msg_011CgdSSsLFSu7TdbNNBCwhF",
+     "type": "message",
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "파이썬 3.14.0 정식 출시일은 2025년 10월 7일(화)로 예정되어 있었습니다. ([출처](https://www.python.org/downloads/release/python-3140a6/))"
+      }
+     ],
+     "container": null,
+     "stop_reason": null,
+     "stop_sequence": null,
+     "stop_details": null,
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 1520,
+      "cache_read_input_tokens": 3852,
+      "cache_creation": {
+       "ephemeral_5m_input_tokens": 0,
+       "ephemeral_1h_input_tokens": 1520
+      },
+      "output_tokens": 2,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+     },
+     "input_transformations": [],
+     "diagnostics": null,
+     "context_management": null
+    },
+    "parent_tool_use_id": null,
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "uuid": "0dbf0ac0-a22b-4de9-8576-eb57e38cd8f0",
+    "timestamp": "2026-11-02T04:04:59.242Z",
+    "request_id": "req_011CgdSSs67T2c2yfsasxTpf"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_stop",
+     "index": 1
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "a682a29c-1033-46cf-a263-4247ada0e111",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_delta",
+     "delta": {
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "container": null
+     },
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 1520,
+      "cache_read_input_tokens": 3852,
+      "output_tokens": 194,
+      "output_tokens_details": {
+       "thinking_tokens": 121
+      },
+      "iterations": [
+       {
+        "input_tokens": 2,
+        "output_tokens": 194,
+        "cache_read_input_tokens": 3852,
+        "cache_creation_input_tokens": 1520,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 1520
+        },
+        "type": "message"
+       }
+      ]
+     },
+     "context_management": {
+      "applied_edits": []
+     }
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "55ff046f-7c7e-4a17-9811-881de377858e",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_stop"
+    },
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "parent_tool_use_id": null,
+    "uuid": "1396bd94-239c-4a41-9fe8-d04ec3c3ea1e",
+    "api_message_id": "msg_011CgdSSsLFSu7TdbNNBCwhF"
+   },
+   {
+    "duration_api_ms": 8144,
+    "stop_reason": "end_turn",
+    "session_id": "d53318f0-eb16-41c2-9c6e-7ed9cd7a4e95",
+    "total_cost_usd": 0.012882590000000001,
+    "usage": {
+     "input_tokens": 4,
+     "cache_creation_input_tokens": 3975,
+     "cache_read_input_tokens": 5249,
+     "output_tokens": 277,
+     "output_tokens_details": {
+      "thinking_tokens": 121
+     },
+     "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+     },
+     "service_tier": "standard",
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 3975,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "inference_geo": "global",
+     "iterations": [
+      {
+       "input_tokens": 2,
+       "output_tokens": 194,
+       "cache_read_input_tokens": 3852,
+       "cache_creation_input_tokens": 1520,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 1520
+       },
+       "type": "message"
+      }
+     ],
+     "speed": "standard",
+     "fallback_credit": null
+    },
+    "modelUsage": {
+     "claude-haiku-5-5": {
+      "inputTokens": 14586,
+      "outputTokens": 1153,
+      "cacheReadInputTokens": 5249,
+      "cacheCreationInputTokens": 3975,
+      "webSearchRequests": 1,
+      "costUSD": 0.012882590000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 321,
+      "cacheCreationEphemeral5mInputTokens": 0,
+      "cacheCreationEphemeral1hInputTokens": 3975,
+      "canonicalModel": "claude-haiku-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+     }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+     "spawned": 0,
+     "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+     },
+     "started_in_background": 0,
+     "max_depth": 0,
+     "spawned_by_subagents": 0,
+     "completed": 0,
+     "failed": 0,
+     "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+     },
+     "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+     },
+     "by_type": {}
+    },
+    "safety_stops": 0,
+    "is_error": false,
+    "num_turns": 2,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "파이썬 3.14.0 정식 출시일은 2025년 10월 7일(화)로 예정되어 있었습니다. ([출처](https://www.python.org/downloads/release/python-3140a6/))",
+    "ttft_ms": 1200,
+    "type": "result",
+    "duration_ms": 8367,
+    "uuid": "8735f443-b5d2-4a7e-a07f-f18586474d7b",
+    "ttft_stream_ms": 966,
+    "time_to_request_ms": 210,
+    "first_content_frame_ms": 967,
+    "queued_turn_count": 0,
+    "result_index": 0,
+    "model_usage_since_last_result": {
+     "claude-haiku-5-5": {
+      "inputTokens": 14586,
+      "outputTokens": 1153,
+      "cacheReadInputTokens": 5249,
+      "cacheCreationInputTokens": 3975,
+      "webSearchRequests": 1,
+      "costUSD": 0.012882590000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 321,
+      "cacheCreationEphemeral5mInputTokens": 0,
+      "cacheCreationEphemeral1hInputTokens": 3975,
+      "canonicalModel": "claude-haiku-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+     }
+    }
+   }
+  ]
+ },
+ "WebFetch": {
+  "tool 이벤트": [
+   {
+    "type": "tool_use",
+    "name": "WebFetch",
+    "input": {
+     "url": "https://example.com",
+     "prompt": "이 페이지의 제목(title)을 찾아서 한 줄로 알려줘."
+    }
+   },
+   {
+    "type": "tool_result",
+    "content": "이 페이지의 제목은 \"Example Domain\"입니다."
+   }
+  ],
+  "전체 이벤트(원문)": [
+   {
+    "type": "system",
+    "subtype": "init",
+    "cwd": "<path>",
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "tools": [
+     "WebFetch"
+    ],
+    "mcp_servers": [],
+    "model": "claude-haiku-5-5",
+    "permissionMode": "default",
+    "slash_commands": [
+     "design",
+     "design-sync",
+     "dataviz",
+     "update-config",
+     "verify",
+     "debug",
+     "code-review",
+     "simplify",
+     "batch",
+     "fewer-permission-prompts",
+     "doctor",
+     "loop",
+     "schedule",
+     "claude-api",
+     "run",
+     "run-skill-generator",
+     "plugin-authoring",
+     "advisor",
+     "agents",
+     "auto-mode-setup",
+     "autocompact",
+     "clear",
+     "color",
+     "compact",
+     "config",
+     "output-style",
+     "context",
+     "effort",
+     "fast",
+     "focus",
+     "heapdump",
+     "init",
+     "mcp",
+     "import",
+     "model",
+     "__remote-workflow",
+     "workflow-launch-exec",
+     "reload-plugins",
+     "reload-skills",
+     "rename",
+     "ultrareview",
+     "security-review",
+     "usage-credits",
+     "extra-usage",
+     "usage",
+     "insights",
+     "recap",
+     "skill-doctor",
+     "goal",
+     "design-consent",
+     "design-revoke",
+     "list-agents",
+     "team-onboarding"
+    ],
+    "terminal_slash_commands": [
+     "doctor",
+     "color",
+     "focus",
+     "reload-plugins"
+    ],
+    "apiKeySource": "none",
+    "claude_code_version": "2.1.316",
+    "output_style": "default",
+    "agents": [
+     "claude",
+     "Explore",
+     "general-purpose",
+     "Plan",
+     "statusline-setup",
+     "web-fetch"
+    ],
+    "skills": [
+     "design",
+     "design-sync",
+     "dataviz",
+     "update-config",
+     "verify",
+     "debug",
+     "code-review",
+     "simplify",
+     "batch",
+     "fewer-permission-prompts",
+     "doctor",
+     "loop",
+     "schedule",
+     "claude-api",
+     "run",
+     "run-skill-generator",
+     "plugin-authoring"
+    ],
+    "plugins": [
+     {
+      "name": "cc-plugin-agents-md",
+      "path": "builtin",
+      "source": "cc-plugin-agents-md@builtin"
+     },
+     {
+      "name": "cc-plugin-telemetry",
+      "path": "builtin",
+      "source": "cc-plugin-telemetry@builtin"
+     },
+     {
+      "name": "cc-plugin-plugin-authoring",
+      "path": "builtin",
+      "source": "cc-plugin-plugin-authoring@builtin"
+     }
+    ],
+    "capabilities": [
+     "interrupt_receipt_v1",
+     "interrupt_cancel_queued_v1",
+     "interrupt_send_now_v1",
+     "interrupt_requeue_taken_v1",
+     "msg_lifecycle_v1",
+     "request_marker_lists_v1",
+     "ask_user_question_unanswered_v1",
+     "lifecycle_wakeup_source_v1",
+     "sdk_mcp_tools_list_changed",
+     "sdk_mcp_manifests",
+     "mcp_read_resource_v1",
+     "mcp_tool_ui_meta_v1",
+     "ui_surface_v1",
+     "mcp_call_result_not_for_model_v1"
+    ],
+    "analytics_disabled": false,
+    "product_feedback_disabled": false,
+    "uuid": "259519b0-1d72-49f5-ab58-5e7f7361bd5c",
+    "original_cwd": "<path>",
+    "additional_directories": [],
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "per_turn_effort_active": true,
+    "ultrathink_available": false,
+    "view_mode": "default"
+   },
+   {
+    "type": "system",
+    "subtype": "status",
+    "status": "requesting",
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "uuid": "819e5606-de42-4ca5-9698-41602c959d36"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_start",
+     "message": {
+      "model": "claude-haiku-5-5",
+      "id": "msg_011CgdST5RWom3SFEv2w2Zkv",
+      "type": "message",
+      "role": "assistant",
+      "content": [],
+      "container": null,
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+       "input_tokens": 2,
+       "cache_creation_input_tokens": 646,
+       "cache_read_input_tokens": 3038,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 646
+       },
+       "output_tokens": 24,
+       "service_tier": "standard",
+       "inference_geo": "global",
+       "speed": "standard"
+      },
+      "input_transformations": [],
+      "diagnostics": null,
+      "context_management": null
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "8b962d88-e630-451d-8f04-d09475edf915",
+    "ttft_ms": 1292,
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_start",
+     "index": 0,
+     "content_block": {
+      "type": "tool_use",
+      "id": "toolu_01Qn45ecaH9QbwJhfooR7fU2",
+      "name": "WebFetch",
+      "input": {},
+      "caller": {
+       "type": "direct"
+      }
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "606cb5e9-2e8e-40dd-8bc8-ba3667dd7ec3",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": ""
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "ac693fd4-86da-4f60-aec7-4f6c93e8ac2c",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "{\"url\": \"https://example"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "f5d7032b-17a4-4104-90a7-be0f383ca2f7",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": ".com"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "cf840980-a6ce-4ff4-8502-cc2e82e4b007",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "\", \"prompt\": \"이"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "aec1d81a-527d-4b8f-a6a5-9a7217b778b5",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": " 페이지의 제목"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "b48e4887-7b12-4043-920e-77cc02ddcacd",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "(title"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "a1a1936c-1cab-4a10-9a0c-d78ce87bbcea",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": ")"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "f97a2888-fba0-4071-a27b-a78172a6c134",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "을 "
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "75ca5739-be1f-4e1d-ba9f-9f7fcd3574e2",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "찾아서"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "30564e6a-8baa-4d09-872e-f36c55a9ab05",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": " 한 줄로 알"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "d2cc7ea2-8018-434b-a2f4-d1db555c28fe",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "려줘."
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "42276d00-2035-4a13-8835-f80828c1513a",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "input_json_delta",
+      "partial_json": "\"}"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "a512e2ae-5f89-42c3-814e-2d42f89bc0fe",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "assistant",
+    "message": {
+     "model": "claude-haiku-5-5",
+     "id": "msg_011CgdST5RWom3SFEv2w2Zkv",
+     "type": "message",
+     "role": "assistant",
+     "content": [
+      {
+       "type": "tool_use",
+       "id": "toolu_01Qn45ecaH9QbwJhfooR7fU2",
+       "name": "WebFetch",
+       "input": {
+        "url": "https://example.com",
+        "prompt": "이 페이지의 제목(title)을 찾아서 한 줄로 알려줘."
+       },
+       "caller": {
+        "type": "direct"
+       }
+      }
+     ],
+     "container": null,
+     "stop_reason": null,
+     "stop_sequence": null,
+     "stop_details": null,
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 646,
+      "cache_read_input_tokens": 3038,
+      "cache_creation": {
+       "ephemeral_5m_input_tokens": 0,
+       "ephemeral_1h_input_tokens": 646
+      },
+      "output_tokens": 24,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+     },
+     "input_transformations": [],
+     "diagnostics": null,
+     "context_management": null
+    },
+    "parent_tool_use_id": null,
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "uuid": "5b039991-b44a-40d0-963d-72f5644cbfda",
+    "timestamp": "2026-11-02T04:05:02.049Z",
+    "request_id": "req_011CgdST5CNYEowq8sg3ptza",
+    "wire_tool_inputs": {
+     "toolu_01Qn45ecaH9QbwJhfooR7fU2": {
+      "url": "https://example.com",
+      "prompt": "이 페이지의 제목(title)을 찾아서 한 줄로 알려줘."
+     }
+    }
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_stop",
+     "index": 0
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "7d10c058-64cd-4b24-9e47-05085181fbfd",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_delta",
+     "delta": {
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "container": null
+     },
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 646,
+      "cache_read_input_tokens": 3038,
+      "output_tokens": 105,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "iterations": [
+       {
+        "input_tokens": 2,
+        "output_tokens": 105,
+        "cache_read_input_tokens": 3038,
+        "cache_creation_input_tokens": 646,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 646
+        },
+        "type": "message"
+       }
+      ]
+     },
+     "context_management": {
+      "applied_edits": []
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "0d28ef87-00c0-473c-a194-89d6ac69c389",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_stop"
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "f1c14aee-f8b2-417e-aa4f-2aab7b41fef8",
+    "api_message_id": "msg_011CgdST5RWom3SFEv2w2Zkv"
+   },
+   {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+     "status": "allowed",
+     "resetsAt": 1793601600,
+     "rateLimitType": "five_hour",
+     "overageStatus": "rejected",
+     "overageDisabledReason": "org_level_disabled",
+     "isUsingOverage": false,
+     "unifiedWindows": {
+      "five_hour": {
+       "utilization": 0.57,
+       "resetsAt": 1793601600,
+       "status": "allowed"
+      },
+      "seven_day": {
+       "utilization": 0.41,
+       "resetsAt": 1793887200,
+       "status": "allowed"
+      }
+     }
+    },
+    "uuid": "840a334a-994b-4501-b13c-91c017272796",
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2"
+   },
+   {
+    "type": "user",
+    "message": {
+     "role": "user",
+     "content": [
+      {
+       "tool_use_id": "toolu_01Qn45ecaH9QbwJhfooR7fU2",
+       "type": "tool_result",
+       "content": "이 페이지의 제목은 \"Example Domain\"입니다."
+      }
+     ]
+    },
+    "parent_tool_use_id": null,
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "uuid": "41cce667-e71d-4195-902e-9122cd43cb5b",
+    "timestamp": "2026-11-02T04:05:04.176Z",
+    "tool_use_result": {
+     "bytes": 577,
+     "code": 200,
+     "codeText": "OK",
+     "result": "이 페이지의 제목은 \"Example Domain\"입니다.",
+     "durationMs": 2116,
+     "url": "https://example.com"
+    },
+    "tool_result_meta": [
+     {
+      "id": "toolu_01Qn45ecaH9QbwJhfooR7fU2",
+      "permission_decision": {
+       "decision": "accept",
+       "source": "config",
+       "reason_type": "rule"
+      }
+     }
+    ]
+   },
+   {
+    "type": "system",
+    "subtype": "status",
+    "status": "requesting",
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "uuid": "34f3e0d3-0673-4c5b-8aac-11acd417b3cb"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_start",
+     "message": {
+      "model": "claude-haiku-5-5",
+      "id": "msg_011CgdSTMnH16tf2cSSAiczN",
+      "type": "message",
+      "role": "assistant",
+      "content": [],
+      "container": null,
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+       "input_tokens": 2,
+       "cache_creation_input_tokens": 156,
+       "cache_read_input_tokens": 3684,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 156
+       },
+       "output_tokens": 6,
+       "service_tier": "standard",
+       "inference_geo": "global",
+       "speed": "standard"
+      },
+      "input_transformations": [],
+      "diagnostics": null,
+      "context_management": null
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "5e7159fb-b9ca-40fc-b3ce-1b3fde7c15bf",
+    "ttft_ms": 1229,
+    "thinking_display": "updates",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_start",
+     "index": 0,
+     "content_block": {
+      "type": "text",
+      "text": ""
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "820b52e4-fc38-4a39-84ce-2258909d3ef9",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_delta",
+     "index": 0,
+     "delta": {
+      "type": "text_delta",
+      "text": "Example Domain"
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "933552e0-0708-4326-b8de-48dd590d1367",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "type": "assistant",
+    "message": {
+     "model": "claude-haiku-5-5",
+     "id": "msg_011CgdSTMnH16tf2cSSAiczN",
+     "type": "message",
+     "role": "assistant",
+     "content": [
+      {
+       "type": "text",
+       "text": "Example Domain"
+      }
+     ],
+     "container": null,
+     "stop_reason": null,
+     "stop_sequence": null,
+     "stop_details": null,
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 156,
+      "cache_read_input_tokens": 3684,
+      "cache_creation": {
+       "ephemeral_5m_input_tokens": 0,
+       "ephemeral_1h_input_tokens": 156
+      },
+      "output_tokens": 6,
+      "service_tier": "standard",
+      "inference_geo": "global",
+      "speed": "standard"
+     },
+     "input_transformations": [],
+     "diagnostics": null,
+     "context_management": null
+    },
+    "parent_tool_use_id": null,
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "uuid": "a8af0db6-a5b0-484c-9425-9dc3b0f795e5",
+    "timestamp": "2026-11-02T04:05:05.424Z",
+    "request_id": "req_011CgdSTMSgMqopt3aVtRn9s"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "content_block_stop",
+     "index": 0
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "f0ca52f2-183c-4e5e-a6f8-4bbf9a0745a9",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_delta",
+     "delta": {
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "container": null
+     },
+     "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 156,
+      "cache_read_input_tokens": 3684,
+      "output_tokens": 7,
+      "output_tokens_details": {
+       "thinking_tokens": 0
+      },
+      "iterations": [
+       {
+        "input_tokens": 2,
+        "output_tokens": 7,
+        "cache_read_input_tokens": 3684,
+        "cache_creation_input_tokens": 156,
+        "cache_creation": {
+         "ephemeral_5m_input_tokens": 0,
+         "ephemeral_1h_input_tokens": 156
+        },
+        "type": "message"
+       }
+      ]
+     },
+     "context_management": {
+      "applied_edits": []
+     }
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "9352cdfc-ae1c-4dc6-a543-c25642438811",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "type": "stream_event",
+    "event": {
+     "type": "message_stop"
+    },
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "parent_tool_use_id": null,
+    "uuid": "589ab249-27c0-432d-83fa-1598c1427770",
+    "api_message_id": "msg_011CgdSTMnH16tf2cSSAiczN"
+   },
+   {
+    "duration_api_ms": 4685,
+    "stop_reason": "end_turn",
+    "session_id": "a0e87105-2dde-4fbf-9b85-33ead2e2cfc2",
+    "total_cost_usd": 0.00036922,
+    "usage": {
+     "input_tokens": 4,
+     "cache_creation_input_tokens": 802,
+     "cache_read_input_tokens": 6722,
+     "output_tokens": 112,
+     "output_tokens_details": {
+      "thinking_tokens": 0
+     },
+     "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+     },
+     "service_tier": "standard",
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 802,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "inference_geo": "global",
+     "iterations": [
+      {
+       "input_tokens": 2,
+       "output_tokens": 7,
+       "cache_read_input_tokens": 3684,
+       "cache_creation_input_tokens": 156,
+       "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 156
+       },
+       "type": "message"
+      }
+     ],
+     "speed": "standard",
+     "fallback_credit": null
+    },
+    "modelUsage": {
+     "claude-haiku-5-5": {
+      "inputTokens": 281,
+      "outputTokens": 227,
+      "cacheReadInputTokens": 6722,
+      "cacheCreationInputTokens": 802,
+      "webSearchRequests": 0,
+      "costUSD": 0.00036922,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 91,
+      "cacheCreationEphemeral5mInputTokens": 0,
+      "cacheCreationEphemeral1hInputTokens": 802,
+      "canonicalModel": "claude-haiku-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+     }
+    },
+    "permission_denials": [],
+    "terminal_reason": "completed",
+    "fast_mode_state": "off",
+    "fast_mode_disabled_reason": "sdk_opt_in_required",
+    "subagent_stats": {
+     "spawned": 0,
+     "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+     },
+     "started_in_background": 0,
+     "max_depth": 0,
+     "spawned_by_subagents": 0,
+     "completed": 0,
+     "failed": 0,
+     "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+     },
+     "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+     },
+     "by_type": {}
+    },
+    "safety_stops": 0,
+    "is_error": false,
+    "num_turns": 2,
+    "subtype": "success",
+    "api_error_status": null,
+    "result": "Example Domain",
+    "ttft_ms": 1881,
+    "type": "result",
+    "duration_ms": 5278,
+    "uuid": "91992af9-3f5d-4bef-8525-4735ad70b70a",
+    "ttft_stream_ms": 1500,
+    "time_to_request_ms": 209,
+    "first_content_frame_ms": 1500,
+    "queued_turn_count": 0,
+    "result_index": 0,
+    "model_usage_since_last_result": {
+     "claude-haiku-5-5": {
+      "inputTokens": 281,
+      "outputTokens": 227,
+      "cacheReadInputTokens": 6722,
+      "cacheCreationInputTokens": 802,
+      "webSearchRequests": 0,
+      "costUSD": 0.00036922,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 128000,
+      "thinkingTokens": 91,
+      "cacheCreationEphemeral5mInputTokens": 0,
+      "cacheCreationEphemeral1hInputTokens": 802,
+      "canonicalModel": "claude-haiku-5-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+     }
+    }
+   }
+  ]
+ }
+}

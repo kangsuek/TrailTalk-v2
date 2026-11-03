@@ -16,8 +16,9 @@ test.describe('프로필 API', () => {
       keep_audio: false,
       chat_model: null,
       default_chat_model: 'sonnet',
-      mail_ready: false,
     })
+    expect(body).not.toHaveProperty('email') // 이메일 기능 제거(2026-11-02)
+    expect(body).not.toHaveProperty('mail_ready')
     expect(body.client.session.idle_timeout_minutes).toBe(30)
   })
 

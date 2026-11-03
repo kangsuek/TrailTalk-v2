@@ -10,7 +10,7 @@ from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
-from app.api import health, journal, latency, profile, sessions, voices
+from app.api import health, journal, latency, profile, sessions, usage, voices
 from app.api.events import register_event_schemas
 from app.client_config import load_client_config
 from app.config import Settings, settings
@@ -20,6 +20,7 @@ from app.errors import install_error_handlers
 from app.jobs import extract, idle
 from app.llm.claude_cli import ClaudeCliBackend
 from app.llm.manager import LlmSessionManager
+from app.llm.usage import UsageTracker
 from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
 from app.services.runtime import RuntimeRegistry
@@ -73,7 +74,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         app.state.engine = engine
         app.state.session_factory = create_session_factory(engine)
         llm = LlmSessionManager(
-            ClaudeCliBackend(app_settings),
+            ClaudeCliBackend(app_settings, on_rate_limit=app.state.usage.update),
             idle_timeout_s=app_settings.cli_idle_timeout_s,
             # 턴 시간 초과 처리가 끝날 여유를 더 둔다(스트림을 버린 경우의 안전망)
             stuck_timeout_s=app_settings.cli_turn_timeout_s + 30,
@@ -104,6 +105,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app.state.settings = app_settings
     app.state.client_config = load_client_config(app_settings)  # 틀린 파일이면 시작하지 않는다
     app.state.runtimes = RuntimeRegistry()
+    app.state.usage = UsageTracker()  # Claude 구독 사용 한도의 마지막 값(GET /api/usage)
     extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)
     app.add_middleware(RequestContextMiddleware)
     install_error_handlers(app)
@@ -114,6 +116,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     api.include_router(sessions.router)
     api.include_router(journal.router)
     api.include_router(latency.router)
+    api.include_router(usage.router)
     api.include_router(voices.router)
     app.include_router(api)
     register_event_schemas(app)  # SSE 이벤트 스키마를 OpenAPI에 넣는다(웹 타입 생성)

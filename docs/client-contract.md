@@ -117,9 +117,9 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 ### 2.5 도구 이름
 
-`name`은 다음 중 하나이거나, `[v2]` 외부 MCP 도구(M5)의 `mcp__<서버>__<도구>`다: `send_email`, `save_note`, `search_notes`, `search_conversations`(지난 대화 전체의 주고받은 말 찾기), `summarize_session`, `pause_session`, `end_session`, `set_nickname`, `set_model`, `web_search`, `web_fetch`.
+`name`은 다음 중 하나이거나, `[v2]` 외부 MCP 도구(M5)의 `mcp__<서버>__<도구>`다: `save_note`, `search_notes`, `search_conversations`(지난 대화 전체의 주고받은 말 찾기), `summarize_session`, `pause_session`, `end_session`, `set_nickname`, `set_model`, `web_search`, `web_fetch`.
 
-`web_search`는 내장 웹 검색이거나 검색 API 도구 `search_USA`(해외·영어권)·`search_naver`(국내 뉴스)다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
+`web_search`는 내장 웹 검색이거나 검색 API 도구 `search_naver`(국내 뉴스)·`search_naver_blog`(국내 블로그)·`search_google`(해외·일반)·`search_google_detail`(검색 결과 상세 내용)이다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
 
 `[v2]` 외부 MCP 도구(M5)는 `name`에 접두사를 포함한 전체 이름이 온다(자체 도구는 서버가 `mcp__trailtalk__` 접두사를 떼고 위 목록의 이름으로 보내므로 접두사가 있는 이름은 외부 도구다). 화면은 서버 이름을 보이지 않고 "`<도구>` 사용 중"으로 보인다. 외부 도구의 `input`은 `null`이다. M5 스파이크 전까지 `end`의 `summary`는 `result` kind(결과 문자열, 서버가 2000자로 자름)이고, 스파이크에서 `web_search` 요약으로 바꾸기로 하면 이 문단을 고친다. 클라이언트는 모르는 이름도 이벤트를 버리지 않는다.
 
@@ -283,15 +283,13 @@ P2(미구현): `GET /api/journal/{id}/export.md`는 일지를 Markdown으로 내
 
 ### 4.1 프로필
 
-`GET /api/profile` → `{nickname, email, mail_ready, interests, persona_id, voice, speaking_rate, ack_enabled, keep_audio, chat_model, default_chat_model, client}`(처음 조회하면 기본값으로 만든다). `client`는 7절의 클라이언트 설정값이고 읽기 전용이다(`PUT`에 보내면 422).
+`GET /api/profile` → `{nickname, interests, persona_id, voice, speaking_rate, ack_enabled, keep_audio, chat_model, default_chat_model, client}`(처음 조회하면 기본값으로 만든다). `client`는 7절의 클라이언트 설정값이고 읽기 전용이다(`PUT`에 보내면 422).
 
-`PUT /api/profile`은 보낸 필드만 바꾼다.
+`PUT /api/profile`은 보낸 필드만 바꾼다. `[v2]` 이메일 기능을 2026-11-02에 제거해 `email`·`mail_ready`는 없다(`PUT`에 보내면 알 수 없는 필드로 422).
 
 | 필드 | 규칙 |
 |---|---|
 | `nickname` | 앞뒤 공백을 뺀 1~20자 한 줄. `null`이면 기본 호칭으로 돌아간다. `[v2]` 호칭은 **세션 시작 인사말에서만** 쓰이며, 바꾸면 다음 세션의 첫 인사부터 적용된다(2.2) |
-| `email` | 대화를 보낼 본인 주소(앞뒤 공백을 뺀 이메일 모양 254자 이내, 틀리면 422). `null`이면 설정 안 함 |
-| `mail_ready` | 서버에 메일 보내기(SMTP) 설정이 있는지(읽기 전용) |
 | `interests` | 최대 10개, 각 1~30자, 중복은 제거한다. 다음 대화의 프롬프트부터 쓴다 |
 | `voice`, `speaking_rate` | `voice`는 `GET /api/voices`의 `voices` 안의 이름만(틀리면 422), `speaking_rate`는 0.75~1.5. 둘 다 `null`이면 캐릭터(페르소나 YAML) 기본값. `[v2]` `GET /api/voices`는 M3에서 만들므로 그 전에는 서버가 `voice` 이름이 목록에 있는지 검사하지 않는다(길이 1~100자만). 바꾼 값은 다음 답변(인사말·문장·마무리 멘트)부터 쓴다. 말 속도를 정하면 서버가 음성 말투 지시에도 빠르기를 붙인다 |
 | `ack_enabled` `[v2]` | 기본 `true`. 끄면 클라이언트가 맞장구를 재생하지 않는다(6.4) |

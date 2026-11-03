@@ -1,4 +1,5 @@
 import { CONNECTION_LABEL, type Connection } from '../core/connection.ts'
+import UsageMeter from './UsageMeter.tsx'
 
 interface Props {
   /** 아바타에 넣을 글자 */
@@ -13,8 +14,8 @@ interface Props {
   tone?: string
 }
 
-// 시안의 헤더: 왼쪽에 아바타·이름·상태, 오른쪽에 서버 연결 상태.
-// 오른쪽은 시안에서 남은 토큰 막대 자리이고, 막대는 M5에서 더한다.
+// 시안의 헤더: 왼쪽에 아바타·이름·상태, 오른쪽에 남은 토큰 막대.
+// 서버 연결 상태는 막대 옆에 아이콘으로 두고 문구는 화면 낭독용으로만 둔다(좁은 폭, 시안과 다름).
 export default function Header({ initial, name, sub, heading, connection, tone }: Props) {
   const label = CONNECTION_LABEL[connection]
   return (
@@ -36,10 +37,13 @@ export default function Header({ initial, name, sub, heading, connection, tone }
           )}
         </div>
       </div>
-      <span className="conn" data-state={connection} role="status">
-        <span aria-hidden="true">{label.icon}</span>
-        {label.text}
-      </span>
+      <div className="app-right">
+        <UsageMeter />
+        <span className="conn" data-state={connection} role="status" title={label.text}>
+          <span aria-hidden="true">{label.icon}</span>
+          <span className="sr-only">{label.text}</span>
+        </span>
+      </div>
     </header>
   )
 }

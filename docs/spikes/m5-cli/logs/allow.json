@@ -1,0 +1,46 @@
+{
+ "allowedTools만(허용 밖 호출 시도)": {
+  "서버가 받은 호출": [
+   "allowed_ping"
+  ],
+  "tool 이벤트": [
+   {
+    "type": "tool_use",
+    "name": "mcp__fake__allowed_ping",
+    "input": {}
+   },
+   {
+    "type": "tool_result",
+    "content": "{\"result\":\"allowed_ping ok\"}"
+   },
+   {
+    "type": "tool_use",
+    "name": "mcp__fake__denied_ping",
+    "input": {}
+   },
+   {
+    "type": "tool_result",
+    "content": "Claude requested permissions to use mcp__fake__denied_ping, but you haven't granted it yet.",
+    "is_error": true
+   }
+  ],
+  "result": "allowed_ping은 \"allowed_ping ok\"를 반환했고, denied_ping은 아직 권한이 부여되지 않아 호출이 거부됐습니다(권한 요청 필요)."
+ },
+ "allowedTools+disallowedTools": {
+  "서버가 받은 호출": [
+   "allowed_ping"
+  ],
+  "tool 이벤트": [
+   {
+    "type": "tool_use",
+    "name": "mcp__fake__allowed_ping",
+    "input": {}
+   },
+   {
+    "type": "tool_result",
+    "content": "{\"result\":\"allowed_ping ok\"}"
+   }
+  ],
+  "result": "allowed_ping: \"allowed_ping ok\" / denied_ping: 호출할 수 없음 (현재 사용 가능한 도구 목록에 denied_ping이 없습니다)."
+ }
+}

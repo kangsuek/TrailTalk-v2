@@ -18,7 +18,7 @@ import shutil
 import time
 import uuid
 from collections import deque
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from pathlib import Path
 
 from app.config import Settings
@@ -205,6 +205,7 @@ class ClaudeCliSession:
         secrets: tuple[str, ...] = (),
         model: str = "",
         resumed: bool = False,
+        on_rate_limit: Callable[[dict], None] | None = None,
     ) -> None:
         self.key = key
         self.model = model
@@ -217,6 +218,7 @@ class ClaudeCliSession:
         self._env = env
         self._cwd = cwd
         self._turn_timeout_s = turn_timeout_s
+        self._on_rate_limit = on_rate_limit  # 턴마다 오는 구독 사용 한도(app/llm/usage.py)
         self._secrets = tuple(s for s in secrets if s)
         self._proc: asyncio.subprocess.Process | None = None
         self._stderr_task: asyncio.Task | None = None
@@ -319,7 +321,7 @@ class ClaudeCliSession:
             raise TurnInProgressError()
         async with self._lock:
             self.busy_since = self.last_used = time.monotonic()
-            parser = StreamJsonParser()
+            parser = StreamJsonParser(self._report_rate_limit)
             try:
                 # 쓰기 도중 취소돼도 이미 보낸 메시지의 턴을 정리하도록 먼저 켠다
                 self._turn_active = True
@@ -359,6 +361,14 @@ class ClaudeCliSession:
                     await self._abort_turn(parser)
                 self.busy_since = None
                 self.last_used = time.monotonic()
+
+    def _report_rate_limit(self, info: dict) -> None:
+        if self._on_rate_limit is None:
+            return
+        try:
+            self._on_rate_limit(info)
+        except Exception:  # 사용량 기록 실패가 대화를 끊지 않게 한다
+            logger.warning("사용 한도 기록 실패", exc_info=True)
 
     async def _abort_turn(self, parser: StreamJsonParser) -> None:
         """인터럽트를 보내고 이 턴의 result까지 읽어 버린다.
@@ -457,8 +467,11 @@ class ClaudeCliSession:
 
 
 class ClaudeCliBackend:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self, settings: Settings, *, on_rate_limit: Callable[[dict], None] | None = None
+    ) -> None:
         self._settings = settings
+        self._on_rate_limit = on_rate_limit
 
     async def open_session(
         self,
@@ -503,6 +516,7 @@ class ClaudeCliBackend:
                 secrets=tuple(secrets),
                 model=model,
                 resumed=resume_id is not None,
+                on_rate_limit=self._on_rate_limit,
             )
         except BaseException:
             shutil.rmtree(cwd, ignore_errors=True)  # 토큰이 든 mcp.json을 남기지 않는다

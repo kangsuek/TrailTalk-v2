@@ -127,3 +127,24 @@ ODD_LINES = [
 def test_odd_lines_do_not_crash(line):
     events = StreamJsonParser().feed(line)
     assert all(not isinstance(e, TextDelta) for e in events)
+
+
+def test_rate_limit_events_go_to_the_callback_only():
+    """한도 이벤트는 턴 이벤트로 새지 않고 콜백으로만 마지막 값이 간다(사용량 막대)."""
+    seen: list[dict] = []
+    parser = StreamJsonParser(seen.append)
+    assert (
+        parser.feed('{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}}') == []
+    )
+    assert parser.feed('{"type": "rate_limit_event", "rate_limit_info": "x"}') == []
+    assert seen == [{"status": "allowed"}]
+
+
+def test_rate_limit_callback_errors_do_not_break_parsing():
+    def boom(info: dict) -> None:
+        raise RuntimeError("기록 실패")
+
+    parser = StreamJsonParser(boom)
+    assert (
+        parser.feed('{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}}') == []
+    )
