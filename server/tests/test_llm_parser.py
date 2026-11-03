@@ -76,9 +76,9 @@ def test_tool_call_order_and_input():
 def test_unknown_tool_result_has_no_summary():
     assert _tool_summary({"something": 1}) is None
     assert _tool_summary("text") is None
-    # 웹 검색·fetch 결과는 M5에서 요약을 만든다. 그 전에는 요약 없이 지나간다
-    assert _tool_summary({"query": "q", "results": []}) is None
-    assert _tool_summary({"code": 200, "bytes": 1, "url": "https://a.test"}) is None
+    # 웹 검색·fetch 결과의 요약은 아래 test_web_*_summary가 확인한다
+    assert _tool_summary({"query": "q"}) is None
+    assert _tool_summary({"code": 200}) is None
 
 
 def test_mcp_results_keep_result_kind():
@@ -148,3 +148,100 @@ def test_rate_limit_callback_errors_do_not_break_parsing():
     assert (
         parser.feed('{"type": "rate_limit_event", "rate_limit_info": {"status": "allowed"}}') == []
     )
+
+
+def test_builtin_web_search_summary_from_tool_use_result():
+    raw = {
+        "query": "uv 최신 버전",
+        "results": [
+            {
+                "tool_use_id": "srv1",
+                "content": [
+                    {"title": "릴리스", "url": "https://www.github.com/astral-sh/uv"},
+                    {"title": None, "url": "https://github.com/astral-sh/uv/2"},
+                    {"title": "문서", "url": "https://docs.astral.sh/uv/"},
+                    {"title": "넷째", "url": "https://fourth.example.org/"},
+                    {"title": "깨짐"},
+                ],
+            },
+            "요약 문자열",
+        ],
+    }
+    summary = _tool_summary(raw)
+    assert summary["kind"] == "web_search" and summary["query"] == "uv 최신 버전"
+    assert [link["url"] for link in summary["links"]][:2] == [
+        "https://www.github.com/astral-sh/uv",
+        "https://github.com/astral-sh/uv/2",
+    ]
+    assert summary["links"][1]["title"] is None
+    assert summary["sources"] == ["github.com", "docs.astral.sh", "fourth.example.org"]
+
+
+def test_web_search_links_are_capped_at_ten():
+    results = [{"content": [{"title": str(n), "url": f"https://s{n}.test/"} for n in range(15)]}]
+    summary = _tool_summary({"query": "q", "results": results})
+    assert len(summary["links"]) == 10 and len(summary["sources"]) == 3
+
+
+def test_search_tool_structured_result_becomes_the_same_web_search_summary():
+    structured = {
+        "query": "제주 후기",
+        "results": [
+            {"title": "글", "url": "https://blog.naver.com/u/1", "source": "산책러"},
+            {"title": 3, "url": "https://www.example.com/a"},
+            {"title": "주소 없음"},
+        ],
+    }
+    assert _tool_summary({"structuredContent": structured}) == {
+        "kind": "web_search",
+        "query": "제주 후기",
+        "links": [
+            {"title": "글", "url": "https://blog.naver.com/u/1"},
+            {"title": None, "url": "https://www.example.com/a"},
+        ],
+        "sources": ["blog.naver.com", "example.com"],
+    }
+    assert _tool_summary({"structuredContent": {"query": "q", "results": []}}) == {
+        "kind": "web_search",
+        "query": "q",
+        "links": [],
+        "sources": [],
+    }
+
+
+def test_web_fetch_summary_from_server_tool_and_builtin_event():
+    expected = {
+        "kind": "web_fetch",
+        "code": 200,
+        "bytes": 10,
+        "url": "https://www.a.test/p",
+        "host": "a.test",
+    }
+    assert _tool_summary({"code": 200, "bytes": 10, "url": "https://www.a.test/p"}) == expected
+    assert (
+        _tool_summary(
+            {
+                "structuredContent": {
+                    "code": 200,
+                    "bytes": 10,
+                    "url": "https://www.a.test/p",
+                    "host": "a.test",
+                }
+            }
+        )
+        == expected
+    )
+    # 형식이 어긋난 값은 null로 둔다
+    odd = _tool_summary({"code": "200", "bytes": True, "url": 5})
+    assert odd == {"kind": "web_fetch", "code": None, "bytes": None, "url": None, "host": None}
+
+
+def test_public_tool_names_merge_search_tools():
+    from app.api.events import public_tool_name
+
+    for name in ("search_naver", "search_naver_blog", "search_google", "search_google_detail"):
+        assert public_tool_name(f"mcp__trailtalk__{name}") == "web_search"
+    assert public_tool_name("WebSearch") == "web_search"
+    assert public_tool_name("mcp__trailtalk__web_fetch") == "web_fetch"
+    assert public_tool_name("mcp__trailtalk__save_note") == "save_note"
+    assert public_tool_name("mcp__maps__search") == "mcp__maps__search"  # 외부 MCP는 그대로

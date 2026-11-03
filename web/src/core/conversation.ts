@@ -26,11 +26,22 @@ export interface SentenceEvent {
   speech_text: string | null
 }
 
-/** 도구 결과 요약(종류 kind로 구분. M1은 앱 도구의 result뿐이다. 규약 2.6) */
-export interface ToolSummary {
-  kind: 'result'
-  result?: unknown
-}
+/** 도구 결과 요약(종류 kind로 구분, 규약 2.6). web_search·web_fetch 화면은 M5-10에서 만든다 */
+export type ToolSummary =
+  | { kind: 'result'; result?: unknown }
+  | {
+      kind: 'web_search'
+      query: string | null
+      links: { title: string | null; url: string }[]
+      sources: string[]
+    }
+  | {
+      kind: 'web_fetch'
+      code: number | null
+      bytes: number | null
+      url: string | null
+      host: string | null
+    }
 
 export interface ToolEvent {
   type: 'tool'

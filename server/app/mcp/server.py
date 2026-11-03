@@ -7,7 +7,7 @@ Authorization 헤더로, 세션 ID를 X-TrailTalk-Session 헤더로 보낸다(--
 
 이 경로는 같은 서버의 CLI만 쓴다. 배포 시 터널·리버스 프록시에서 /internal/*를 막아야 하며,
 프록시를 거친 요청(전달 헤더가 붙은 요청)은 토큰이 맞아도 거부한다.
-검색 도구(M5)는 그 마일스톤에서 더한다(이메일 도구는 2026-11-02에 제거했다).
+검색·페이지 읽기 도구(M5-09·11)는 app/mcp/search_tools.py에 있다.
 """
 
 import logging
@@ -35,6 +35,7 @@ from app.db.models import (
 )
 from app.db.types import utcnow
 from app.errors import AppError, error_response
+from app.mcp.search_tools import register_search_tools
 from app.persona.loader import load_persona
 from app.services import journal as journal_service
 from app.services import nickname as nickname_service
@@ -60,6 +61,9 @@ _MODEL_HINTS = {
 }
 # 이 말이 있으면 방향 말이 거부·불평일 수 있어 이름 없는 모델 변경을 받지 않는다
 _NEGATIONS = ("말고", "말아", "아니", "싫", "그만", "별로", "이상")
+# save_note: 이번 턴에 웹 내용(검색·fetch 결과)을 받았다면, 이번 사용자 발화(공백 없이)에 이
+# 말 중 하나가 있어야 저장한다. 웹 내용 속 지시로 저장이 일어나지 않게 한다(Spec 5.6·9절)
+_SAVE_WORDS = ("저장", "기록", "메모", "적어", "남겨", "기억", "잊지", "아이디어", "할일")
 # 지난 대화 전문 검색(search_conversations)
 _CONVO_RESULT_MAX = 4_000  # 결과 글자 수 상한(건 단위로 끊는다)
 _HIT_CHARS = 300  # 찾은 말은 낱말 주변으로 이만큼
@@ -145,6 +149,16 @@ def build_mcp_server(app) -> MCPServer:
             raise ToolError("저장할 내용이 비어 있습니다.")
         try:
             async with app.state.session_factory() as db:
+                if runtime.web_content_seen:
+                    # 검색·페이지 읽기 직후 턴: 사용자가 이번에 저장을 말했을 때만 저장한다
+                    turn_id = runtime.current_user_turn_id
+                    turn = await db.get(Turn, turn_id) if turn_id else None
+                    said = "".join(turn.text.split()) if turn is not None else ""
+                    if not any(word in said for word in _SAVE_WORDS):
+                        raise ToolError(
+                            "웹에서 읽은 내용으로는 저장하지 않습니다. 사용자가 이번에 저장을 "
+                            "요청했을 때만 저장할 수 있습니다."
+                        )
                 await note_service.save_note(
                     db,
                     session_id=runtime.session_id,
@@ -376,6 +390,7 @@ def build_mcp_server(app) -> MCPServer:
         runtime_of(ctx).requested_status = SessionStatus.ENDED
         return "이번 답변 뒤 대화를 마칩니다. 짧게 마무리 인사를 하세요."
 
+    register_search_tools(mcp, app, runtime_of)
     return mcp
 
 

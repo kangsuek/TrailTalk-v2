@@ -5,8 +5,8 @@ DB에 남길 필요가 없는 값만 둔다. 서버가 재시작되면 세션을
 
 턴 처리(app/services/conversation.py)가 지킬 순서:
 - 사용자 턴을 커밋한 뒤 current_user_turn_id를 설정하고 send()를 시작한다(note.turn_id 외래 키).
-  턴 시작 때 requested_status를 비우고, 턴이 끝나면 pop_requested_status()로 읽어 반영한 뒤
-  current_user_turn_id를 None으로 되돌린다.
+  턴 시작 때 requested_status·web_content_seen을 비우고, 턴이 끝나면 pop_requested_status()로
+  읽어 반영한 뒤 current_user_turn_id를 None으로 되돌린다.
 - 세션을 끝낼 때는 CLI를 먼저 닫고(llm.close) 런타임을 discard한다. 살아 있는 CLI는 처음 받은
   토큰을 계속 쓰므로, 토큰을 바꾸려면 CLI를 닫은 뒤 새로 ensure해야 한다.
 끼어들기(M4) 상태는 그때 더한다.
@@ -25,6 +25,9 @@ class ConversationRuntime:
     token: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     current_user_turn_id: str | None = None  # save_note가 노트를 이 턴에 연결한다
     requested_status: SessionStatus | None = None  # pause_session/end_session이 남긴 요청
+    # 이번 사용자 턴에서 웹 내용(검색·fetch 결과)을 받았나. 받았으면 쓰기 도구(save_note 등)는
+    # 그 내용 속 지시가 아니라 이번 사용자 발화가 근거일 때만 받는다(Spec 5.6·9절)
+    web_content_seen: bool = False
     # 한 대화에서 턴은 하나씩만 처리한다(사용자 턴 seq 계산과 CLI 입력 순서)
     turn_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 

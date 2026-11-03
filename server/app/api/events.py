@@ -54,7 +54,33 @@ class ToolResultSummary(_Event):
     result: Any
 
 
-ToolSummary = Annotated[ToolResultSummary, Field(discriminator="kind")]
+class WebLink(_Event):
+    title: str | None
+    url: str
+
+
+class WebSearchSummary(_Event):
+    """웹 검색(내장 WebSearch와 검색 API 도구 모두 같은 형식, 규약 2.6). sources는 링크 호스트."""
+
+    kind: Literal["web_search"] = "web_search"
+    query: str | None
+    links: list[WebLink]
+    sources: list[str]
+
+
+class WebFetchSummary(_Event):
+    """web_fetch가 읽은 페이지(규약 2.6). code가 400 이상이면 읽지 못한 것."""
+
+    kind: Literal["web_fetch"] = "web_fetch"
+    code: int | None
+    bytes: int | None
+    url: str | None
+    host: str | None
+
+
+ToolSummary = Annotated[
+    ToolResultSummary | WebSearchSummary | WebFetchSummary, Field(discriminator="kind")
+]
 
 
 class VoiceNotice(BaseModel):
@@ -104,11 +130,23 @@ _STREAM_EVENT = TypeAdapter(StreamEvent)
 AnyEvent = TranscriptEvent | TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent
 
 _OWN_PREFIX = "mcp__trailtalk__"
+# 내장 WebSearch와 검색 API 도구는 같은 이름·같은 web_search 요약으로 보낸다(규약 2.5)
+_RENAMES = {
+    "WebSearch": "web_search",
+    "search_naver": "web_search",
+    "search_naver_blog": "web_search",
+    "search_google": "web_search",
+    "search_google_detail": "web_search",
+}
 
 
 def public_tool_name(cli_name: str) -> str:
-    """CLI 도구 이름을 클라이언트용 이름으로 바꾼다. 자체 도구만 접두사를 뗀다."""
-    return cli_name.removeprefix(_OWN_PREFIX)
+    """CLI 도구 이름을 클라이언트용 이름으로 바꾼다. 자체 도구만 접두사를 떼고(외부 MCP 도구의
+    접두사 있는 이름은 그대로) 검색 도구는 web_search로 합친다."""
+    if cli_name.startswith(_OWN_PREFIX):
+        name = cli_name.removeprefix(_OWN_PREFIX)
+        return _RENAMES.get(name, name)
+    return _RENAMES.get(cli_name, cli_name)
 
 
 def encode_sse(event: AnyEvent) -> bytes:

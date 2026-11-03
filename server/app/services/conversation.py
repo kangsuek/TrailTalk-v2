@@ -791,6 +791,7 @@ async def _run_turn(
     latency_saved = False
     tts_down = False  # 이 턴에서 합성이 최종 실패했으면 남은 문장은 바로 글로 보낸다
     runtime.requested_status = None
+    runtime.web_content_seen = False
     runtime.current_user_turn_id = user_turn_id
     try:
         with anyio.CancelScope(shield=True):
@@ -892,6 +893,8 @@ async def _run_turn(
                         tool_names[event.tool_use_id] = name
                         if tracker is not None and name == "web_search":
                             tracker.searched = True
+                        if name in ("web_search", "web_fetch"):  # 웹 내용을 받는 도구
+                            runtime.web_content_seen = True
                         yield encode_sse(
                             ToolEvent(phase="start", tool_use_id=event.tool_use_id, name=name)
                         )
@@ -966,6 +969,7 @@ async def _run_turn(
         yield _error(await _settle_after_error(app, db, runtime, session_id, error))
     finally:
         runtime.current_user_turn_id = None
+        runtime.web_content_seen = False
         if tracker is not None and not latency_saved:
             await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
         # 도구가 쉬기·끝내기를 요청한 뒤 턴이 오류나 연결 끊김으로 끝났어도 요청은 반영한다

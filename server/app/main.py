@@ -25,7 +25,10 @@ from app.llm.usage import UsageTracker
 from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
 from app.services import attachments as attachment_service
+from app.services.hasdata import HasDataClient
+from app.services.naver import NaverBlogSearch, NaverNewsSearch
 from app.services.runtime import RuntimeRegistry
+from app.services.web_fetch import WebFetcher
 from app.voice import build_voice
 
 # 웹 앱이 맡지 않는 경로. 없는 경로도 index.html이 아니라 라우터의 JSON 404·405가 나간다
@@ -87,6 +90,11 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         http = httpx2.AsyncClient()
         app.state.http = http
         app.state.stt, app.state.tts_backend, app.state.tts = build_voice(app_settings, http)
+        # 웹 검색·페이지 읽기 도구(M5-09·11). 시작 때 외부 호출은 하지 않고 키가 없어도 뜬다
+        app.state.naver_news = NaverNewsSearch.from_settings(http, app_settings)
+        app.state.naver_blog = NaverBlogSearch.from_settings(http, app_settings)
+        app.state.hasdata = HasDataClient.from_settings(http, app_settings)
+        app.state.web_fetcher = WebFetcher.from_settings(app_settings)
         try:  # 정리 도중 서버가 꺼진 대화를 다시 정리한다. 실패해도 서버는 뜬다
             await extract.resume_pending(app)
         except Exception:

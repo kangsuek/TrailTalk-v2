@@ -98,6 +98,11 @@ def test_lists_app_tools(mcp):
         "set_nickname",
         "set_model",
         "end_session",
+        "search_naver",
+        "search_naver_blog",
+        "search_google",
+        "search_google_detail",
+        "web_fetch",
     ]
 
 
