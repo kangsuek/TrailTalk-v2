@@ -32,6 +32,14 @@ from app.db.models import NoteKind, Turn, TurnRole
 from app.jobs.extract import SAVED_LABELS, Extraction, build_prompt, build_transcript
 from app.llm.claude_cli import run_oneshot
 from app.persona.loader import load_persona
+from tests.extract_eval.cited import (
+    CitedResult,
+    cited_report,
+    cited_sources,
+    cited_turns,
+    load_cited_cases,
+    score_cited,
+)
 
 CASES = Path(__file__).with_name("cases.yaml")
 RECALL_MIN = 0.8
@@ -393,14 +401,56 @@ async def evaluate(args: argparse.Namespace) -> int:
                 r.error = f"{type(exc).__name__}: {exc}"[:300]
             print(f"{'오류' if r.error else '완료'}  {r.cid}  ({r.seconds:.1f}초)", flush=True)
 
-    await asyncio.gather(*(run(c, r) for c, r in zip(cases, results, strict=True)))
+    cited_cases = load_cited_cases() if not args.limit else []
+    cited: list[CitedResult] = []
+
+    async def run_cited(case: dict) -> None:
+        async with limit:
+            try:
+                cited.append(await evaluate_cited(settings, assistant, case))
+            except Exception as exc:
+                cited.append(
+                    CitedResult(
+                        case["id"],
+                        case["note"],
+                        len(case.get("sources", [])),
+                        list(case.get("must_cite", [])),
+                        list(case.get("no_cite", [])),
+                        error=f"{type(exc).__name__}: {exc}"[:300],
+                    )
+                )
+            print(f"인용  {case['id']}", flush=True)
+
+    await asyncio.gather(
+        *(run(c, r) for c, r in zip(cases, results, strict=True)),
+        *(run_cited(c) for c in cited_cases),
+    )
+    order = {c["id"]: i for i, c in enumerate(cited_cases)}
+    cited.sort(key=lambda r: order[r.cid])
     minutes = (time.monotonic() - started) / 60
     out = args.out or report_path(settings)
     out.parent.mkdir(parents=True, exist_ok=True)
     full = len(results) == len(load_cases())
-    out.write_text(report(results, settings, minutes, full), encoding="utf-8")
+    text = report(results, settings, minutes, full)
+    text += "\n".join(cited_report(cited)) + "\n" if cited else ""
+    out.write_text(text, encoding="utf-8")
     print(f"리포트: {out}")
     return 0
+
+
+async def evaluate_cited(settings: Settings, assistant: str, case: dict) -> CitedResult:
+    """출처 인용 케이스 하나: 출처 목록을 붙여 추출하고 번호를 자동 비교한다(M5-10)."""
+    started = time.monotonic()
+    raw = await run_oneshot(
+        settings,
+        build_prompt(cited_turns(case), assistant, sources=cited_sources(case)),
+        model=settings.llm_extract_model,
+        json_schema=Extraction.model_json_schema(),
+        timeout_s=settings.extract_timeout_s,
+    )
+    result = score_cited(case, Extraction.model_validate(raw))
+    result.seconds = time.monotonic() - started
+    return result
 
 
 async def main() -> int:

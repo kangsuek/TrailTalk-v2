@@ -85,3 +85,56 @@ def test_judge_schema_fixes_array_lengths():
     assert schema["properties"]["extracted_duplicate"]["maxItems"] == 2
     assert schema["properties"]["memo_process"]["minItems"] == 1
     assert schema["properties"]["rejected_extracted"]["minItems"] == 2
+
+
+def test_cited_cases_are_well_formed():
+    from tests.extract_eval.cited import cited_sources, cited_turns, load_cited_cases
+
+    cases = load_cited_cases()
+    assert len({c["id"] for c in cases}) == len(cases)
+    assert any(c.get("sources") for c in cases)
+    assert any(not c.get("sources") for c in cases)  # 검색하지 않은 대화도 있다
+    for case in cases:
+        n = len(cited_sources(case))
+        assert cited_turns(case)[0].role.value == "assistant"
+        assert all(1 <= i <= n for i in case.get("must_cite", []) + case.get("no_cite", []))
+        assert not set(case.get("must_cite", [])) & set(case.get("no_cite", []))
+        if n:
+            assert case.get("must_cite")
+        for _, url in case.get("sources", []):
+            assert url.startswith("https://")
+
+
+def test_cited_score_counts_missed_wrong_and_out_of_range():
+    from tests.extract_eval.cited import cited_report, score_cited
+
+    case = {
+        "id": "c",
+        "note": "n",
+        "sources": [["a", "https://a.com"], ["b", "https://b.com"]],
+        "must_cite": [1],
+        "no_cite": [2],
+    }
+    ok = score_cited(
+        case,
+        make_extraction(
+            conclusion={"text": "결론", "sources": [1]}, memos=[{"text": "m", "sources": []}]
+        ),
+    )
+    assert (ok.missed, ok.wrong, ok.out_of_range) == ([], [], [])
+    bad = score_cited(
+        case,
+        make_extraction(
+            conclusion={"text": "결론", "sources": [2]},
+            memos=[{"text": "m", "sources": [3]}],
+        ),
+    )
+    assert (bad.missed, bad.wrong, bad.out_of_range) == ([1], [2], [3])
+    assert "— 통과" in "\n".join(cited_report([ok]))
+    text = "\n".join(cited_report([ok, bad]))
+    assert "인용 재현율 1/2, 범위 밖 번호 1, 잘못된 인용 1 — 미달" in text
+    # 출처가 없는 케이스에서 번호를 달면 범위 밖이다
+    none = score_cited(
+        {"id": "n", "note": "n"}, make_extraction(conclusion={"text": "결론", "sources": [1]})
+    )
+    assert none.out_of_range == [1]
