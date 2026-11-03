@@ -103,3 +103,35 @@ describe('messagesFromTurns 첨부', () => {
     expect(bot).not.toHaveProperty('attachments')
   })
 })
+
+describe('전문의 출처(M5-10)', () => {
+  it('답변 말풍선 아래에 서버가 준 출처 호스트를 보인다', () => {
+    const turn = (id: string, seq: number, role: 'user' | 'assistant', sources: string[]) => ({
+      id,
+      seq,
+      role,
+      text: `말 ${id}`,
+      interrupted: false,
+      merged_from: null,
+      created_at: 'x',
+      attachments: [],
+      sources,
+    })
+    render(
+      <Transcript
+        personaName="제니"
+        turns={[
+          turn('u', 1, 'user', ['무시']),
+          turn('a', 2, 'assistant', ['kma.go.kr', 'weather.naver.com']),
+          turn('b', 3, 'assistant', []),
+        ]}
+      />,
+    )
+    const lists = screen.getAllByRole('list', { name: '출처' })
+    expect(lists).toHaveLength(1)
+    expect(Array.from(lists[0].children).map((li) => li.textContent)).toEqual([
+      'kma.go.kr',
+      'weather.naver.com',
+    ])
+  })
+})
