@@ -466,6 +466,27 @@ body {
   font-weight: 500;
 }
 
+/* 답변에서 본 출처의 호스트(시안 대화 05의 칩, 말풍선 안 아래) */
+.bubble-sources {
+  display: flex;
+  margin: 8px 0 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+
+.bubble-sources li {
+  padding: 4px 10px;
+  border: 1px solid var(--bubble-line);
+  border-radius: 999px;
+  background: var(--seg-bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
 .tool-note[data-error='true'] {
   color: var(--brick);
 }

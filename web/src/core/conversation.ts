@@ -26,7 +26,7 @@ export interface SentenceEvent {
   speech_text: string | null
 }
 
-/** 도구 결과 요약(종류 kind로 구분, 규약 2.6). web_search·web_fetch 화면은 M5-10에서 만든다 */
+/** 도구 결과 요약(종류 kind로 구분, 규약 2.6). web_search·web_fetch는 말풍선 출처 칩(sourceHosts)과 검색 알림(toolNotice)이 쓴다 */
 export type ToolSummary =
   | { kind: 'result'; result?: unknown }
   | {
@@ -101,6 +101,8 @@ export interface AssistantMessage {
   tools: ToolState[]
   status: 'streaming' | 'done' | 'error'
   interrupted: boolean
+  /** 저장된 전문에서 온 출처 호스트(다시 열기). 실시간 턴은 tools의 요약에서 구한다 */
+  sources?: string[]
 }
 
 export type Message = UserMessage | AssistantMessage
@@ -402,9 +404,29 @@ export function messagesFromTurns(turns: readonly Turn[]): Message[] {
       tools: [],
       status: 'done',
       interrupted: bubble.interrupted,
+      ...(bubble.sources.length ? { sources: bubble.sources } : {}),
     }
   })
 }
+
+/**
+ * 답변 말풍선에 보일 출처 호스트. 서버가 준 호스트를 그대로 쓴다(URL을 해석하지 않는다, 규약 2.6).
+ * 실시간 턴은 검색·읽기 도구가 끝난 요약에서, 다시 연 대화는 저장된 값에서 온다.
+ */
+export function sourceHosts(message: Pick<AssistantMessage, 'tools' | 'sources'>): string[] {
+  const hosts: string[] = [...(message.sources ?? [])]
+  for (const tool of message.tools) {
+    if (tool.phase !== 'end' || tool.isError || !tool.summary) continue
+    if (tool.summary.kind === 'web_search') hosts.push(...tool.summary.sources)
+    else if (tool.summary.kind === 'web_fetch') {
+      const { code, host } = tool.summary
+      if ((code ?? 0) < 400 && host) hosts.push(host)
+    }
+  }
+  return [...new Set(hosts.filter((h) => typeof h === 'string' && h))].slice(0, MAX_SOURCE_CHIPS)
+}
+
+const MAX_SOURCE_CHIPS = 5
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -423,6 +445,22 @@ const EXTERNAL_PREFIX = 'mcp__'
 export function toolNotice(tool: ToolState): string | null {
   const finished = tool.phase === 'end'
   switch (tool.name) {
+    // 검색·읽기는 끝나면 출처 칩(sourceHosts)이 보이므로 알림은 진행 중과 실패, 출처가 없을 때만 쓴다
+    case 'web_search': {
+      if (!finished) {
+        const query = text(tool.input?.query)
+        return query ? `'${query}' 검색 중…` : '검색 중…'
+      }
+      if (tool.isError) return '검색하지 못했어요'
+      const sources = tool.summary?.kind === 'web_search' ? tool.summary.sources : []
+      return sources.length > 0 ? null : '검색 완료'
+    }
+    case 'web_fetch': {
+      if (!finished) return '페이지 읽는 중…'
+      const fetched = tool.summary?.kind === 'web_fetch' ? tool.summary : null
+      if (tool.isError || (fetched?.code ?? 0) >= 400) return '페이지를 읽지 못했어요'
+      return fetched?.host ? null : '페이지 읽기 완료'
+    }
     case 'save_note': {
       // 도구 입력의 종류(idea·todo·memo)대로 부른다. start 단계에는 입력이 없어 종류를 모른다
       const kind = String(tool.input?.kind)

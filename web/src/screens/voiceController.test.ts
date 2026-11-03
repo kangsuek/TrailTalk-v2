@@ -479,7 +479,7 @@ describe('다시 열기와 정리', () => {
     const reopened: SessionReopened = {
       ...STARTED,
       turns: [
-        { id: 'g1', seq: 0, role: 'assistant', text: '다시 왔네요', interrupted: false, merged_from: null, created_at: '2026-10-30T00:00:00Z', attachments: [] },
+        { id: 'g1', seq: 0, role: 'assistant', text: '다시 왔네요', interrupted: false, merged_from: null, created_at: '2026-10-30T00:00:00Z', attachments: [], sources: [] },
       ],
     }
     expect(t.controller.resume(reopened)).toBe(true)

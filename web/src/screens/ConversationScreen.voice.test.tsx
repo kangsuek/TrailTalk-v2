@@ -238,8 +238,8 @@ describe('일지에서 음성으로 다시 연 대화', () => {
     ...STARTED,
     greeting: { turn_id: 'g2', text: '다시 왔네요! 아까 하던 얘기 이어 볼까요?', audio: 'UkVTVU1F' },
     turns: [
-      { id: 'g1', seq: 0, role: 'assistant', text: '처음 인사', interrupted: false, merged_from: null, created_at: '2026-10-30T00:00:00Z', attachments: [] },
-      { id: 'g2', seq: 1, role: 'assistant', text: '다시 왔네요! 아까 하던 얘기 이어 볼까요?', interrupted: false, merged_from: null, created_at: '2026-10-30T00:01:00Z', attachments: [] },
+      { id: 'g1', seq: 0, role: 'assistant', text: '처음 인사', interrupted: false, merged_from: null, created_at: '2026-10-30T00:00:00Z', attachments: [], sources: [] },
+      { id: 'g2', seq: 1, role: 'assistant', text: '다시 왔네요! 아까 하던 얘기 이어 볼까요?', interrupted: false, merged_from: null, created_at: '2026-10-30T00:01:00Z', attachments: [], sources: [] },
     ],
   }
 

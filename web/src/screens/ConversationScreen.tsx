@@ -41,6 +41,7 @@ import { getProfile } from '../api/profile.ts'
 import {
   conversationReducer,
   initialConversation,
+  sourceHosts,
   toolNotice,
   type StreamEvent,
   type AssistantMessage,
@@ -99,6 +100,7 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
   const notices = message.tools
     .map((tool) => ({ tool, text: toolNotice(tool) }))
     .filter((n) => n.text)
+  const hosts = sourceHosts(message)
   const waiting = message.status === 'streaming' && message.sentences.length === 0
   return (
     <li className="bubble bubble-assistant" data-status={message.status}>
@@ -109,6 +111,13 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
           {text}
         </p>
       ))}
+      {hosts.length > 0 && (
+        <ul className="bubble-sources" aria-label="출처">
+          {hosts.map((host) => (
+            <li key={host}>{host}</li>
+          ))}
+        </ul>
+      )}
       {message.interrupted && <p className="bubble-sub">여기까지만 전해졌어요</p>}
       {message.status === 'error' && <p className="bubble-sub">답변이 끊겼어요</p>}
     </li>
