@@ -14,8 +14,7 @@
 | 항목 | 상태 |
 |---|---|
 | `POST /api/sessions/prepare`(2.1), `POST /api/sessions/{id}/turns/audio/record`(2.14), `POST /api/sessions/{id}/turns/{turn_id}/cancel`(2.12) | 미구현(M4, 자체 음성 보류 D9) |
-| `GET /api/usage`(1.3) | 미구현(M5) |
-| `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 서버 구현됨(M5-07, 2026-11-03), 웹 화면은 M5-08 |
+| `GET /api/usage`(1.3), `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 구현됨(M5, 2026-11-03: 서버·웹) |
 | 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 미구현(M6) |
 | `GET /api/journal?q=`, `GET /api/journal/{id}/export.md`(3절) | 미구현(P2) |
 | 그 밖의 `/api` 경로(세션 시작·종료·다시 열기, 글·음성 턴, 지연 보고, 일지·노트, 프로필, 보이스, 지연 요약, health) | 구현됨 |
