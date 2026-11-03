@@ -121,6 +121,20 @@ def tool_sources(raw: Any) -> tuple[dict[str, str | None], ...]:
     )
 
 
+def _result_text(content: Any) -> str | None:
+    """tool_result.content(문자열 또는 {type: text, text} 블록 목록)의 글."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts = [
+            b["text"]
+            for b in content
+            if isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str)
+        ]
+        return "\n".join(texts) if texts else None
+    return None
+
+
 class StreamJsonParser:
     def __init__(self, on_rate_limit: Callable[[dict[str, Any]], None] | None = None) -> None:
         self._on_rate_limit = on_rate_limit
@@ -210,6 +224,7 @@ class StreamJsonParser:
                         is_error=bool(block.get("is_error")),
                         summary=_tool_summary(event.get("tool_use_result")),
                         sources=tool_sources(event.get("tool_use_result")),
+                        result_text=_result_text(block.get("content")),
                     )
                 )
         return events

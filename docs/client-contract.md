@@ -122,7 +122,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 `web_search`는 내장 웹 검색이거나 검색 API 도구 `search_naver`(국내 뉴스)·`search_naver_blog`(국내 블로그)·`search_google`(해외·일반)·`search_google_detail`(검색 결과 상세 내용)이다. 서버가 이들을 같은 이름·같은 `web_search` 요약으로 보내므로 클라이언트는 구분하지 않는다. `search_google_detail`은 `query`에 읽은 주소가, `links`에 그 주소 하나가 온다. `web_fetch`는 서버가 직접 읽는 도구(내장 `WebFetch`는 끈다, D7)이며 내부·사설 주소와 읽을 수 없는 형식은 오류(`is_error: true`, `summary: null`)로, HTTP 4xx·5xx는 `code`가 400 이상인 `web_fetch` 요약으로 온다. `end`의 `summary`는 서버가 결과에서 만들고(내장 `WebSearch`는 CLI 이벤트의 결과 목록에서), 모델이 읽은 본문은 싣지 않는다. 음성 대화에서 `search_conversations`를 말없이 시작하면 `web_search`처럼 안내 음성 `notice`가 붙는다.
 
-`[v2]` 외부 MCP 도구(M5)는 `name`에 접두사를 포함한 전체 이름이 온다(자체 도구는 서버가 `mcp__trailtalk__` 접두사를 떼고 위 목록의 이름으로 보내므로 접두사가 있는 이름은 외부 도구다). 화면은 서버 이름을 보이지 않고 "`<도구>` 사용 중"으로 보인다. 외부 도구의 `input`은 `null`이다. M5 스파이크 전까지 `end`의 `summary`는 `result` kind(결과 문자열, 서버가 2000자로 자름)이고, 스파이크에서 `web_search` 요약으로 바꾸기로 하면 이 문단을 고친다. 클라이언트는 모르는 이름도 이벤트를 버리지 않는다.
+`[v2]` 외부 MCP 도구(M5)는 `name`에 접두사를 포함한 전체 이름이 온다(자체 도구는 서버가 `mcp__trailtalk__` 접두사를 떼고 위 목록의 이름으로 보내므로 접두사가 있는 이름은 외부 도구다). 화면은 서버 이름을 보이지 않고 진행 중에는 "`<도구>` 사용 중", 끝나면 "`<도구>` 사용 완료"(`is_error`면 "`<도구>` 사용하지 못했어요")로 보이며, 성공한 결과 문자열은 마크다운으로 해석하지 않고 글자 그대로 그 아래에 보인다. 외부 도구의 `input`은 `null`이다. `end`의 `summary`는 성공이면 `result` kind(결과 문자열, 서버가 비밀 값을 `***`로 가리고 2000자로 자름)이고 오류이면 `null`이다. 결과가 검색 결과 모양이어도 `web_search` 요약이나 `turn.sources`가 되지 않는다(M5-02 결정). 외부 도구 결과는 DB에 저장하지 않는다. 클라이언트는 모르는 이름도 이벤트를 버리지 않는다.
 
 ### 2.6 도구 결과 요약
 

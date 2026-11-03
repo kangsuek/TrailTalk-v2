@@ -3,6 +3,7 @@ import {
   conversationReducer,
   initialConversation,
   toolNotice,
+  externalToolResult,
   type AssistantMessage,
   type ConversationAction,
   type ConversationState,
@@ -310,8 +311,41 @@ describe('toolNotice', () => {
     [{ name: 'mcp__maps__search_place' }, 'search_place 사용 중'],
     [{ name: 'mcp__maps__a__b' }, 'a__b 사용 중'],
     [{ name: 'mcp__maps' }, null],
+    [{ name: 'mcp__maps__search_place', phase: 'call' }, 'search_place 사용 중'],
+    [{ name: 'mcp__maps__search_place', phase: 'end' }, 'search_place 사용 완료'],
+    [
+      { name: 'mcp__maps__search_place', phase: 'end', isError: true },
+      'search_place 사용하지 못했어요',
+    ],
   ])('%o → %s', (patch, expected) => {
     expect(toolNotice({ ...base, ...patch })).toBe(expected)
+  })
+})
+
+describe('externalToolResult', () => {
+  const external: ToolState = {
+    id: 'u1',
+    name: 'mcp__maps__search_place',
+    phase: 'end',
+    input: null,
+    summary: { kind: 'result', result: '**굵게** <b>x</b>\n둘째 줄' },
+    isError: false,
+  }
+
+  it('외부 도구의 결과 글을 해석 없이 그대로 돌려준다', () => {
+    expect(externalToolResult(external)).toBe('**굵게** <b>x</b>\n둘째 줄')
+  })
+
+  it.each<[Partial<ToolState>]>([
+    [{ phase: 'call' }],
+    [{ isError: true }],
+    [{ summary: null }],
+    [{ summary: { kind: 'result', result: '   ' } }],
+    [{ summary: { kind: 'result', result: { a: 1 } } }],
+    [{ name: 'save_note' }],
+    [{ name: 'mcp__maps' }],
+  ])('결과를 보이지 않는 경우 %o', (patch) => {
+    expect(externalToolResult({ ...external, ...patch })).toBeNull()
   })
 })
 

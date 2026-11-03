@@ -11,6 +11,9 @@
 (여러 문장 답변용).
 "__say_then_crash__:<글>"은 글을 보낸 뒤 죽고, "__say_then_hang__:<글>"은 글을 보낸 뒤
 "__hang_until_interrupt__"처럼 멈춘다(답변 도중 끊김·서버 강제 종료 시험용).
+"__mcp__:<mcp__서버__도구>"이면(M5) 그 외부 MCP 도구를 한 번 부르는 턴을 만든다. 실제 CLI처럼
+--mcp-config 파일의 서버를 띄워 tools/call을 보내고(stdio만), --allowedTools(글로브)에 없거나
+--disallowedTools에 있는 도구는 서버를 띄우지 않고 권한 오류 결과를 낸다(M5-01 ①).
 "__play__:<녹화 이름>"이면 그 녹화(tests/fixtures/claude_cli)의 첫 턴을 재생한다(검색 도구를 쓴
 답변을 한 서버 설정으로 섞어 시험할 때).
 content가 블록 배열이면(첨부, M5) 텍스트 블록만 모아 지시어를 뽑는다.
@@ -27,11 +30,15 @@ FAKE_CLAUDE_ONESHOT 파일의 첫 줄(CLI JSON 출력)을 낸다. 줄이 여러 
 stdin은 파일 객체 버퍼를 쓰지 않고 fd에서 직접 줄 단위로 읽는다(select와 섞어도 줄을 놓치지 않게).
 """
 
+import fnmatch
 import json
 import os
 import select
+import signal
+import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 FIXTURE_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "claude_cli"
@@ -141,6 +148,158 @@ def wait_for_interrupt(stdin: StdinLines, session_id: str) -> None:
         if control.get("type") == "control_request":
             emit_interrupted(control, session_id)
             return
+
+
+def _csv_arg(args: list[str], flag: str) -> list[str]:
+    return args[args.index(flag) + 1].split(",") if flag in args else []
+
+
+def call_stdio_tool(server: dict, tool: str) -> tuple[str, bool]:
+    """mcp.json의 stdio 서버를 띄워 tools/call을 한 번 보내고 (결과 글, 오류 여부)를 돌려준다."""
+    if server.get("type") != "stdio":
+        return "fake claude는 stdio 서버만 흉내 낸다", True
+    # 실제 CLI처럼 설정의 command를 그대로 띄운다(셸 없이). 환경은 CLI의 기본 환경 일부 + 설정 env
+    env = {k: os.environ[k] for k in ("PATH", "HOME") if k in os.environ}
+    env.update(server.get("env") or {})
+    proc = subprocess.Popen(
+        [server["command"], *server.get("args", [])],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        text=True,
+    )
+
+    def send(message: dict) -> None:
+        assert proc.stdin
+        proc.stdin.write(json.dumps(message) + "\n")
+        proc.stdin.flush()
+
+    def read(message_id: int) -> dict:
+        assert proc.stdout
+        while line := proc.stdout.readline():
+            message = json.loads(line)
+            if message.get("id") == message_id:
+                return message
+        return {"error": {"message": "서버가 응답 없이 끝났습니다"}}
+
+    signal.alarm(4)  # 서버가 멈추면 이 가짜 CLI가 죽어 서버의 턴 오류로 보인다
+    try:
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "fake-claude", "version": "0"},
+                },
+            }
+        )
+        read(1)
+        send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": tool, "arguments": {}},
+            }
+        )
+        reply = read(2)
+    finally:
+        signal.alarm(0)
+        proc.kill()
+        proc.wait()
+    if "error" in reply:
+        return str(reply["error"].get("message", "오류")), True
+    result = reply.get("result") or {}
+    texts = [b.get("text", "") for b in result.get("content", []) if b.get("type") == "text"]
+    return "\n".join(texts), bool(result.get("isError"))
+
+
+def external_tool_turn(args: list[str], full_name: str, session_id: str) -> None:
+    """외부 MCP 도구를 한 번 부르는 턴(__mcp__ 지시어)."""
+    allowed, denied = _csv_arg(args, "--allowedTools"), _csv_arg(args, "--disallowedTools")
+    tool_id = f"toolu_fake_{uuid.uuid4().hex[:12]}"
+    emit({"type": "system", "subtype": "init", "session_id": session_id, "model": "fake"})
+    block = {"type": "tool_use", "id": tool_id, "name": full_name}
+    emit(
+        {
+            "type": "stream_event",
+            "event": {"type": "content_block_start", "index": 0, "content_block": block},
+            "session_id": session_id,
+        }
+    )
+    emit(
+        {
+            "type": "assistant",
+            "message": {"content": [{**block, "input": {"secret_arg": "사용자 발화 일부"}}]},
+            "session_id": session_id,
+        }
+    )
+    permitted = any(fnmatch.fnmatchcase(full_name, p) for p in allowed) and not any(
+        fnmatch.fnmatchcase(full_name, p) for p in denied
+    )
+    if permitted:
+        config_path = args[args.index("--mcp-config") + 1] if "--mcp-config" in args else None
+        servers = json.load(open(config_path))["mcpServers"] if config_path else {}
+        _, server, tool = full_name.split("__", 2)
+        if server in servers:
+            text, is_error = call_stdio_tool(servers[server], tool)
+        else:
+            text, is_error = f"서버 {server}가 mcp.json에 없습니다", True
+    else:
+        text = f"Claude requested permissions to use {full_name}, but you haven't granted it yet."
+        is_error = True
+    raw: object = text  # 실제 CLI는 JSON 글을 structuredContent로도 싣는다
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            raw = {"content": text, "structuredContent": parsed}
+    except ValueError:
+        pass
+    emit(
+        {
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": text,
+                        "is_error": is_error,
+                    }
+                ],
+            },
+            "tool_use_result": raw,
+            "session_id": session_id,
+        }
+    )
+    reply = "도구 호출이 거부됐어요." if not permitted else "도구 결과를 받았어요."
+    emit(
+        {
+            "type": "stream_event",
+            "event": {
+                "type": "content_block_delta",
+                "index": 1,
+                "delta": {"type": "text_delta", "text": reply},
+            },
+            "session_id": session_id,
+        }
+    )
+    emit(
+        {
+            "type": "result",
+            "subtype": "success",
+            "is_error": False,
+            "result": reply,
+            "session_id": session_id,
+            "duration_ms": 1,
+        }
+    )
 
 
 def say(text: str, session_id: str, stdin: StdinLines, delay: float) -> bool:
@@ -263,6 +422,9 @@ def main() -> None:
                     "duration_ms": 1,
                 }
             )
+            continue
+        if directive == "__mcp__":
+            external_tool_turn(args, text, session_id)
             continue
         if directive == "__play__":  # 이름 붙은 녹화의 첫 턴을 한 번 재생한다(턴 순서는 안 센다)
             turn = load_turns(text)[0]
