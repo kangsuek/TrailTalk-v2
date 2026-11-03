@@ -1,8 +1,9 @@
 """서버 DB 모델 (Spec 6절).
 
 ID는 UUID 문자열, 시각은 UTC다. 열거값은 SQLite에서도 CHECK 제약으로 막는다.
-persona·user_profile(M0), conversation_session·turn·note(M1), turn_latency·turn_tts(M3).
-나머지 테이블(attachment, briefing 등)은 쓰는 마일스톤에서 리비전으로 더한다.
+persona·user_profile(M0), conversation_session·turn·note(M1), turn_latency·turn_tts(M3),
+attachment(M5).
+나머지 테이블(briefing 등)은 쓰는 마일스톤에서 리비전으로 더한다.
 """
 
 from datetime import date, datetime
@@ -26,7 +27,7 @@ from sqlalchemy import (
     true,
 )
 from sqlalchemy.ext.mutable import MutableList
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.db.types import UTCDateTime, new_id, utcnow
@@ -183,6 +184,37 @@ class Turn(Base):
     sources: Mapped[list | None] = mapped_column(JSON)  # 출처
     merged_from: Mapped[str | None] = mapped_column(ForeignKey("turn.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    # 사용자 턴에 붙은 첨부(M5). 읽을 때 함께 가져온다(비동기에서 지연 로딩을 쓰지 않는다).
+    # 행 삭제는 DB의 CASCADE에 맡긴다
+    attachments: Mapped[list["Attachment"]] = relationship(
+        back_populates="turn",
+        lazy="selectin",
+        order_by="Attachment.created_at, Attachment.id",
+        passive_deletes=True,
+    )
+
+
+class Attachment(Base):
+    """사용자 턴에 붙은 첨부 파일(규약 2.13). 파일은 attachments_dir 아래 상대 경로에 둔다.
+
+    name은 화면에 보일 정제된 이름이다. 이미지는 가공(축소·재인코딩)한 결과를 저장하고 thumb_path에
+    썸네일이 있다. 텍스트는 UTF-8로 바꿔 저장하고 chars에 글자 수를, PDF는 pages에 쪽수를 둔다.
+    """
+
+    __tablename__ = "attachment"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    turn_id: Mapped[str] = mapped_column(ForeignKey("turn.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    mime: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int] = mapped_column(Integer)
+    path: Mapped[str] = mapped_column(String(500))
+    thumb_path: Mapped[str | None] = mapped_column(String(500))
+    chars: Mapped[int | None] = mapped_column(Integer)
+    pages: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    turn: Mapped[Turn] = relationship(back_populates="attachments")
 
 
 class Note(Base):
