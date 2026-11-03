@@ -81,6 +81,24 @@ export async function sendTurn(
 }
 
 /**
+ * 글과 파일(1~3개)을 함께 보내고 답변 이벤트를 onEvent로 넘긴다(규약 2.13). 글 대화에서만 된다.
+ * 첨부 검증 오류(`attachment_*`)는 스트림 전에 ApiError로 던진다(사용자 메시지는 만들어지지 않는다).
+ */
+export async function sendTurnWithFiles(
+  sessionId: string,
+  text: string,
+  files: readonly File[],
+  onEvent: (event: StreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const form = new FormData()
+  form.append('text', text)
+  for (const file of files) form.append('files', file, file.name)
+  const path = `/api/sessions/${encodeURIComponent(sessionId)}/turns/files`
+  await readTurnStream(await post(path, form, signal), onEvent, signal)
+}
+
+/**
  * 말 한 번의 녹음을 올려 인식하고 답변 이벤트를 onEvent로 넘긴다(규약 2.7). 첫 이벤트는 transcript다.
  * 오디오·인식 오류와 말 없음은 스트림 전에 ApiError로 던진다.
  */

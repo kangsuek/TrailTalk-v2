@@ -169,10 +169,6 @@ export function emptyTextHint(text: string, fileCount: number): string | null {
   return fileCount > 0 && !text.trim() ? '파일과 함께 보낼 글을 적어 주세요.' : null
 }
 
-/** 첨부 오류 코드(SSE 전 JSON 오류)인가. 쓴 글과 첨부 목록을 입력창에 되돌릴 때 구분한다 */
-export const isAttachmentError = (code: string | undefined): boolean =>
-  code !== undefined && code.startsWith('attachment_')
-
 /** 서버에 있는 첨부의 주소(썸네일은 이미지만) */
 export function attachmentUrl(id: string, thumb = false): string {
   return `/api/attachments/${encodeURIComponent(id)}${thumb ? '?thumb=1' : ''}`

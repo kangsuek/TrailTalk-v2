@@ -1,3 +1,5 @@
+import { bubbleAttachment } from '../core/attachments.ts'
+import { BubbleAttachments } from './Attachments.tsx'
 import Markdown from './Markdown.tsx'
 import { groupTurns, type Turn } from '../core/journal.ts'
 
@@ -13,6 +15,7 @@ export default function Transcript({ turns, personaName }: { turns: Turn[]; pers
           <li key={bubble.id} className="t-item" data-role={bubble.role}>
             <span className="t-who">{mine ? '나' : personaName}</span>
             <div className={mine ? 't-bubble t-user' : 't-bubble t-bot'} data-interrupted={bubble.interrupted}>
+              <BubbleAttachments items={bubble.attachments.map(bubbleAttachment)} />
               {bubble.texts.map((text, index) => (
                 <div key={index} className="t-part">
                   {mine ? text : <Markdown text={text} />}

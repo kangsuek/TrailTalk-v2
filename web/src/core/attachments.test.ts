@@ -8,7 +8,6 @@ import {
   bubbleAttachment,
   checkFile,
   emptyTextHint,
-  isAttachmentError,
   kindOfMime,
   limitsDetail,
   limitsNote,
@@ -94,13 +93,6 @@ describe('attachments', () => {
     expect(emptyTextHint('  ', 1)).not.toBeNull()
     expect(emptyTextHint('질문', 1)).toBeNull()
     expect(emptyTextHint('', 0)).toBeNull()
-  })
-
-  it('attachment_ 오류 코드를 알아본다', () => {
-    expect(isAttachmentError('attachment_invalid')).toBe(true)
-    expect(isAttachmentError('attachment_too_large')).toBe(true)
-    expect(isAttachmentError('session_ended')).toBe(false)
-    expect(isAttachmentError(undefined)).toBe(false)
   })
 
   it('서버 첨부를 말풍선 첨부로 바꾼다', () => {

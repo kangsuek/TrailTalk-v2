@@ -183,6 +183,15 @@ describe('음성 대화', () => {
     expect(t.deps.endSession).toHaveBeenCalledTimes(1)
   })
 
+  it('음성 세션의 글 입력줄에는 첨부 버튼과 한도 안내가 없다(계약 2.13: 음성 세션 첨부 400)', async () => {
+    const t = setup()
+    await startVoiceAndListen(t)
+    await userEvent.click(screen.getByRole('button', { name: '글로' }))
+    expect(screen.getByRole('textbox', { name: '메시지' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '파일 첨부' })).toBeNull()
+    expect(screen.queryByText(/첨부는 글과 함께/)).toBeNull()
+  })
+
   it('"글"로 바꾸면 입력줄이 보이고 듣는 중에 보낸 글은 글 턴으로 간다', async () => {
     const t = setup()
     await startVoiceAndListen(t)

@@ -1,9 +1,14 @@
 // 프로필 API(규약 4.1). 음성 대화는 서버가 내려주는 읽기 전용 client 설정값(VAD 임계값 등)을 쓴다.
+import type { AttachmentLimits } from '../core/attachments.ts'
 import { request } from './http.ts'
 import type { components } from './schema.d.ts'
 
 export type Profile = components['schemas']['ProfileResponse']
 export type ClientConfig = components['schemas']['ProfileClientConfig']
+
+// core의 AttachmentLimits가 서버 스키마와 어긋나면(필드 추가·삭제) 여기서 타입 오류가 난다
+const _limitsMatchServer: (limits: ClientConfig['attachments']) => AttachmentLimits = (limits) => limits
+void _limitsMatchServer
 
 export async function getProfile(signal?: AbortSignal): Promise<Profile> {
   return (await request('/api/profile', 'GET', undefined, signal)).json()
