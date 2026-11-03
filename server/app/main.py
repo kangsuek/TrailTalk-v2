@@ -18,6 +18,7 @@ from app.config import Settings, settings
 from app.db.migrate import upgrade_to_head
 from app.db.session import create_engine_for, create_session_factory
 from app.errors import install_error_handlers
+from app.external_mcp import load_external_mcp
 from app.jobs import extract, idle
 from app.llm.claude_cli import ClaudeCliBackend
 from app.llm.manager import LlmSessionManager
@@ -118,6 +119,8 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="TrailTalk", lifespan=lifespan)
     app.state.settings = app_settings
     app.state.client_config = load_client_config(app_settings)  # 틀린 파일이면 시작하지 않는다
+    # 외부 MCP 서버 설정(M5-12): 틀린 파일·권한이면 시작하지 않는다
+    app.state.external_mcp = load_external_mcp(app_settings.mcp_servers_path)
     app.state.runtimes = RuntimeRegistry()
     app.state.usage = UsageTracker()  # Claude 구독 사용 한도의 마지막 값(GET /api/usage)
     extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)
