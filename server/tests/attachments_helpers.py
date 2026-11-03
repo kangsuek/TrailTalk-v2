@@ -23,6 +23,15 @@ def jpeg_bytes(size=(64, 48), orientation: int | None = None, color=(200, 30, 30
     return out.getvalue()
 
 
+def mpo_bytes(size=(64, 48), color=(30, 160, 90)) -> bytes:
+    """폰 사진처럼 MPF(멀티 픽처) 표지가 붙은 JPEG. Pillow는 이를 format "MPO"로 연다."""
+    first = Image.new("RGB", size, color)
+    second = Image.new("RGB", size, (0, 0, 0))
+    out = io.BytesIO()
+    first.save(out, "MPO", save_all=True, append_images=[second])
+    return out.getvalue()
+
+
 def gif_bytes(size=(32, 32), frames=2) -> bytes:
     images = [Image.new("P", size, i) for i in range(frames)]
     out = io.BytesIO()

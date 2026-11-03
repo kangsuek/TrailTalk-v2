@@ -35,7 +35,15 @@ from app.errors import AppError
 logger = logging.getLogger("trailtalk.attachments")
 
 # 확장자 → Pillow가 읽어야 하는 형식(내용이 확장자와 다르면 거절한다)
-_IMAGE_FORMATS = {"png": "PNG", "jpg": "JPEG", "jpeg": "JPEG", "webp": "WEBP", "gif": "GIF"}
+# 확장자별로 허용하는 Pillow 형식. 폰 사진은 멀티 픽처(MPF) 표지가 붙은 JPEG라 MPO로 열린다
+# (첫 프레임만 쓴다)
+_IMAGE_FORMATS = {
+    "png": {"PNG"},
+    "jpg": {"JPEG", "MPO"},
+    "jpeg": {"JPEG", "MPO"},
+    "webp": {"WEBP"},
+    "gif": {"GIF"},
+}
 MAX_IMAGE_PIXELS = 40_000_000  # 열자마자 검사해 넘으면 거절한다(디컴프레션 폭탄)
 THUMB_PX = 320
 DECODE_TIMEOUT_S = 10
@@ -147,7 +155,7 @@ def _process_image(data: bytes, name: str, ext: str, max_px: int) -> tuple[bytes
             width, height = opened.size
             if width * height > MAX_IMAGE_PIXELS:
                 raise invalid(f"{name}: 이미지가 너무 커요.")
-            if opened.format != _IMAGE_FORMATS[ext]:
+            if opened.format not in _IMAGE_FORMATS[ext]:
                 raise invalid(f"{name}: 파일 내용이 확장자와 달라요.")
             opened.seek(0)  # 애니메이션은 첫 프레임만
             im = ImageOps.exif_transpose(opened)  # 회전을 픽셀에 적용(EXIF는 새 이미지에 없다)
@@ -211,6 +219,7 @@ def _write(root: Path, relative: str, data: bytes) -> None:
     for attempt in (0, 1):
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         path.parent.chmod(0o700)  # umask와 상관없이 본인만
+        root.chmod(0o700)  # 첨부 루트도 본인만(세션 폴더만 막으면 폴더 목록이 보인다)
         try:
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             break
@@ -372,8 +381,11 @@ def remove_session_files(root: Path, session_id: str) -> None:
     """지운 대화의 첨부 폴더를 통째로 지운다. 이름이 UUID가 아니거나 root 밖이면 건드리지 않는다."""
     if not _ID_PATTERN.fullmatch(session_id):
         return
+    # resolve()는 링크를 따라가 버리므로 따라가기 전 경로로 링크인지 먼저 본다(링크는 지우지 않는다)
+    if (root / session_id).is_symlink():
+        return
     folder = resolve(root, session_id)
-    if folder is not None and folder.is_dir() and not folder.is_symlink():
+    if folder is not None and folder.is_dir():
         shutil.rmtree(folder, ignore_errors=True)
 
 

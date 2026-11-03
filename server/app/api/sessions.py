@@ -243,7 +243,7 @@ async def create_files_turn(session_id: str, request: Request, db: DbSession) ->
     per_file = max(settings.attachment_image_upload_max_bytes, settings.attachment_pdf_max_bytes)
     limit = settings.attachment_max_files * per_file
     length = request.headers.get("content-length")
-    if length is None or not length.isdigit():
+    if length is None or not (length.isascii() and length.isdigit()):
         # 크기를 모르는 업로드는 받지 않는다(파싱 전에 디스크를 채울 수 있다)
         raise attachments.invalid("요청 크기를 알 수 없어요.")
     if int(length) > limit + _FORM_OVERHEAD:

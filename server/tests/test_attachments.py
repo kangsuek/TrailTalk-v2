@@ -10,7 +10,7 @@ from PIL import Image
 from app.errors import AppError
 from app.services import attachments
 from app.services.attachments import Upload, prepare
-from tests.attachments_helpers import gif_bytes, jpeg_bytes, pdf_bytes, png_bytes
+from tests.attachments_helpers import gif_bytes, jpeg_bytes, mpo_bytes, pdf_bytes, png_bytes
 
 SESSION = "11111111-1111-4111-8111-111111111111"
 NONE_USED = (0, 0, 0)
@@ -63,6 +63,15 @@ async def test_exif_rotation_applied_then_exif_removed(settings):
     assert out.size == (48, 64)
     assert len(out.getexif()) == 0
     assert b"TestCamera" not in item.image
+
+
+async def test_phone_mpo_jpeg_is_accepted_as_a_jpeg(settings):
+    """폰 사진(MPF가 붙은 JPEG)은 Pillow가 MPO로 열어도 .jpg로 받고 첫 프레임만 쓴다."""
+    data = mpo_bytes()
+    assert Image.open(io.BytesIO(data)).format == "MPO"
+    (item,) = await run(settings, Upload("IMG_0001.jpg", data))
+    assert item.mime == "image/jpeg"
+    assert Image.open(io.BytesIO(item.image)).format == "JPEG"
 
 
 async def test_small_image_is_not_enlarged(settings):
@@ -252,6 +261,24 @@ def test_remove_session_files_only_touches_uuid_folders(tmp_path):
     attachments.remove_session_files(root, SESSION)
     assert not (root / SESSION).exists()
     attachments.remove_session_files(root, SESSION)  # 멱등
+
+
+def test_remove_session_files_does_not_follow_a_symlinked_folder(tmp_path):
+    """세션 폴더 자리에 같은 루트 안 다른 폴더를 가리키는 링크가 있어도 그 대상을 지우지 않는다."""
+    root = tmp_path / "att"
+    victim = root / "22222222-2222-4222-8222-222222222222"
+    victim.mkdir(parents=True)
+    (victim / "other.txt").write_text("남의 첨부")
+    (root / SESSION).symlink_to(victim, target_is_directory=True)
+    attachments.remove_session_files(root, SESSION)
+    assert (victim / "other.txt").exists()
+
+
+def test_write_makes_the_attachments_root_private(tmp_path):
+    root = tmp_path / "att"
+    attachments._write(root, f"{SESSION}/f.txt", b"x")
+    assert stat.S_IMODE(root.stat().st_mode) == 0o700
+    assert stat.S_IMODE((root / SESSION).stat().st_mode) == 0o700
 
 
 def test_cli_input_blocks_and_text_wrapper():
