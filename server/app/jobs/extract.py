@@ -127,7 +127,8 @@ def build_transcript(
             marked = True
         speaker = "사용자" if t.role is TurnRole.USER else assistant
         mark = " (말이 끊김)" if t.interrupted else ""
-        lines.append(f"{speaker}: {_escape_tags(_one_line(t.text))}{mark}")
+        files = "".join(f" [첨부: {_escape_tags(_one_line(a.name))}]" for a in t.attachments)
+        lines.append(f"{speaker}: {_escape_tags(_one_line(t.text))}{files}{mark}")
     if not marked:
         lines.append(RESUMED_MARK)  # 정리한 뒤로 새 말이 없다(새 노트 없음)
     kept: list[str] = []

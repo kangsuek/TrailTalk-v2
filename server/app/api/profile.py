@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.client_config import ClientConfig
+from app.client_config import ProfileClientConfig, profile_client_config
 from app.config import Settings
 from app.db.models import ChatModel, UserProfile
 from app.db.session import DbSession
@@ -51,7 +51,7 @@ class ProfileResponse(BaseModel):
     keep_audio: bool
     chat_model: ChatModel | None  # null이면 default_chat_model
     default_chat_model: ChatModel
-    client: ClientConfig  # 읽기 전용
+    client: ProfileClientConfig  # 읽기 전용
 
 
 class ProfileUpdate(BaseModel):
@@ -104,7 +104,7 @@ def _response(request: Request, profile: UserProfile) -> ProfileResponse:
         keep_audio=profile.keep_audio,
         chat_model=profile.chat_model,
         default_chat_model=ChatModel(settings.llm_chat_model),
-        client=request.app.state.client_config,
+        client=profile_client_config(request.app.state.client_config, settings),
     )
 
 

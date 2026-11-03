@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     audio_dir: Path = SERVER_DIR / "data" / "audio"
     cli_work_dir: Path = SERVER_DIR / "data" / "cli-sessions"
 
+    # 파일 첨부 한도(규약 2.13). 정본은 서버이며 /api/profile의 client.attachments로 내려간다.
+    # 쪽수·글자 수는 넘으면 자르지 않고 거절한다
+    attachment_max_files: int = Field(default=3, gt=0)  # 메시지당
+    attachment_image_upload_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)  # 업로드 원본
+    attachment_image_max_px: int = Field(default=1024, gt=0)  # 재인코딩 뒤 긴 변
+    attachment_text_max_bytes: int = Field(default=200 * 1024, gt=0)  # 파일당
+    attachment_text_max_chars: int = Field(default=10_000, gt=0)  # 메시지 합계
+    attachment_session_max_images: int = Field(default=10, gt=0)
+    attachment_session_max_text_chars: int = Field(default=30_000, gt=0)
+    attachment_max_pdfs: int = Field(default=1, gt=0)  # 메시지당
+    attachment_pdf_max_bytes: int = Field(default=5 * 1024 * 1024, gt=0)
+    attachment_pdf_max_pages: int = Field(default=10, gt=0)  # 파일당
+    attachment_session_max_pdf_pages: int = Field(default=20, gt=0)
+
     persona_dir: Path = SERVER_DIR / "personas"
     default_persona: str = "jenny"
     timezone: str = "Asia/Seoul"

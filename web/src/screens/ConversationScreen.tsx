@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useReducer, useRef, useState, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react'
+import { BubbleAttachments, PickedChips } from '../components/Attachments.tsx'
 import CountPills from '../components/CountPills.tsx'
 import Header from '../components/Header.tsx'
 import Markdown from '../components/Markdown.tsx'
@@ -6,19 +15,34 @@ import ModeToggle from '../components/ModeToggle.tsx'
 import { readMode, rememberMode, type InputMode } from '../hooks/inputMode.ts'
 import { monthDayLabel, type JournalStatus, type NoteCounts } from '../core/journal.ts'
 import { joinSentences, plainText } from '../core/markdown.ts'
+import {
+  DEFAULT_ATTACHMENT_LIMITS,
+  acceptOf,
+  addFiles,
+  emptyTextHint,
+  limitsDetail,
+  limitsNote,
+  removeFile,
+  type AttachmentLimits,
+  type BubbleAttachment,
+  type PickedFile,
+} from '../core/attachments.ts'
 import type { Connection } from '../core/connection.ts'
 import {
   ApiError,
   endSession,
   sendTurn,
+  sendTurnWithFiles,
   startSession,
   type SessionReopened,
 } from '../api/conversation.ts'
 import { getJournal, listOpenIdeas, type OpenIdea } from '../api/journal.ts'
+import { getProfile } from '../api/profile.ts'
 import {
   conversationReducer,
   initialConversation,
   toolNotice,
+  type StreamEvent,
   type AssistantMessage,
   type Message,
   type SessionStatus,
@@ -107,7 +131,12 @@ function SpeakingBubble() {
 
 function MessageItem({ message }: { message: Message }) {
   if (message.role === 'user') {
-    return <li className="bubble bubble-user">{message.text}</li>
+    return (
+      <li className="bubble bubble-user">
+        {message.attachments && <BubbleAttachments items={message.attachments} />}
+        {message.text}
+      </li>
+    )
   }
   return <AssistantBubble message={message} />
 }
@@ -137,6 +166,15 @@ export default function ConversationScreen({
 }) {
   const [state, dispatch] = useReducer(conversationReducer, initialConversation)
   const [draft, setDraft] = useState('')
+  // 글과 함께 보낼 첨부(글 대화만). 한도는 처음 첨부 버튼을 누를 때 프로필에서 받는다(못 받으면 기본값)
+  const [files, setFilesState] = useState<PickedFile<File>[]>([])
+  const filesRef = useRef<PickedFile<File>[]>([]) // 비동기 처리(한도 받기 뒤)가 최신 목록을 읽는다
+  const [attachNotice, setAttachNotice] = useState<string | null>(null)
+  const [limits, setLimits] = useState<AttachmentLimits>(DEFAULT_ATTACHMENT_LIMITS)
+  const limitsLoad = useRef<Promise<AttachmentLimits> | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const fileKey = useRef(0)
+  const previews = useRef(new Map<string, string[]>()) // 말풍선 ID → 방금 고른 이미지의 임시 주소
   const aborter = useRef<AbortController | null>(null)
   const counter = useRef(0)
   const listRef = useRef<HTMLOListElement>(null)
@@ -276,6 +314,13 @@ export default function ConversationScreen({
 
   // 화면이 사라지면 진행 중인 요청을 끊는다(서버가 턴을 멈춘다)
   useEffect(() => () => aborter.current?.abort(), [])
+  useEffect(() => {
+    const urls = previews.current
+    return () => {
+      for (const list of urls.values()) list.forEach((url) => URL.revokeObjectURL(url))
+      urls.clear()
+    }
+  }, [])
 
   useEffect(() => {
     const list = listRef.current
@@ -287,6 +332,7 @@ export default function ConversationScreen({
     const controller = (aborter.current = new AbortController())
     dispatch({ type: 'start' })
     setDraft('')
+    clearFiles()
     try {
       const started = await startSession('text', controller.signal)
       dispatch({
@@ -309,6 +355,69 @@ export default function ConversationScreen({
     setDraft((current) => (current.trim() ? current : text))
   }
 
+  function setFiles(next: PickedFile<File>[]) {
+    filesRef.current = next
+    setFilesState(next)
+  }
+
+  function clearFiles() {
+    setFiles([])
+    setAttachNotice(null)
+  }
+
+  // 보내지 못한 첨부 목록을 입력창에 되돌린다(그 사이 새로 고른 파일이 있으면 덮어쓰지 않는다)
+  function restoreFiles(picked: PickedFile<File>[]) {
+    if (picked.length > 0 && filesRef.current.length === 0) setFiles(picked)
+  }
+
+  function loadLimits(): Promise<AttachmentLimits> {
+    limitsLoad.current ??= getProfile()
+      .then((profile) => profile.client.attachments)
+      .catch(() => DEFAULT_ATTACHMENT_LIMITS)
+      .then((loaded) => {
+        setLimits(loaded)
+        return loaded
+      })
+    return limitsLoad.current
+  }
+
+  function openFilePicker() {
+    void loadLimits()
+    fileInput.current?.click()
+  }
+
+  async function onPickFiles(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target
+    const picked = Array.from(input.files ?? [])
+    input.value = '' // 같은 파일을 빼고 다시 골라도 change가 오게
+    if (picked.length === 0) return
+    const loaded = await loadLimits()
+    const incoming = picked.map((file) => ({ name: file.name, size: file.size, ref: file }))
+    const result = addFiles(filesRef.current, incoming, loaded, () => `f-${(fileKey.current += 1)}`)
+    setFiles(result.files)
+    setAttachNotice(result.notice)
+  }
+
+  // 방금 고른 이미지는 서버 썸네일이 없으니 임시 주소로 미리 보인다(보냈을 때만 쓴다)
+  function bubbleAttachments(id: string, picked: PickedFile<File>[]): BubbleAttachment[] {
+    const urls: string[] = []
+    const items = picked.map((file): BubbleAttachment => {
+      let preview: string | null = null
+      if (file.kind === 'image' && typeof URL.createObjectURL === 'function') {
+        preview = URL.createObjectURL(file.ref)
+        urls.push(preview)
+      }
+      return { key: file.key, name: file.name, kind: file.kind, preview, href: null }
+    })
+    if (urls.length > 0) previews.current.set(id, urls)
+    return items
+  }
+
+  function dropPreviews(id: string) {
+    previews.current.get(id)?.forEach((url) => URL.revokeObjectURL(url))
+    previews.current.delete(id)
+  }
+
   async function send() {
     const text = draft.trim()
     if (!text || state.sending || !state.sessionId || state.status === 'ended') return
@@ -320,40 +429,55 @@ export default function ConversationScreen({
     const id = `u-${(counter.current += 1)}`
     const controller = (aborter.current = new AbortController())
     let gotTurn = false // turn 이벤트 전의 오류는 서버가 메시지를 받지 못한 것이다(규약 2.10)
-    dispatch({ type: 'send', id, text })
+    const sentFiles = files
+    dispatch({
+      type: 'send',
+      id,
+      text,
+      attachments: sentFiles.length > 0 ? bubbleAttachments(id, sentFiles) : undefined,
+    })
     setDraft('')
+    clearFiles()
+    // 서버가 받지 못한 메시지(스트림 전 오류·turn 전 오류): 말풍선을 빼고 쓴 글과 첨부 목록을 입력창에
+    // 되돌린다. 세션이 끝났다면 되돌리지 않는다
+    const giveBack = (code: string | undefined) => {
+      dropPreviews(id)
+      if (code === 'session_ended' || code === 'session_not_found') return
+      restoreDraft(text)
+      restoreFiles(sentFiles)
+    }
     try {
-      await sendTurn(
-        state.sessionId,
-        text,
-        (event) => {
-          if (event.type === 'turn') gotTurn = true
-          if (event.type === 'error' && !gotTurn) {
-            // 서버가 받지 못한 메시지: 말풍선을 빼고 입력창으로 되돌린다. 세션이 끝났다면 되돌리지 않는다
-            dispatch({
-              type: 'failed',
-              message: event.message,
-              code: event.code,
-              unsentId: id,
-            })
-            if (event.code !== 'session_ended' && event.code !== 'session_not_found') restoreDraft(text)
-            return
-          }
-          dispatch({ type: 'event', event })
-        },
-        controller.signal,
-      )
+      const onEvent = (event: StreamEvent) => {
+        if (event.type === 'turn') gotTurn = true
+        if (event.type === 'error' && !gotTurn) {
+          dispatch({ type: 'failed', message: event.message, code: event.code, unsentId: id })
+          giveBack(event.code)
+          return
+        }
+        dispatch({ type: 'event', event })
+      }
+      if (sentFiles.length > 0) {
+        await sendTurnWithFiles(
+          state.sessionId,
+          text,
+          sentFiles.map((file) => file.ref),
+          onEvent,
+          controller.signal,
+        )
+      } else {
+        await sendTurn(state.sessionId, text, onEvent, controller.signal)
+      }
     } catch (error) {
       if (controller.signal.aborted) return
       const code = error instanceof ApiError ? error.code : undefined
-      const unsent = !gotTurn // 스트림이 열리기 전(JSON 오류)·turn 전에 끊김
+      const unsent = !gotTurn // 스트림이 열리기 전(JSON 오류, attachment_* 포함)·turn 전에 끊김
       dispatch({
         type: 'failed',
         message: errorMessage(error),
         code,
         unsentId: unsent ? id : undefined,
       })
-      if (unsent && code !== 'session_ended' && code !== 'session_not_found') restoreDraft(text)
+      if (unsent) giveBack(code)
     }
   }
 
@@ -365,6 +489,7 @@ export default function ConversationScreen({
     aborter.current?.abort() // 받는 중인 답변은 받은 데까지 끊는다
     const controller = (aborter.current = new AbortController())
     setDraft('') // 끝낸 대화를 다시 열어도 쓰던 글이 남아 있지 않게
+    clearFiles()
     dispatch({ type: 'ending' })
     try {
       const closed = await endSession(sessionId, controller.signal)
@@ -406,6 +531,11 @@ export default function ConversationScreen({
   function startVoice() {
     setDraft('')
     voice.tap()
+  }
+
+  function removePicked(key: string) {
+    setFiles(removeFile(filesRef.current, key))
+    setAttachNotice(null)
   }
 
   function cancelEndConfirm() {
@@ -501,6 +631,7 @@ export default function ConversationScreen({
   }
 
   const ended = state.status === 'ended'
+  const emptyHint = emptyTextHint(draft, files.length)
   const sum =
     summary?.sessionId === state.sessionId && summary.epoch === epochShown ? summary : null
   const initial = state.personaName?.slice(0, 1) ?? ''
@@ -602,7 +733,34 @@ export default function ConversationScreen({
       ) : (
         <div className="composer">
           {voiceActive && <ModeToggle mode={panel} onChange={changePanel} />}
+          {!voiceActive && <PickedChips files={files} disabled={state.sending} onRemove={removePicked} />}
           <div className="composer-row">
+            {!voiceActive && (
+              <>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  multiple
+                  hidden
+                  tabIndex={-1}
+                  aria-label="파일 선택"
+                  accept={acceptOf(limits)}
+                  onChange={(event) => void onPickFiles(event)}
+                />
+                <button
+                  type="button"
+                  className="ib"
+                  aria-label="파일 첨부"
+                  title={limitsDetail(limits)}
+                  disabled={state.sending || files.length >= limits.max_files}
+                  onClick={openFilePicker}
+                >
+                  <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 11l-8 8a5 5 0 0 1-7-7l8-8a3 3 0 0 1 4 4l-8 8" />
+                  </svg>
+                </button>
+              </>
+            )}
             <textarea
               aria-label="메시지"
               rows={2}
@@ -610,7 +768,10 @@ export default function ConversationScreen({
               value={draft}
               placeholder="메시지를 입력하세요"
               disabled={state.ending}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value)
+                setAttachNotice(null)
+              }}
               onKeyDown={onKeyDown}
             />
             <button
@@ -630,6 +791,15 @@ export default function ConversationScreen({
             </button>
           </div>
           <div className="composer-actions">
+            {!voiceActive && (
+              <p
+                className="att-note"
+                role="status"
+                data-tone={emptyHint || attachNotice ? 'warn' : undefined}
+              >
+                {attachNotice ?? emptyHint ?? limitsNote(limits)}
+              </p>
+            )}
             <button
               type="button"
               className="btn btn-ghost"

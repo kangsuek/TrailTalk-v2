@@ -541,6 +541,7 @@ body {
 .composer-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
   justify-content: flex-end;
 }
 
@@ -2309,4 +2310,113 @@ p.closing-sub {
 
 .set-conn[data-state='checking'] {
   color: var(--amber);
+}
+
+/* 파일 첨부(시안 대화 09, 일지 05): 입력창 칩·말풍선 썸네일 */
+.att-picked {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.att-chip {
+  display: inline-flex;
+  min-height: 36px;
+  max-width: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--seg-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.att-chip button {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.att-chip button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.att-chip button:focus-visible {
+  outline: 2px solid var(--primary);
+  border-radius: 50%;
+}
+
+.att-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 말풍선 안의 칩은 오른쪽 여백이 없고 초록 말풍선 위에서도 읽히는 반투명 바탕이다 */
+.att-chip-in {
+  padding-right: 10px;
+  border-color: rgb(127 127 127 / 40%);
+  background: rgb(255 255 255 / 85%);
+  color: #16241d;
+  text-decoration: none;
+}
+
+.att-list {
+  display: flex;
+  margin: 0 0 8px;
+  padding: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  list-style: none;
+}
+
+.t-bubble > .att-list:last-child {
+  margin-bottom: 0;
+}
+
+.att-item {
+  max-width: 100%;
+}
+
+.att-item[data-kind='image'] {
+  width: 100%;
+}
+
+.att-thumb {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--skel);
+}
+
+.att-note {
+  min-width: 0;
+  flex: 1;
+  padding: 0 6px;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.att-note[data-tone='warn'] {
+  color: var(--brick);
+  font-weight: 700;
 }

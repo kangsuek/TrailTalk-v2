@@ -73,6 +73,14 @@ from app.persona.prompt import (
 )
 from app.persona.rules import REOPEN_GREETING_INSTRUCTION
 from app.persona.schema import VoiceStyle
+from app.services.attachments import (
+    ATTACHED_TEXT_LIMIT,
+    Prepared,
+    discard,
+    load_past_texts,
+    remove_session_files,
+)
+from app.services.attachments import cli_input as attachment_input
 from app.services.profile import profile_chat_model, profile_with_persona
 from app.services.runtime import ConversationRuntime
 from app.services.voice import LatencyTracker, VoiceTurn, voice_style
@@ -439,7 +447,7 @@ async def delete_session(app: FastAPI, db: AsyncSession, session_id: str) -> Non
 
     턴과 같은 잠금을 쥔 채 지워, 쉬는 중인 대화에 막 시작한 턴이 CLI를 다시 띄우거나 지운 대화에
     턴을 쓰지 않게 한다. 돌던 일지 정리는 멈추고 그 결과 쓰기가 끝난 뒤 지운다.
-    보관한 녹음(M3)·첨부(M5)는 그 파일이 생기는 마일스톤에서 함께 지운다.
+    첨부 파일 폴더도 함께 지운다(보관한 녹음은 그 기능이 생기는 마일스톤에서 함께 지운다).
     """
     convo = await get_session(db, session_id)  # 없는 대화에 런타임을 만들지 않는다
     if convo.status is SessionStatus.ACTIVE:
@@ -462,6 +470,12 @@ async def delete_session(app: FastAPI, db: AsyncSession, session_id: str) -> Non
         await teardown(app, session_id, cli_session_id)
     finally:
         runtime.turn_lock.release()
+    try:  # 행(CASCADE)은 이미 지웠다. 못 지운 파일은 다음 시작 때 purge_orphans가 정리한다
+        await asyncio.to_thread(
+            remove_session_files, app.state.settings.attachments_dir, session_id
+        )
+    except OSError:
+        logger.warning("지운 대화의 첨부 삭제 실패(session=%s)", session_id, exc_info=True)
 
 
 async def reopen_session(
@@ -519,7 +533,20 @@ async def reopen_session(
         rows = await db.scalars(
             select(Turn).where(Turn.session_id == session_id).order_by(Turn.seq)
         )
-        previous = [PastTurn(t.role.value, t.text, t.interrupted) for t in rows if t.text.strip()]
+        past = [t for t in rows if t.text.strip()]
+        texts = await asyncio.to_thread(
+            load_past_texts, settings.attachments_dir, past, ATTACHED_TEXT_LIMIT
+        )
+        previous = [
+            PastTurn(
+                t.role.value,
+                t.text,
+                t.interrupted,
+                attachments=tuple(a.name for a in t.attachments),
+                attached_texts=tuple((a.name, texts[a.id]) for a in t.attachments if a.id in texts),
+            )
+            for t in past
+        ]
         summary = await _past_summary(db, convo)
         prompt = build_system_prompt(
             loaded.persona,
@@ -670,23 +697,30 @@ async def _next_seq(db: AsyncSession, session_id: str) -> int:
 
 
 async def stream_turn(
-    app: FastAPI, session_id: str, text: str, voice: VoiceTurn | None = None
+    app: FastAPI,
+    session_id: str,
+    text: str,
+    voice: VoiceTurn | None = None,
+    attachments: list[Prepared] | None = None,
 ) -> AsyncIterator[bytes]:
     """사용자 메시지 한 턴을 처리하며 SSE 바이트를 낸다. voice가 있으면 음성 업로드로 시작한 턴이다
-    (인식한 글을 `transcript` 이벤트로 먼저 알리고 지연을 기록한다).
+    (인식한 글을 `transcript` 이벤트로 먼저 알리고 지연을 기록한다). attachments는 이미 가공해
+    디스크에 쓴 첨부(규약 2.13)로, 사용자 턴과 같은 커밋에 행을 넣고 턴을 저장하지 못하면 파일을
+    지운다.
 
     클라이언트가 끊기면 이 제너레이터가 닫히고 aclosing이 CLI 턴을 멈춘다. 이때 사용자 턴과
     보낸 문장까지의 답변(interrupted)이 남는다.
     """
     runtime = app.state.runtimes.ensure(session_id)
     if runtime.turn_lock.locked():  # 검사와 획득 사이에 await가 없어 경합하지 않는다
+        _discard_attachments(app, attachments)
         yield _error(TurnBusy())
         return
     async with runtime.turn_lock:
         db = app.state.session_factory()
         try:
             # 안쪽 제너레이터도 바로 닫아야 락을 풀기 전에 CLI 턴 정리(인터럽트)가 끝난다
-            turn = _run_turn(app, db, runtime, session_id, text, voice)
+            turn = _run_turn(app, db, runtime, session_id, text, voice, attachments)
             async with aclosing(turn) as chunks:
                 async for chunk in chunks:
                     yield chunk
@@ -697,6 +731,11 @@ async def stream_turn(
                 await db.close()
 
 
+def _discard_attachments(app: FastAPI, attachments: list[Prepared] | None) -> None:
+    if attachments:
+        discard(app.state.settings.attachments_dir, attachments)
+
+
 async def _run_turn(
     app: FastAPI,
     db: AsyncSession,
@@ -704,6 +743,7 @@ async def _run_turn(
     session_id: str,
     text: str,
     voice: VoiceTurn | None = None,
+    attachments: list[Prepared] | None = None,
 ) -> AsyncIterator[bytes]:
     """턴 락을 잡은 상태에서 한 턴을 처리한다.
 
@@ -716,14 +756,17 @@ async def _run_turn(
             if convo is not None and convo.status is not SessionStatus.ENDED:
                 seq = await _next_seq(db, session_id)
                 user_turn = Turn(session_id=session_id, seq=seq, role=TurnRole.USER, text=text)
+                user_turn.attachments = [a.to_row() for a in attachments or []]
                 db.add(user_turn)
                 await _set_status(db, session_id, SessionStatus.ACTIVE)  # 쉬기 중이면 이어 감
                 await db.commit()
     except Exception:
         logger.exception("사용자 턴 저장 실패(session=%s)", session_id)
+        _discard_attachments(app, attachments)
         yield _error(AppError("internal_error", "서버 내부 오류가 발생했습니다.", 500))
         return
     if convo is None or convo.status is SessionStatus.ENDED:
+        _discard_attachments(app, attachments)
         app.state.runtimes.discard(session_id)  # 위에서 새로 만든 런타임(토큰)을 남기지 않는다
         yield _error(SessionNotFound() if convo is None else SessionEnded())
         return
@@ -819,7 +862,10 @@ async def _run_turn(
             return chunk
 
         # 지금 시각을 CLI에만 알린다(기록에는 남기지 않는다)
-        cli_input = current_time_note(utcnow(), app.state.settings.timezone) + text
+        time_note = current_time_note(utcnow(), app.state.settings.timezone)
+        cli_input = (
+            attachment_input(attachments, time_note, text) if attachments else time_note + text
+        )
         # CLI 오류(크래시·시간 초과)로 끝나도 받은 글은 아래에서 마저 보내고 저장한 뒤 다시 던진다
         stream_error: LlmError | None = None
         try:

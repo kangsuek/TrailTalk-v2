@@ -19,6 +19,7 @@ TABLES = {
     "note",
     "turn_latency",  # M3: 음성 턴 지연
     "turn_tts",  # M3: 문장별 합성 모델·폴백
+    "attachment",  # M5: 파일 첨부
     "oauth_client",  # MA: 외부 MCP OAuth
     "oauth_pending",
     "oauth_code",

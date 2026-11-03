@@ -3,8 +3,9 @@
 캐릭터와 무관한 앱 동작 규칙이다. 캐릭터 이름·성격·말투는 여기에 두지 않는다(NFR-08).
 도구 이름은 Spec 5.6의 캐릭터 도구와 맞춘다. 규칙은 v1에서 검증한 전문을 옮겨 두었고, M1은 실제로
 있는 도구(save_note, search_notes, search_conversations, summarize_session, pause_session,
-end_session, set_nickname, set_model)만 말한다. 웹 검색(WEB_SEARCH_RULES)·첨부(ATTACHMENT_RULES)
-규칙은 그 기능을 만드는 M5에서 ROLE_RULE_SECTIONS에 넣는다(이메일은 2026-11-02에 제거했다).
+end_session, set_nickname, set_model)만 말한다. 첨부 규칙(ATTACHMENT_RULES)은 M5-07에서
+ROLE_RULE_SECTIONS에 넣었고, 웹 검색 규칙(WEB_SEARCH_RULES)은 그 기능을 만드는 M5에서 넣는다
+(이메일은 2026-11-02에 제거했다).
 없는 도구를 쓸 수 있다고 알리면 모델이 지어내기 때문이다.
 일지 정리(추출) 지시문(EXTRACT_*, app/jobs/extract.py)도 앱 규칙이라 여기에 둔다.
 """
@@ -145,6 +146,7 @@ ROLE_RULE_SECTIONS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("브레인스토밍", BRAINSTORM_RULES),
     ("사실", FACT_RULES),
     ("도구", TOOL_RULES),
+    ("첨부 파일", ATTACHMENT_RULES),
     ("인젝션 방어", INJECTION_RULES),
     ("호칭", CALLING_RULES),
     ("개인정보", PRIVACY_RULES),

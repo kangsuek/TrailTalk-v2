@@ -10,6 +10,7 @@ from starlette.responses import Response
 from starlette.routing import Match, Mount
 from starlette.types import Scope
 
+from app.api import attachments as attachments_api
 from app.api import health, journal, latency, profile, sessions, usage, voices
 from app.api.events import register_event_schemas
 from app.client_config import load_client_config
@@ -23,6 +24,7 @@ from app.llm.manager import LlmSessionManager
 from app.llm.usage import UsageTracker
 from app.mcp.server import mount_mcp
 from app.request_context import RequestContextMiddleware, configure_logging
+from app.services import attachments as attachment_service
 from app.services.runtime import RuntimeRegistry
 from app.voice import build_voice
 
@@ -89,6 +91,10 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
             await extract.resume_pending(app)
         except Exception:
             logging.getLogger("trailtalk.extract").exception("남은 일지 정리 재개 실패")
+        try:  # DB에 없는 첨부 파일 정리(기본 폴더일 때만, 서비스의 안전장치). 실패해도 서버는 뜬다
+            await attachment_service.purge_orphans(app)
+        except Exception:
+            logging.getLogger("trailtalk.attachments").exception("고아 첨부 정리 실패")
         idle_watch = asyncio.create_task(idle.run(app), name="idle-watch")
         try:
             async with mcp.session_manager.run():
@@ -114,6 +120,7 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     api.include_router(health.router)
     api.include_router(profile.router)
     api.include_router(sessions.router)
+    api.include_router(attachments_api.router)
     api.include_router(journal.router)
     api.include_router(latency.router)
     api.include_router(usage.router)

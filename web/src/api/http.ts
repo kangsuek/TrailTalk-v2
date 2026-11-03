@@ -29,7 +29,7 @@ const GATEWAY_STATUSES = new Set([502, 503, 504])
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-/** 서버 API 요청(본문은 JSON, RawBody면 바이트 그대로). 응답이 실패면 ApiError를 던진다.
+/** 서버 API 요청(본문은 JSON, RawBody면 바이트 그대로, FormData면 multipart). 응답이 실패면 ApiError를 던진다.
  * 변경성 요청(POST·PUT·PATCH·DELETE)에는 규약 1.5의 X-TrailTalk 헤더를 붙인다(서버 검사는 M6). */
 export async function request(
   path: string,
@@ -40,13 +40,17 @@ export async function request(
   const headers: Record<string, string> = {}
   if (method !== 'GET') headers['X-TrailTalk'] = '1'
   const raw = body instanceof RawBody ? body : null
-  if (body !== undefined) headers['Content-Type'] = raw ? raw.contentType : 'application/json'
+  const form = body instanceof FormData ? body : null
+  // multipart는 브라우저가 경계(boundary)가 든 Content-Type을 직접 붙인다
+  if (body !== undefined && !form) {
+    headers['Content-Type'] = raw ? raw.contentType : 'application/json'
+  }
   let response: Response
   try {
     response = await fetch(path, {
       method,
       headers,
-      body: body === undefined ? undefined : raw ? raw.bytes : JSON.stringify(body),
+      body: body === undefined ? undefined : (form ?? (raw ? raw.bytes : JSON.stringify(body))),
       signal,
     })
   } catch (error) {
