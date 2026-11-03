@@ -43,8 +43,10 @@ def test_build_command_has_isolation_and_tool_limits(fake_cli, tmp_path):
     joined = " ".join(command)
     for flag in ["--restricted", "--strict-mcp-config", "--include-partial-messages", "--verbose"]:
         assert flag in command
-    assert command[command.index("--tools") + 1] == ""  # 내장 도구는 모두 끈다(웹 검색은 M5)
-    assert command[command.index("--allowedTools") + 1] == "mcp__trailtalk__*"
+    # 내장 도구는 WebSearch(검색 폴백)만 켠다. WebFetch는 끄고 서버의 web_fetch 도구가 대신한다
+    assert command[command.index("--tools") + 1] == "WebSearch"
+    assert command[command.index("--allowedTools") + 1] == "mcp__trailtalk__*,WebSearch"
+    assert "WebFetch" not in joined
     assert command[command.index("--setting-sources") + 1] == ""
     assert command[command.index("--model") + 1] == "haiku"
     assert command[command.index("--system-prompt") + 1] == "P"
@@ -87,7 +89,7 @@ def test_extra_allowed_tools_are_appended_and_empty_list_keeps_default(fake_cli)
         extra_allowed_tools=["mcp__maps__search", "mcp__maps__route"],
     )
     allowed = extra[extra.index("--allowedTools") + 1]
-    assert allowed == "mcp__trailtalk__*,mcp__maps__search,mcp__maps__route"
+    assert allowed == "mcp__trailtalk__*,WebSearch,mcp__maps__search,mcp__maps__route"
 
 
 async def test_rate_limit_events_are_ignored(fake_cli):
