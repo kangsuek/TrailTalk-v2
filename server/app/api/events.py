@@ -149,6 +149,21 @@ def public_tool_name(cli_name: str) -> str:
     return _RENAMES.get(cli_name, cli_name)
 
 
+def is_external_tool(public_name: str) -> bool:
+    """public_tool_name을 거친 이름이 외부 MCP 도구(mcp__<서버>__<도구>)인가."""
+    return public_name.startswith("mcp__")
+
+
+EXTERNAL_RESULT_LIMIT = 2000
+
+
+def external_tool_summary(event) -> ToolResultSummary | None:
+    """외부 도구 결과 요약(규약 2.6): result kind, 서버가 2000자로 자른다. 오류는 null."""
+    if event.is_error or event.result_text is None:
+        return None
+    return ToolResultSummary(result=event.result_text[:EXTERNAL_RESULT_LIMIT])
+
+
 def encode_sse(event: AnyEvent) -> bytes:
     return f"event: {event.type}\ndata: {event.model_dump_json()}\n\n".encode()
 

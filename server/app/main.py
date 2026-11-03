@@ -18,8 +18,9 @@ from app.config import Settings, settings
 from app.db.migrate import upgrade_to_head
 from app.db.session import create_engine_for, create_session_factory
 from app.errors import install_error_handlers
+from app.external_mcp import load_external_mcp
 from app.jobs import extract, idle
-from app.llm.claude_cli import ClaudeCliBackend
+from app.llm.claude_cli import ClaudeCliBackend, purge_mcp_leftovers
 from app.llm.manager import LlmSessionManager
 from app.llm.usage import UsageTracker
 from app.mcp.server import mount_mcp
@@ -79,13 +80,21 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
         app.state.engine = engine
         app.state.session_factory = create_session_factory(engine)
         llm = LlmSessionManager(
-            ClaudeCliBackend(app_settings, on_rate_limit=app.state.usage.update),
+            ClaudeCliBackend(
+                app_settings,
+                on_rate_limit=app.state.usage.update,
+                external_mcp=app.state.external_mcp,
+            ),
             idle_timeout_s=app_settings.cli_idle_timeout_s,
             # 턴 시간 초과 처리가 끝날 여유를 더 둔다(스트림을 버린 경우의 안전망)
             stuck_timeout_s=app_settings.cli_turn_timeout_s + 30,
         )
         await llm.start()
         app.state.llm = llm
+        try:  # 비정상 종료로 남은 mcp.json(비밀 포함)을 지운다. 실패해도 서버는 뜬다
+            purge_mcp_leftovers(app_settings)
+        except OSError:
+            logging.getLogger("trailtalk.external_mcp").exception("남은 mcp.json 정리 실패")
         # 음성 인식·합성(키가 없어도 서버는 뜨고 음성 호출만 voice_unavailable이다)
         http = httpx2.AsyncClient()
         app.state.http = http
@@ -118,6 +127,8 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="TrailTalk", lifespan=lifespan)
     app.state.settings = app_settings
     app.state.client_config = load_client_config(app_settings)  # 틀린 파일이면 시작하지 않는다
+    # 외부 MCP 서버 설정(M5-12): 틀린 파일·권한이면 시작하지 않는다
+    app.state.external_mcp = load_external_mcp(app_settings.mcp_servers_path)
     app.state.runtimes = RuntimeRegistry()
     app.state.usage = UsageTracker()  # Claude 구독 사용 한도의 마지막 값(GET /api/usage)
     extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)

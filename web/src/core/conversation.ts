@@ -70,12 +70,7 @@ export interface ErrorEvent {
 }
 
 export type StreamEvent =
-  | TranscriptEvent
-  | TurnEvent
-  | SentenceEvent
-  | ToolEvent
-  | DoneEvent
-  | ErrorEvent
+  TranscriptEvent | TurnEvent | SentenceEvent | ToolEvent | DoneEvent | ErrorEvent
 
 export interface ToolState {
   id: string
@@ -199,7 +194,10 @@ function applyEvent(state: ConversationState, event: StreamEvent): ConversationS
         ...state,
         sending: true,
         error: null,
-        messages: [...state.messages, { role: 'user', id: `heard-${state.messages.length}`, text: event.text }],
+        messages: [
+          ...state.messages,
+          { role: 'user', id: `heard-${state.messages.length}`, text: event.text },
+        ],
       }
     case 'turn':
       return {
@@ -394,7 +392,9 @@ export function messagesFromTurns(turns: readonly Turn[]): Message[] {
         role: 'user',
         id: bubble.id,
         text: bubble.texts.join('\n'),
-        ...(bubble.attachments.length ? { attachments: bubble.attachments.map(bubbleAttachment) } : {}),
+        ...(bubble.attachments.length
+          ? { attachments: bubble.attachments.map(bubbleAttachment) }
+          : {}),
       }
     }
     return {
@@ -440,6 +440,24 @@ const NOTE_LABELS: Record<string, [string, string]> = {
 }
 
 const EXTERNAL_PREFIX = 'mcp__'
+
+/** 외부 MCP 도구(mcp__<서버>__<도구>)의 도구 이름. 서버 이름은 보이지 않는다. 외부 도구가 아니면 null */
+function externalToolName(toolName: string): string | null {
+  if (!toolName.startsWith(EXTERNAL_PREFIX)) return null
+  const name = toolName.slice(EXTERNAL_PREFIX.length).split('__').slice(1).join('__')
+  return name || null
+}
+
+/**
+ * 외부 MCP 도구가 돌려준 결과 글(서버가 2000자로 자른 값). 마크다운으로 해석하지 않고 글자 그대로 보인다
+ * (규약 2.5). 결과가 없거나 오류이거나 외부 도구가 아니면 null.
+ */
+export function externalToolResult(tool: ToolState): string | null {
+  if (externalToolName(tool.name) === null || tool.phase !== 'end' || tool.isError) return null
+  const summary = tool.summary
+  if (summary?.kind !== 'result' || typeof summary.result !== 'string') return null
+  return summary.result.trim() ? summary.result : null
+}
 
 /** 도구 상태를 한 줄 알림으로. 보여 줄 필요가 없는 도구(쉬기·끝내기)는 null. */
 export function toolNotice(tool: ToolState): string | null {
@@ -498,11 +516,10 @@ export function toolNotice(tool: ToolState): string | null {
     }
     default: {
       // 외부 MCP 도구(M5)는 mcp__<서버>__<도구>로 온다. 서버 이름은 보이지 않는다(규약 2.5)
-      if (tool.name.startsWith(EXTERNAL_PREFIX)) {
-        const name = tool.name.slice(EXTERNAL_PREFIX.length).split('__').slice(1).join('__')
-        return name ? `${name} 사용 중` : null
-      }
-      return null
+      const name = externalToolName(tool.name)
+      if (name === null) return null
+      if (!finished) return `${name} 사용 중`
+      return tool.isError ? `${name} 사용하지 못했어요` : `${name} 사용 완료`
     }
   }
 }

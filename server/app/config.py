@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     web_fetch_max_redirects: int = Field(default=4, ge=0)
     web_fetch_max_chars: int = Field(default=8_000, gt=0)  # 모델에 주는 본문 글자 수 상한
 
+    # 외부 MCP 서버 설정 파일(M5-12, app/external_mcp.py). 없으면 외부 서버 없음, 틀리면 시작 거부.
+    # 비밀 값은 이 파일이 아니라 .env의 MCP_<서버>_<이름> 변수에 둔다. 검증 서버는 임시 경로
+    mcp_servers_path: Path = SERVER_DIR / "mcp-servers.yaml"
+
     # Claude 앱 MCP 연계(외부 MCP 앱, 별도 포트, docs/MCP). 공개 주소와 소유자 비밀번호가 둘 다
     # 있어야 외부 앱을 띄울 수 있다(app/mcp_external/config.py가 검증). 저장소에는 값을 두지 않는다
     mcp_public_url: str = ""

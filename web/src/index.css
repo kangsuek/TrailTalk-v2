@@ -487,6 +487,16 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* 외부 MCP 도구가 돌려준 결과 글. 마크다운으로 해석하지 않고 글자 그대로 보인다(규약 2.5) */
+.tool-result {
+  margin: 2px 0 0;
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .tool-note[data-error='true'] {
   color: var(--brick);
 }

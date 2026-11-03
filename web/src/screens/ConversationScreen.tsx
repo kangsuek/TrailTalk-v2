@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useReducer,
@@ -42,6 +43,7 @@ import {
   conversationReducer,
   initialConversation,
   sourceHosts,
+  externalToolResult,
   toolNotice,
   type StreamEvent,
   type AssistantMessage,
@@ -98,7 +100,7 @@ function errorMessage(error: unknown): string {
 
 function AssistantBubble({ message }: { message: AssistantMessage }) {
   const notices = message.tools
-    .map((tool) => ({ tool, text: toolNotice(tool) }))
+    .map((tool) => ({ tool, text: toolNotice(tool), result: externalToolResult(tool) }))
     .filter((n) => n.text)
   const hosts = sourceHosts(message)
   const waiting = message.status === 'streaming' && message.sentences.length === 0
@@ -106,10 +108,13 @@ function AssistantBubble({ message }: { message: AssistantMessage }) {
     <li className="bubble bubble-assistant" data-status={message.status}>
       {message.sentences.length > 0 && <Markdown text={joinSentences(message.sentences)} />}
       {waiting && <p className="bubble-wait">생각하는 중…</p>}
-      {notices.map(({ tool, text }) => (
-        <p key={tool.id} className="tool-note" data-error={tool.isError}>
-          {text}
-        </p>
+      {notices.map(({ tool, text, result }) => (
+        <Fragment key={tool.id}>
+          <p className="tool-note" data-error={tool.isError}>
+            {text}
+          </p>
+          {result && <p className="tool-result">{result}</p>}
+        </Fragment>
       ))}
       {hosts.length > 0 && (
         <ul className="bubble-sources" aria-label="출처">
@@ -210,7 +215,12 @@ export default function ConversationScreen({
   // finalized를 여기서 동기로 먼저 세워 두어야 아래 마무리 효과가 같은 대화를 다시 끝내지 않는다(순서 의존)
   const handleClosed = useCallback((sessionId: string, closed: VoiceClosed) => {
     finalized.current = sessionId
-    setSummary({ sessionId, epoch: epoch.current, saved: closed.saved, journalStatus: closed.journalStatus })
+    setSummary({
+      sessionId,
+      epoch: epoch.current,
+      saved: closed.saved,
+      journalStatus: closed.journalStatus,
+    })
   }, [])
   const voice = useVoiceConversation(dispatch, handleClosed, state.personaName, voiceDeps)
   const voiceActive = voice.machine.name !== 'idle' // 음성 대화(인사말 재생부터 정리까지)
@@ -562,7 +572,13 @@ export default function ConversationScreen({
   if (restoring) {
     return (
       <section className="chat chat-start" aria-label="대화 불러오는 중">
-        <Header initial="T" name="TrailTalk" sub="대화 불러오는 중" heading connection={connection} />
+        <Header
+          initial="T"
+          name="TrailTalk"
+          sub="대화 불러오는 중"
+          heading
+          connection={connection}
+        />
         <div className="chat-start-body">
           <p className="chat-start-sub" role="status">
             하던 대화를 불러오고 있어요…
@@ -620,11 +636,21 @@ export default function ConversationScreen({
         </div>
         {startMode === 'voice' ? (
           <VoiceDock state={state.status === 'starting' ? 'starting' : 'idle'} onTap={startVoice}>
-            <ModeToggle mode={startMode} onChange={changeMode} voiceDisabled={voice.ready !== true} disabled={state.status === 'starting'} />
+            <ModeToggle
+              mode={startMode}
+              onChange={changeMode}
+              voiceDisabled={voice.ready !== true}
+              disabled={state.status === 'starting'}
+            />
           </VoiceDock>
         ) : (
           <div className="dock">
-            <ModeToggle mode={startMode} onChange={changeMode} voiceDisabled={voice.ready !== true} disabled={state.status === 'starting'} />
+            <ModeToggle
+              mode={startMode}
+              onChange={changeMode}
+              voiceDisabled={voice.ready !== true}
+              disabled={state.status === 'starting'}
+            />
             <button
               type="button"
               className="btn btn-primary btn-big"
@@ -742,7 +768,9 @@ export default function ConversationScreen({
       ) : (
         <div className="composer">
           {voiceActive && <ModeToggle mode={panel} onChange={changePanel} />}
-          {!voiceActive && <PickedChips files={files} disabled={state.sending} onRemove={removePicked} />}
+          {!voiceActive && (
+            <PickedChips files={files} disabled={state.sending} onRemove={removePicked} />
+          )}
           <div className="composer-row">
             {!voiceActive && (
               <>
@@ -837,7 +865,8 @@ export default function ConversationScreen({
           >
             <h2>대화를 끝낼까요?</h2>
             <p id="end-desc">
-              지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수 있어요.
+              지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수
+              있어요.
             </p>
             <div className="dialog-stack">
               <button

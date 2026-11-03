@@ -1,0 +1,52 @@
+# 외부 MCP 서버 설정 예시 (M5-12, Spec 5.6 "외부 MCP"). 이 파일을 mcp-servers.yaml로 복사해 고쳐 쓴다.
+# mcp-servers.yaml은 .gitignore 대상이고, 경로는 환경 변수 MCP_SERVERS_PATH로 바꿀 수 있다.
+# 파일이 없으면 외부 서버 없이 시작한다. 파일이 틀리면(이름·허용 도구·권한·비밀 변수) 서버가 시작하지 않는다.
+#
+# 신뢰 경계: 이 파일과 그 폴더는 서버 실행 사용자만 쓸 수 있어야 한다(chmod 600 권장). 그룹·타인이 쓸 수
+# 있거나 소유자가 다르거나 심볼릭 링크이면 시작을 거부한다. API·화면으로는 등록하지 않는다.
+#
+# 반드시 알아 둘 것
+# - NFR-06 예외: 외부 서비스형 서버(검색·지도 등)는 모델이 도구 인자로 넘기는 값에 사용자 발화의 일부가
+#   서버 밖으로 나갈 수 있다. 발화가 외부로 나가도 되는 서비스만 등록한다.
+# - 도구의 부작용(쓰기·삭제·결제·발송)은 허용 목록을 쓴 사람의 책임이다. 읽기 전용 도구만 허용하는 것을
+#   권장한다. 파일 시스템·셸 실행 계열 서버는 허용 목록에 두지 않는다.
+# - 임의 URL을 가져오는 도구(페이지 읽기 등)는 서버의 web_fetch가 하는 사설망 차단을 받지 않는다.
+#   허용 목록으로만 통제하므로, 그런 도구는 허용하지 않는다.
+# - npx·uvx 같은 실행기는 실행할 때 패키지를 내려받아 돌리므로 실행되는 코드를 신뢰해야 한다.
+# - 도구가 많으면 도구 정의가 프롬프트에 모두 실려 지연·토큰이 늘 수 있다. 필요한 도구만 허용한다.
+#
+# 항목
+# - name: [a-z0-9-]{1,32}. trailtalk·servers는 예약어, 중복 불가. 전체 이름 mcp__<서버>__<도구>는 64자 이하.
+# - allowed_tools: 필수, 비면 거부. 도구 이름만 적는다([A-Za-z0-9_-]{1,64}, 와일드카드 * 불가).
+#   여기 없는 도구는 호출되지 않는다(CLI --allowedTools).
+# - denied_tools: 선택. 막을 도구 이름을 알면 적는다(--disallowedTools로 한 번 더 막는다. 서버에 있는 도구를
+#   모두 알 수는 없으므로 1차 방어는 허용 목록이다).
+# - stdio 서버: command(절대 경로, PATH 탐색 안 함, 셸 없이 실행), args(문자열 목록, 비밀 금지: 프로세스
+#   목록에 보인다), env. 실행은 빈 하위 작업 폴더에서 PATH·HOME·LANG·TMPDIR과 env에 적은 변수만 갖고 한다.
+# - http 서버: url(비밀 금지. 쿼리도 마찬가지, 로그에는 쿼리를 뺀 주소만 남는다), headers.
+# - 비밀: env·headers 값 안에 ${MCP_<서버>_<이름>}으로 적고, 값은 서버 .env(또는 환경 변수)에 둔다.
+#   <서버>는 서버 이름을 대문자로 하고 -를 _로 바꾼 것이다(example-search → MCP_EXAMPLE_SEARCH_). 서버는 자기
+#   접두사의 변수만 읽을 수 있고, 변수가 없거나 비어 있으면 시작을 거부한다. 비밀이 아닌 값은 그대로 적는다.
+#
+# 아래는 모두 가상의 예시다. 쓰려면 주소·경로를 실제 값으로 바꾸고 .env에 MCP_EXAMPLE_SEARCH_API_KEY 등을 둔다.
+servers:
+  # stdio 예: 로컬에 설치된 실행 파일(절대 경로)
+  - name: example-search
+    command: /opt/example/bin/example-search-mcp
+    args: ["--read-only"]
+    env:
+      EXAMPLE_API_KEY: ${MCP_EXAMPLE_SEARCH_API_KEY}
+      EXAMPLE_REGION: kr
+    allowed_tools:
+      - search
+      - get_page_summary
+    denied_tools:
+      - delete_index
+
+  # http 예: 원격 서버(고정 머리말에 비밀을 변수로 넣는다. OAuth 토큰 갱신은 지원하지 않는다)
+  - name: example-docs
+    url: https://mcp.example.com/v1
+    headers:
+      Authorization: Bearer ${MCP_EXAMPLE_DOCS_TOKEN}
+    allowed_tools:
+      - lookup

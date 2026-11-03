@@ -15,16 +15,19 @@ import logging
 import os
 import re
 import shutil
+import sys
 import time
 import uuid
 from collections import deque
 from collections.abc import AsyncIterator, Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from app.config import Settings
 from app.errors import AppError
+from app.external_mcp import LAUNCHER, ExternalMcp, ExternalServer
 from app.llm.backend import LlmError, LlmProcessError, LlmTimeoutError, TurnInProgressError
-from app.llm.events import LlmEvent, TurnFinished, TurnStarted
+from app.llm.events import LlmEvent, ToolFinished, TurnFinished, TurnStarted
 from app.llm.parser import StreamJsonParser
 
 logger = logging.getLogger("trailtalk.llm")
@@ -54,8 +57,12 @@ def build_command(
     resume_id: str | None = None,
     mcp_config_path: Path | None = None,
     extra_allowed_tools: Sequence[str] = (),
+    disallowed_tools: Sequence[str] = (),
 ) -> list[str]:
-    """CLI 실행 인자. 내장 도구는 WebSearch만 켜고 앱 도구(mcp__trailtalk__*)와 함께 허용한다."""
+    """CLI 실행 인자. 내장 도구는 WebSearch만 켜고 앱 도구(mcp__trailtalk__*)와 함께 허용한다.
+
+    외부 MCP 도구는 전체 이름(mcp__<서버>__<도구>)만 extra_allowed_tools로 더하고, 설정 파일이
+    명시적으로 막은 도구는 --disallowedTools에도 올린다(허용 목록이 1차, 이것이 이중 방어)."""
     command = [
         settings.claude_cli_path,
         "-p",
@@ -71,6 +78,8 @@ def build_command(
         "--allowedTools", ",".join((*OWN_ALLOWED_TOOLS, *extra_allowed_tools)),
         "--system-prompt", system_prompt,
     ]  # fmt: skip
+    if disallowed_tools:
+        command += ["--disallowedTools", ",".join(disallowed_tools)]
     if mcp_config_path is not None:
         command += ["--mcp-config", str(mcp_config_path)]
     if resume_id:
@@ -209,8 +218,12 @@ class ClaudeCliSession:
         model: str = "",
         resumed: bool = False,
         on_rate_limit: Callable[[dict], None] | None = None,
+        quiet_stderr: bool = False,
     ) -> None:
         self.key = key
+        # 외부 MCP 서버가 있으면 그 서버의 stderr가 CLI를 거쳐 올 수 있으므로 내용을 로그·오류
+        # 문구에 남기지 않는다(Spec 5.6 로그·결과)
+        self._quiet_stderr = quiet_stderr
         self.model = model
         # 지연 계측용(동작에는 쓰지 않는다): --resume으로 뜬 프로세스인가, 언제 만들어졌나,
         # 마지막 턴 중단을 어떻게 정리했나(clean·terminated·killed)
@@ -282,9 +295,26 @@ class ClaudeCliSession:
             text = text.replace(secret, "***")
         return text
 
+    def _redact_event(self, event: LlmEvent) -> LlmEvent:
+        """도구 결과·오류 문구에서 비밀을 가린다(CLI 결과의 error_message 포함)."""
+        if not self._secrets:
+            return event
+        if isinstance(event, TurnFinished):
+            return replace(
+                event,
+                text=self._redact(event.text),
+                error_message=self._redact(event.error_message) if event.error_message else None,
+            )
+        if isinstance(event, ToolFinished) and event.result_text is not None:
+            return replace(event, result_text=self._redact(event.result_text))
+        return event
+
     async def _drain_stderr(self) -> None:
         assert self._proc and self._proc.stderr
         while line := await self._proc.stderr.readline():
+            if self._quiet_stderr:
+                logger.debug("CLI stderr(session=%s): %d바이트", self.key, len(line))
+                continue
             text = self._redact(line.decode(errors="replace").rstrip())
             self._stderr_tail.append(text)
             logger.debug("CLI stderr(session=%s): %s", self.key, text)
@@ -310,6 +340,8 @@ class ClaudeCliSession:
                 await asyncio.wait_for(asyncio.shield(self._stderr_task), _EXIT_WAIT_S)
         code = self._proc.returncode if self._proc else None
         tail = " | ".join(self._stderr_tail) or "stderr 없음"
+        if self._quiet_stderr:
+            tail = "stderr 생략"
         return LlmProcessError(f"Claude CLI 프로세스가 종료됐습니다(code={code}): {tail}"[:800])
 
     async def _read_line(self, timeout: float) -> bytes:
@@ -351,6 +383,7 @@ class ClaudeCliSession:
                         self._turn_active = False
                         raise await self._exited_error()
                     for event in parser.feed(line.decode(errors="replace")):
+                        event = self._redact_event(event)
                         if isinstance(event, TurnStarted) and event.cli_session_id:
                             self._cli_session_id = event.cli_session_id
                         if isinstance(event, TurnFinished):
@@ -471,10 +504,15 @@ class ClaudeCliSession:
 
 class ClaudeCliBackend:
     def __init__(
-        self, settings: Settings, *, on_rate_limit: Callable[[dict], None] | None = None
+        self,
+        settings: Settings,
+        *,
+        on_rate_limit: Callable[[dict], None] | None = None,
+        external_mcp: ExternalMcp | None = None,
     ) -> None:
         self._settings = settings
         self._on_rate_limit = on_rate_limit
+        self._external = external_mcp or ExternalMcp()
 
     async def open_session(
         self,
@@ -489,13 +527,29 @@ class ClaudeCliBackend:
         """CLI 세션을 연다.
 
         mcp_config가 있으면 작업 폴더에 mcp.json(소유자만 읽기)으로 쓰고 --mcp-config로 넘긴다.
+        설정 파일의 외부 MCP 서버(M5-13)는 같은 mcp.json에 더하고, 그 도구의 전체 이름만
+        --allowedTools에 올린다. 비밀 값은 이 파일에만 있다.
         """
         settings = self._settings
         token = settings.claude_code_oauth_token
         cwd = session_work_dir(settings, key)
         mcp_path = None
         secrets = [token.get_secret_value()] if token else []
+        external = self._external
+        disallowed: Sequence[str] = ()
         try:
+            if external:
+                cwd.mkdir(mode=0o700, parents=True, exist_ok=True)
+                mcp_config = {
+                    **(mcp_config or {}),
+                    "mcpServers": {
+                        **((mcp_config or {}).get("mcpServers") or {}),
+                        **{s.name: _external_entry(s, cwd) for s in external.servers},
+                    },
+                }
+                extra_allowed_tools = (*extra_allowed_tools, *external.allowed_tool_names())
+                disallowed = external.denied_tool_names()
+                secrets += external.redact_values()
             if mcp_config is not None:
                 cwd.mkdir(mode=0o700, parents=True, exist_ok=True)
                 mcp_path = cwd / "mcp.json"
@@ -512,6 +566,7 @@ class ClaudeCliBackend:
                     resume_id=resume_id,
                     mcp_config_path=mcp_path,
                     extra_allowed_tools=extra_allowed_tools,
+                    disallowed_tools=disallowed,
                 ),
                 build_env(settings),
                 cwd,
@@ -520,12 +575,61 @@ class ClaudeCliBackend:
                 model=model,
                 resumed=resume_id is not None,
                 on_rate_limit=self._on_rate_limit,
+                quiet_stderr=bool(external),
             )
         except BaseException:
             shutil.rmtree(cwd, ignore_errors=True)  # 토큰이 든 mcp.json을 남기지 않는다
             raise
         await session.start()
         return session
+
+
+def _external_entry(server: ExternalServer, cwd: Path) -> dict:
+    """외부 서버의 mcp.json 항목. 값(env·headers)에는 ${…}를 바꾼 비밀이 들어 있다.
+
+    stdio는 CLI가 spawn하므로 설정으로 할 수 있는 격리를 실행기(app/mcp_launch.py)에 맡긴다:
+    셸 없이, 절대 경로 명령, 빈 하위 작업 폴더, 최소 환경(PATH·HOME·LANG·TMPDIR, env)."""
+    if server.kind == "http":
+        return {"type": "http", "url": server.url, "headers": dict(server.values)}
+    work = cwd / f"mcp-{server.name}"
+    work.mkdir(mode=0o700, parents=True, exist_ok=True)
+    return {
+        "type": "stdio",
+        "command": sys.executable,
+        "args": [
+            "-I",
+            str(LAUNCHER),
+            "--cwd",
+            str(work),
+            "--env",
+            ",".join(server.values),
+            "--",
+            server.command,
+            *server.args,
+        ],  # fmt: skip
+        "env": dict(server.values),
+    }
+
+
+def purge_mcp_leftovers(settings: Settings) -> int:
+    """서버 시작 때, 비정상 종료로 남은 mcp.json과 mcp-* 하위 폴더를 지운다(비밀이 든 파일을
+    남기지 않는다). CLI 작업 폴더 아래 <키>/<프로세스> 두 단계 안의 이 이름만 대상이다."""
+    base = settings.cli_work_dir.resolve()
+    removed = 0
+    if not base.is_dir():
+        return removed
+    for process_dir in base.glob("*/*"):
+        if process_dir.is_symlink() or not process_dir.is_dir():
+            continue
+        for leftover in (process_dir / "mcp.json", *process_dir.glob("mcp-*")):
+            if leftover.is_symlink() or leftover.is_file():
+                leftover.unlink(missing_ok=True)
+            elif leftover.is_dir():
+                shutil.rmtree(leftover, ignore_errors=True)
+            else:
+                continue
+            removed += 1
+    return removed
 
 
 def _header_secrets(mcp_config: dict) -> list[str]:

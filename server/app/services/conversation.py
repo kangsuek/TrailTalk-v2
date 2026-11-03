@@ -34,6 +34,8 @@ from app.api.events import (
     TranscriptEvent,
     TurnEvent,
     encode_sse,
+    external_tool_summary,
+    is_external_tool,
     public_tool_name,
 )
 from app.db.models import (
@@ -902,7 +904,8 @@ async def _run_turn(
                         tool_names[event.tool_use_id] = name
                         if tracker is not None and name == "web_search":
                             tracker.searched = True
-                        if name in ("web_search", "web_fetch"):  # 웹 내용을 받는 도구
+                        # 웹 내용·외부 MCP 도구 결과를 받는 도구(그 안의 지시는 사실로만 다룬다)
+                        if name in ("web_search", "web_fetch") or is_external_tool(name):
                             runtime.web_content_seen = True
                         yield encode_sse(
                             ToolEvent(phase="start", tool_use_id=event.tool_use_id, name=name)
@@ -916,10 +919,24 @@ async def _run_turn(
                                 phase="call",
                                 tool_use_id=event.tool_use_id,
                                 name=name,
-                                input=event.input,
+                                # 외부 도구 인자에는 발화 일부가 있을 수 있어 보내지 않는다
+                                input=None if is_external_tool(name) else event.input,
                             )
                         )
                     elif isinstance(event, ToolFinished):
+                        tool_name = tool_names.get(event.tool_use_id, "unknown")
+                        if is_external_tool(tool_name):
+                            # 외부 도구 결과: 2000자까지 글자 그대로, 출처·인용에는 넣지 않는다
+                            yield encode_sse(
+                                ToolEvent(
+                                    phase="end",
+                                    tool_use_id=event.tool_use_id,
+                                    name=tool_name,
+                                    summary=external_tool_summary(event),
+                                    is_error=event.is_error,
+                                )
+                            )
+                            continue
                         if not event.is_error:
                             for source in event.sources:
                                 if len(sources) >= MAX_TURN_SOURCES:
