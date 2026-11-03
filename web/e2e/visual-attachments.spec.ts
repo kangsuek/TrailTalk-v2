@@ -134,7 +134,9 @@ for (const scheme of ['light', 'dark'] as const) {
         const thumb = page.getByRole('list', { name: '전문' }).getByAltText('trail-map.png')
         await expect(thumb).toBeVisible()
         await expect
-          .poll(() => thumb.evaluate((img: HTMLImageElement) => img.naturalWidth))
+          .poll(() =>
+            thumb.evaluate((img) => (img as unknown as { naturalWidth: number }).naturalWidth),
+          )
           .toBeGreaterThan(0)
         // 첨부가 든 말풍선이 화면에 다 들어오게 위쪽으로 맞춘다
         await page.locator('.t-user').evaluate((el) => el.scrollIntoView({ block: 'center' }))

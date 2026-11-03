@@ -75,7 +75,9 @@ test.describe('파일 첨부', () => {
     const thumb = transcript.getByAltText('trail-map.png')
     await expect(thumb).toBeVisible()
     await expect(thumb).toHaveAttribute('src', /\/api\/attachments\/[\w-]+\?thumb=1$/)
-    expect(await thumb.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
+    expect(
+      await thumb.evaluate((img) => (img as unknown as { naturalWidth: number }).naturalWidth),
+    ).toBeGreaterThan(0)
     const chip = transcript.getByRole('link', { name: /course-memo\.pdf/ })
     await expect(chip).toHaveAttribute('href', /\/api\/attachments\/[\w-]+$/)
     await expect(transcript.getByRole('link', { name: /course-memo\.txt/ })).toBeVisible()
