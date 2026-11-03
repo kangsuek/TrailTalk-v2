@@ -11,6 +11,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.events import sse_response_doc
 from app.api.journal import TurnOut
@@ -19,7 +21,7 @@ from app.db.session import DbSession
 from app.errors import AppError
 from app.jobs import extract
 from app.persona.loader import LoadedPersona, load_session_persona
-from app.services import closing, conversation
+from app.services import attachments, closing, conversation
 from app.services.voice import VoiceTurn, speak
 from app.voice.audio import prepare_for_stt
 
@@ -187,6 +189,88 @@ async def create_turn(
     await db.close()
     return EventStreamResponse(
         conversation.stream_turn(request.app, session_id, body.text.strip()),
+        media_type="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
+
+_TEXT_MAX = 4000
+_FORM_OVERHEAD = 1024 * 1024  # 본문에서 파일 외 부분(경계·헤더·글)의 여유
+_FILES_REQUEST = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "multipart/form-data": {
+                "schema": {
+                    "type": "object",
+                    "required": ["text", "files"],
+                    "properties": {
+                        "text": {"type": "string", "minLength": 1, "maxLength": _TEXT_MAX},
+                        "files": {
+                            "type": "array",
+                            "items": {"type": "string", "format": "binary"},
+                            "minItems": 1,
+                            "maxItems": 3,
+                        },
+                    },
+                }
+            }
+        },
+    }
+}
+
+
+@router.post(
+    "/sessions/{session_id}/turns/files",
+    response_class=StreamingResponse,
+    responses=sse_response_doc("턴 이벤트 스트림(turn → sentence·tool → done 또는 error)"),
+    openapi_extra=_FILES_REQUEST,
+)
+async def create_files_turn(session_id: str, request: Request, db: DbSession) -> StreamingResponse:
+    """질문에 파일(이미지·텍스트·PDF)을 붙인 글 턴(규약 2.13). 글 대화에서만 받는다.
+
+    순서: 세션·턴 가능 확인 → DB 닫기 → 본문 크기 선검사 → multipart 파싱 → 검증·가공 → SSE.
+    잘못된 첨부는 SSE를 열기 전 JSON 오류(attachment_invalid 400, attachment_too_large 413)로
+    나가고 사용자 메시지를 만들지 않는다."""
+    app = request.app
+    settings = app.state.settings
+    convo = await conversation.get_session(db, session_id)
+    conversation.check_turn_allowed(app, convo)
+    if convo.mode is not SessionMode.TEXT:
+        raise attachments.invalid("파일은 글 대화에서만 보낼 수 있어요.")
+    used = await attachments.session_usage(db, session_id)
+    await db.close()  # 업로드를 받는 동안 커넥션을 쥐지 않는다
+    per_file = max(settings.attachment_image_upload_max_bytes, settings.attachment_pdf_max_bytes)
+    limit = settings.attachment_max_files * per_file
+    length = request.headers.get("content-length")
+    if length is None or not length.isdigit():
+        # 크기를 모르는 업로드는 받지 않는다(파싱 전에 디스크를 채울 수 있다)
+        raise attachments.invalid("요청 크기를 알 수 없어요.")
+    if int(length) > limit + _FORM_OVERHEAD:
+        raise attachments.too_large("보내는 파일이 너무 커요.")
+    try:
+        form = await request.form(max_files=settings.attachment_max_files, max_fields=4)
+    except StarletteHTTPException:
+        raise attachments.invalid("파일은 한 번에 보낼 수 있는 개수를 넘었어요.") from None
+    try:
+        text = str(form.get("text") or "").strip()
+        if not text:
+            raise attachments.invalid("파일과 함께 질문을 적어 주세요.")
+        if len(text) > _TEXT_MAX:
+            raise attachments.invalid(f"질문은 {_TEXT_MAX}자까지 적을 수 있어요.")
+        files = form.getlist("files")
+        attachments.check_count(settings, len(files))
+        uploads = []
+        for item in files:
+            if not isinstance(item, UploadFile):
+                raise attachments.invalid("파일 형식이 올바르지 않아요.")
+            data = await item.read(per_file + 1)
+            uploads.append(attachments.Upload(item.filename or "", data))
+    finally:
+        await form.close()
+    prepared = await attachments.prepare(settings, session_id, uploads, used)
+    return EventStreamResponse(
+        conversation.stream_turn(app, session_id, text, attachments=prepared),
         media_type="text/event-stream",
         headers=_SSE_HEADERS,
     )

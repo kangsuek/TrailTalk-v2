@@ -3,7 +3,7 @@ import { request } from './http.ts'
 import type { components } from './schema.d.ts'
 
 export type Profile = components['schemas']['ProfileResponse']
-export type ClientConfig = components['schemas']['ClientConfig']
+export type ClientConfig = components['schemas']['ProfileClientConfig']
 
 export async function getProfile(signal?: AbortSignal): Promise<Profile> {
   return (await request('/api/profile', 'GET', undefined, signal)).json()

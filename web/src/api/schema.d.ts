@@ -92,6 +92,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{session_id}/turns/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Files Turn
+         * @description 질문에 파일(이미지·텍스트·PDF)을 붙인 글 턴(규약 2.13). 글 대화에서만 받는다.
+         *
+         *     순서: 세션·턴 가능 확인 → DB 닫기 → 본문 크기 선검사 → multipart 파싱 → 검증·가공 → SSE.
+         *     잘못된 첨부는 SSE를 열기 전 JSON 오류(attachment_invalid 400, attachment_too_large 413)로
+         *     나가고 사용자 메시지를 만들지 않는다.
+         */
+        post: operations["create_files_turn_api_sessions__session_id__turns_files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{session_id}/turns/audio": {
         parameters: {
             query?: never;
@@ -128,6 +152,27 @@ export interface paths {
          *     마무리 멘트의 저장 개수는 정리로 더해진 노트까지 센다.
          */
         post: operations["end_session_api_sessions__session_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attachment
+         * @description 이미지는 바로 보이게(inline), 텍스트·PDF는 내려받기(attachment)로 준다. thumb=1은 320px
+         *     썸네일(썸네일이 없는 첨부는 원본). 항상 nosniff.
+         */
+        get: operations["get_attachment_api_attachments__attachment_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -350,6 +395,40 @@ export interface components {
             audio: string | null;
         };
         /**
+         * AttachmentLimits
+         * @description 파일 첨부 한도(규약 2.13). 정본은 서버 설정이며 웹은 보내기 전 안내에만 쓴다.
+         */
+        AttachmentLimits: {
+            /** Max Files */
+            max_files: number;
+            /** Image Upload Max Bytes */
+            image_upload_max_bytes: number;
+            /** Image Max Px */
+            image_max_px: number;
+            /** Text Max Bytes */
+            text_max_bytes: number;
+            /** Text Max Chars */
+            text_max_chars: number;
+            /** Session Max Images */
+            session_max_images: number;
+            /** Session Max Text Chars */
+            session_max_text_chars: number;
+            /** Max Pdfs */
+            max_pdfs: number;
+            /** Pdf Max Bytes */
+            pdf_max_bytes: number;
+            /** Pdf Max Pages */
+            pdf_max_pages: number;
+            /** Session Max Pdf Pages */
+            session_max_pdf_pages: number;
+            /** Image Extensions */
+            image_extensions: string[];
+            /** Text Extensions */
+            text_extensions: string[];
+            /** Pdf Extensions */
+            pdf_extensions: string[];
+        };
+        /**
          * AttachmentOut
          * @description 턴에 붙은 첨부(M5). 파일은 GET /api/attachments/{id}(썸네일은 ?thumb=1).
          */
@@ -383,13 +462,6 @@ export interface components {
             title: string;
             /** Url */
             url: string;
-        };
-        /** ClientConfig */
-        ClientConfig: {
-            vad: components["schemas"]["VadConfig"];
-            session: components["schemas"]["ClientSessionConfig"];
-            audio: components["schemas"]["AudioConfig"];
-            turn: components["schemas"]["TurnConfig"];
         };
         /** ClientSessionConfig */
         ClientSessionConfig: {
@@ -629,6 +701,18 @@ export interface components {
             /** Ack */
             ack: components["schemas"]["AckOut"][];
         };
+        /**
+         * ProfileClientConfig
+         * @description GET /api/profile의 client: 기본값 파일의 값에 서버 설정이 채우는 첨부 한도를 더한 것.
+         *     첨부 한도는 shared/client-defaults.json에 두지 않는다(규약 7절).
+         */
+        ProfileClientConfig: {
+            vad: components["schemas"]["VadConfig"];
+            session: components["schemas"]["ClientSessionConfig"];
+            audio: components["schemas"]["AudioConfig"];
+            turn: components["schemas"]["TurnConfig"];
+            attachments: components["schemas"]["AttachmentLimits"];
+        };
         /** ProfileResponse */
         ProfileResponse: {
             /** Nickname */
@@ -647,7 +731,7 @@ export interface components {
             keep_audio: boolean;
             chat_model: components["schemas"]["ChatModel"] | null;
             default_chat_model: components["schemas"]["ChatModel"];
-            client: components["schemas"]["ClientConfig"];
+            client: components["schemas"]["ProfileClientConfig"];
         };
         /**
          * ProfileUpdate
@@ -1254,6 +1338,44 @@ export interface operations {
             };
         };
     };
+    create_files_turn_api_sessions__session_id__turns_files_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    text: string;
+                    files: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description 턴 이벤트 스트림(turn → sentence·tool → done 또는 error) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["StreamEvent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_audio_turn_api_sessions__session_id__turns_audio_post: {
         parameters: {
             query?: never;
@@ -1304,6 +1426,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SessionClosed"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attachment_api_attachments__attachment_id__get: {
+        parameters: {
+            query?: {
+                thumb?: boolean;
+            };
+            header?: never;
+            path: {
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -14,7 +14,8 @@
 | 항목 | 상태 |
 |---|---|
 | `POST /api/sessions/prepare`(2.1), `POST /api/sessions/{id}/turns/audio/record`(2.14), `POST /api/sessions/{id}/turns/{turn_id}/cancel`(2.12) | 미구현(M4, 자체 음성 보류 D9) |
-| `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13), `GET /api/usage`(1.3) | 미구현(M5) |
+| `GET /api/usage`(1.3) | 미구현(M5) |
+| `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 서버 구현됨(M5-07, 2026-11-03), 웹 화면은 M5-08 |
 | 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 미구현(M6) |
 | `GET /api/journal?q=`, `GET /api/journal/{id}/export.md`(3절) | 미구현(P2) |
 | 그 밖의 `/api` 경로(세션 시작·종료·다시 열기, 글·음성 턴, 지연 보고, 일지·노트, 프로필, 보이스, 지연 요약, health) | 구현됨 |
@@ -202,7 +203,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 - 글 대화(`mode=text`)에서만 받고 음성 세션은 400 `attachment_invalid`다.
 - 이미지(png·jpg·webp·gif), 텍스트(txt·md·csv·json), PDF만 된다. 서버는 이미지를 열어 EXIF 회전을 적용한 뒤 긴 변 1024px 이하 PNG(알파)·JPEG로 다시 인코딩하고 EXIF를 제거한다(GIF는 첫 프레임, 320px 썸네일을 함께 저장). 텍스트는 UTF-8(BOM 허용), 실패하면 CP949로 읽어 UTF-8로 저장하고 NUL이 있으면 거절한다. PDF는 재인코딩하지 않고 원본을 저장·전달하며(`%PDF-` 시그니처 확인, 암호화·손상은 거절) 메시지당 1개다.
-- 한도: 이미지 원본 5MB(넘으면 413 `attachment_too_large`), 텍스트 파일당 200KB(413), PDF 5MB(413). 쪽수·글자 수 한도는 넘으면 400 `attachment_invalid`이며 자르지 않고 거절한다: PDF 파일당 10쪽, 메시지의 텍스트 합계 1만 자, 세션 누적 이미지 10장·텍스트 3만 자·PDF 20쪽. 한도의 정본은 서버이고 `GET /api/profile`의 `client.attachments`(`max_files`, `image_upload_max_bytes`, `image_max_px`, `text_max_bytes`, `text_max_chars`, `session_max_images`, `session_max_text_chars`, `max_pdfs`, `pdf_max_bytes`, `pdf_max_pages`, `session_max_pdf_pages`, `image_extensions`, `text_extensions`, `pdf_extensions`)로 내려오며, 웹은 보내기 전 안내에만 쓴다(서버가 다시 검증한다).
+- 한도: 이미지 원본 5MB(넘으면 413 `attachment_too_large`), 텍스트 파일당 200KB(413), PDF 5MB(413). 쪽수·글자 수 한도는 넘으면 400 `attachment_invalid`이며 자르지 않고 거절한다: PDF 파일당 10쪽, 메시지의 텍스트 합계 1만 자, 세션 누적 이미지 10장·텍스트 3만 자·PDF 20쪽. 한도의 정본은 서버이고 `GET /api/profile`의 `client.attachments`(`max_files`, `image_upload_max_bytes`, `image_max_px`, `text_max_bytes`, `text_max_chars`, `session_max_images`, `session_max_text_chars`, `max_pdfs`, `pdf_max_bytes`, `pdf_max_pages`, `session_max_pdf_pages`, `image_extensions`, `text_extensions`, `pdf_extensions`)로 내려오며, 웹은 보내기 전 안내에만 쓴다(서버가 다시 검증한다). 서버는 본문을 읽기 전에 `Content-Length`로 전체 크기를 검사한다(없으면 400 `attachment_invalid`, 파일 한도 합계에 여유를 더한 값을 넘으면 413 `attachment_too_large`).
 - 글은 필수이고 기본 문구를 넣지 않으므로 첨부만 있고 글이 없으면 보내지 못하게 하고 힌트를 보인다. 첨부 오류(`attachment_*`)는 SSE 전에 JSON으로 오며 사용자 메시지를 만들지 않으므로 클라이언트는 쓴 글과 첨부 목록을 입력창에 되돌린다.
 - `turn.text`에는 사용자가 쓴 글만 저장되고 첨부는 `attachment` 행(턴에 CASCADE)과 `attachments_dir/{session_id}/` 파일(폴더 0700·파일 0600)로 남는다. CLI에는 `[이미지 블록…, document(PDF) 블록…, 텍스트 블록]`으로 전달하고 텍스트 파일은 `<attachment name="…">…</attachment>` 래퍼로 사용자 글 앞에 붙인다.
 - 일지 상세·다시 열기의 `turns[].attachments`는 `[{id, name, mime, size, thumb}]`이고(`thumb`는 썸네일이 있는 이미지), 파일은 `GET /api/attachments/{id}`(`?thumb=1`은 320px 썸네일)로 받는다. 이미지는 `inline`, 텍스트는 `text/plain; charset=utf-8`, PDF는 `application/pdf` 첨부(`attachment`)이며 항상 `X-Content-Type-Options: nosniff`다. 로그인이 없는 앱이라 보호는 ID(UUID) 추측 불가성과 네트워크 경계(Tailscale)뿐이다(`<img>`가 헤더를 못 붙이므로 토큰은 쓰지 않는다).

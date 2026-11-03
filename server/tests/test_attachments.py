@@ -98,6 +98,7 @@ async def test_truncated_image_is_rejected(settings):
     await fails(settings, Upload("cut.png", png_bytes((500, 500))[:80]))
 
 
+@pytest.mark.filterwarnings("ignore::PIL.Image.DecompressionBombWarning")
 async def test_decompression_bomb_is_rejected(settings):
     # 압축률이 높아 작은 파일이지만 픽셀이 한도(4천만)를 넘는다
     await fails(settings, Upload("bomb.png", png_bytes((7000, 7000), mode="RGB")))

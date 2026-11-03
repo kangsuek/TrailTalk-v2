@@ -113,7 +113,12 @@ class TurnOut(BaseModel):
             interrupted=turn.interrupted,
             merged_from=turn.merged_from,
             created_at=turn.created_at,
-            attachments=[],
+            attachments=[
+                AttachmentOut(
+                    id=a.id, name=a.name, mime=a.mime, size=a.size, thumb=a.thumb_path is not None
+                )
+                for a in turn.attachments
+            ],
         )
 
 
