@@ -42,6 +42,8 @@ class ToolFinished:
     tool_use_id: str
     is_error: bool
     summary: dict[str, Any] | None = None  # 종류(kind)를 붙인 요약(parser._tool_summary)
+    # 이 결과가 답변의 출처가 되는 항목 [{title, url, host}](turn.sources, parser.tool_sources)
+    sources: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)

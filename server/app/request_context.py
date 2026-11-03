@@ -36,6 +36,10 @@ def configure_logging(level: str = "INFO") -> None:
     루트 로거에 핸들러가 있어도 줄이 중복되지 않도록 전파하지 않는다.
     """
     logging.getLogger("uvicorn.access").disabled = True
+    # HTTP 클라이언트는 INFO에 요청 주소(검색어가 든 쿼리스트링)를 남긴다. 검색어·URL은 로그에
+    # 남기지 않는 규칙이라 경고 이상만 보이게 한다
+    for name in ("httpx2", "httpcore2"):
+        logging.getLogger(name).setLevel(logging.WARNING)
     logger = logging.getLogger("trailtalk")
     logger.setLevel(level.upper())
     logger.propagate = False

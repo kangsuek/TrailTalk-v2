@@ -127,6 +127,7 @@ class SessionNotEnded(AppError):
         super().__init__("session_not_ended", "아직 끝나지 않은 대화입니다.", 409)
 
 
+MAX_TURN_SOURCES = 20  # 한 턴의 답변에 저장하는 출처 수
 _END_WAIT_S = 10.0  # 끝내기: 진행 중인 턴이 정리되길 기다리는 시간
 _LOCK_WAIT_S = 3.0  # 지우기·다시 열기: 답변 중인 턴이 끝나길 기다리는 시간(넘으면 turn_in_progress)
 _EXTRACT_STOP_S = 5.0  # 지우기·다시 열기: 멈춘 정리의 결과 쓰기를 기다리는 시간
@@ -791,6 +792,7 @@ async def _run_turn(
     latency_saved = False
     tts_down = False  # 이 턴에서 합성이 최종 실패했으면 남은 문장은 바로 글로 보낸다
     runtime.requested_status = None
+    runtime.web_content_seen = False
     runtime.current_user_turn_id = user_turn_id
     try:
         with anyio.CancelScope(shield=True):
@@ -818,6 +820,7 @@ async def _run_turn(
         sent: list[str] = []  # 클라이언트에 보낸 문장(부분 답변으로 저장)
         reply_saved = False
         tool_names: dict[str, str] = {}
+        sources: dict[str, dict] = {}  # 이 턴에서 본 출처(URL 중복 없이, turn.sources)
         finished: TurnFinished | None = None
 
         async def sentence_chunk(item: str) -> bytes:
@@ -849,7 +852,14 @@ async def _run_turn(
                     tracker.tts.append((index, made.model, made.fallback))
             with anyio.CancelScope(shield=True):
                 await _save_reply(
-                    db, assistant_id, session_id, seq + 1, " ".join(sent), True, reply_saved
+                    db,
+                    assistant_id,
+                    session_id,
+                    seq + 1,
+                    " ".join(sent),
+                    True,
+                    reply_saved,
+                    list(sources.values()),
                 )
                 await db.commit()
             reply_saved = True
@@ -892,6 +902,8 @@ async def _run_turn(
                         tool_names[event.tool_use_id] = name
                         if tracker is not None and name == "web_search":
                             tracker.searched = True
+                        if name in ("web_search", "web_fetch"):  # 웹 내용을 받는 도구
+                            runtime.web_content_seen = True
                         yield encode_sse(
                             ToolEvent(phase="start", tool_use_id=event.tool_use_id, name=name)
                         )
@@ -908,6 +920,11 @@ async def _run_turn(
                             )
                         )
                     elif isinstance(event, ToolFinished):
+                        if not event.is_error:
+                            for source in event.sources:
+                                if len(sources) >= MAX_TURN_SOURCES:
+                                    break
+                                sources.setdefault(source["url"], source)
                         yield encode_sse(
                             ToolEvent(
                                 phase="end",
@@ -936,7 +953,14 @@ async def _run_turn(
         reply_chars = len(reply)
         with anyio.CancelScope(shield=True):
             await _save_reply(
-                db, assistant_id, session_id, seq + 1, reply, finished.interrupted, reply_saved
+                db,
+                assistant_id,
+                session_id,
+                seq + 1,
+                reply,
+                finished.interrupted,
+                reply_saved,
+                list(sources.values()),
             )
             requested = runtime.pop_requested_status()
             if requested is not None:
@@ -966,6 +990,7 @@ async def _run_turn(
         yield _error(await _settle_after_error(app, db, runtime, session_id, error))
     finally:
         runtime.current_user_turn_id = None
+        runtime.web_content_seen = False
         if tracker is not None and not latency_saved:
             await tracker.save(db, session_id, assistant_id, reply_chars=reply_chars)
         # 도구가 쉬기·끝내기를 요청한 뒤 턴이 오류나 연결 끊김으로 끝났어도 요청은 반영한다
@@ -984,13 +1009,15 @@ async def _save_reply(
     text: str,
     interrupted: bool,
     exists: bool,
+    sources: list[dict] | None = None,
 ) -> None:
-    """assistant 턴을 만들거나 고친다(커밋은 부르는 쪽). 문장마다 불리므로 한 줄 쿼리로 끝낸다."""
+    """assistant 턴을 만들거나 고친다(커밋은 부르는 쪽). 문장마다 불리므로 한 줄 쿼리로 끝낸다.
+    sources는 이 턴에서 본 검색·읽기 출처(없으면 null로 둔다)."""
     if exists:
         statement = (
             update(Turn)
             .where(Turn.id == turn_id)
-            .values(text=text, interrupted=interrupted)
+            .values(text=text, interrupted=interrupted, sources=sources or None)
             .execution_options(synchronize_session=False)
         )
     else:
@@ -1001,6 +1028,7 @@ async def _save_reply(
             role=TurnRole.ASSISTANT,
             text=text,
             interrupted=interrupted,
+            sources=sources or None,
         )
     await db.execute(statement)
 

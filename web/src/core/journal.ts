@@ -150,6 +150,8 @@ export interface Turn {
   merged_from: string | null
   created_at: string
   attachments: Attachment[]
+  /** 답변에서 본 검색·읽기 출처의 호스트(서버가 준 그대로 보인다). 없으면 빈 목록 */
+  sources?: string[]
 }
 
 export interface Note {
@@ -220,7 +222,13 @@ export interface TranscriptBubble {
   interrupted: boolean
   attachments: Attachment[]
   turnIds: string[]
+  /** 답변의 출처 호스트(병합된 뒷말 것까지 중복 없이) */
+  sources: string[]
 }
+
+const mergeSources = (a: readonly string[], b: readonly string[] | undefined): string[] => [
+  ...new Set([...a, ...(b ?? [])]),
+]
 
 /** 전문을 말풍선으로. `merged_from`이 가리키는 앞말과 같은 화자의 뒷말은 한 말풍선으로 합친다. */
 export function groupTurns(turns: readonly Turn[]): TranscriptBubble[] {
@@ -236,6 +244,7 @@ export function groupTurns(turns: readonly Turn[]): TranscriptBubble[] {
       target.attachments.push(...turn.attachments)
       target.turnIds.push(turn.id)
       target.interrupted = turn.interrupted
+      target.sources = mergeSources(target.sources, turn.sources)
     } else {
       bubbles.push({
         id: turn.id,
@@ -244,6 +253,7 @@ export function groupTurns(turns: readonly Turn[]): TranscriptBubble[] {
         interrupted: turn.interrupted,
         attachments: [...turn.attachments],
         turnIds: [turn.id],
+        sources: mergeSources([], turn.sources),
       })
     }
   }

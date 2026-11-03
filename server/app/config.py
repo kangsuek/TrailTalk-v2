@@ -13,7 +13,7 @@ REPO_DIR = SERVER_DIR.parent
 class Settings(BaseSettings):
     """서버 설정. 값은 환경 변수 또는 저장소 루트의 .env에서 읽는다.
 
-    M0 항목, M1의 LLM·CLI 항목, M3의 음성 항목이 있다. 검색·메일 항목은 쓰는 마일스톤에서 추가한다.
+    M0 항목, M1의 LLM·CLI 항목, M3의 음성 항목, M5의 검색·fetch 항목이 있다.
     """
 
     model_config = SettingsConfigDict(
@@ -105,6 +105,33 @@ class Settings(BaseSettings):
     ffmpeg_path: str = "ffmpeg"
     ffmpeg_timeout_s: float = Field(default=10, gt=0)
 
+    # 웹 검색 도구(M5-09, 내부 MCP search_naver·search_naver_blog·search_google).
+    # 키가 없어도 서버는 시작하고 그 도구 호출만 오류(내장 WebSearch로 폴백하라는 안내)를 돌려준다.
+    # 키·검색어는 로그에 남기지 않는다(길이만)
+    naver_client_id: SecretStr | None = None
+    naver_client_secret: SecretStr | None = None
+    naver_base_url: str = "https://openapi.naver.com"
+    naver_fetch_count: int = Field(default=50, gt=0, le=100)  # 기간·매체 지정 때 받는 건수
+    search_timeout_s: float = Field(default=5, gt=0)  # 네이버 검색 한 번의 전체 제한 시간
+    search_max_results: int = Field(default=5, gt=0, le=10)  # 모델에 주는 결과 수
+    # HasData(구글 검색·웹 스크래핑). 주소·인증 머리말은 실제 확인 전 가정이라 설정으로 바꾼다
+    # (docs/spikes/m5-search.md). 무료 요금제는 동시 요청 1개라 서버가 호출을 직렬화한다
+    hasdata_api_key: SecretStr | None = None
+    hasdata_base_url: str = "https://api.hasdata.com"
+    hasdata_search_path: str = "/scrape/google-light/serp/"
+    hasdata_scrape_path: str = "/scrape/web/"
+    hasdata_key_header: str = Field(default="x-api-key", min_length=1)
+    # 검색 제한 시간: 넘으면 search_google이 오류를 돌려주고 모델이 내장 WebSearch로 폴백한다
+    hasdata_search_timeout_s: float = Field(default=6, gt=0)
+    hasdata_scrape_timeout_s: float = Field(default=20, gt=0)
+    hasdata_detail_max_chars: int = Field(default=8_000, gt=0)  # search_google_detail 본문 상한
+
+    # web_fetch(M5-11, 서버가 직접 가져온다. 사설 대역 차단은 app/services/web_fetch.py)
+    web_fetch_timeout_s: float = Field(default=10, gt=0)  # 요청 전체(리다이렉트 포함)
+    web_fetch_max_bytes: int = Field(default=1_000_000, gt=0)  # 받는 본문 상한
+    web_fetch_max_redirects: int = Field(default=4, ge=0)
+    web_fetch_max_chars: int = Field(default=8_000, gt=0)  # 모델에 주는 본문 글자 수 상한
+
     # Claude 앱 MCP 연계(외부 MCP 앱, 별도 포트, docs/MCP). 공개 주소와 소유자 비밀번호가 둘 다
     # 있어야 외부 앱을 띄울 수 있다(app/mcp_external/config.py가 검증). 저장소에는 값을 두지 않는다
     mcp_public_url: str = ""
@@ -118,6 +145,13 @@ class Settings(BaseSettings):
     mcp_call_log: Path = SERVER_DIR / "data" / "mcp-calls.jsonl"
     # 앱 세션 전문의 상대(Claude 앱) 화자 이름. 캐릭터 이름이 아니라 설정값이다(코드에 박지 않는다)
     app_speaker_name: str = Field(default="Claude", min_length=1, max_length=20)
+
+    @field_validator("naver_client_id", "naver_client_secret", "hasdata_api_key", mode="before")
+    @classmethod
+    def _blank_search_key_is_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
     @field_validator("mcp_owner_password", mode="before")
     @classmethod

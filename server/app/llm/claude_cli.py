@@ -30,7 +30,10 @@ from app.llm.parser import StreamJsonParser
 logger = logging.getLogger("trailtalk.llm")
 
 # 자체 도구 서버(trailtalk) 허용 패턴. 외부 MCP 서버(M5)는 extra_allowed_tools로 더한다
-OWN_ALLOWED_TOOLS = ("mcp__trailtalk__*",)
+# 내장 도구는 WebSearch만 켠다(검색 API 도구가 실패했을 때의 폴백, M5-09). 내장 WebFetch는
+# 사설 대역을 막지 못해 끄고(M5-01 ②) 서버의 web_fetch 도구가 대신한다(M5-11)
+BUILTIN_TOOLS = ("WebSearch",)
+OWN_ALLOWED_TOOLS = ("mcp__trailtalk__*", *BUILTIN_TOOLS)
 SESSION_KEY = re.compile(r"[A-Za-z0-9_-]{1,64}")
 # 자식 프로세스에 넘기는 환경 변수(그 밖의 서버 비밀값·ANTHROPIC_* 키는 넘기지 않는다)
 ENV_ALLOWLIST = (
@@ -52,7 +55,7 @@ def build_command(
     mcp_config_path: Path | None = None,
     extra_allowed_tools: Sequence[str] = (),
 ) -> list[str]:
-    """CLI 실행 인자. 내장 도구는 모두 끄고(`--tools ""`, 웹 검색은 M5) 앱 도구만 허용한다."""
+    """CLI 실행 인자. 내장 도구는 WebSearch만 켜고 앱 도구(mcp__trailtalk__*)와 함께 허용한다."""
     command = [
         settings.claude_cli_path,
         "-p",
@@ -61,7 +64,7 @@ def build_command(
         "--include-partial-messages",
         "--verbose",
         "--model", model,
-        "--tools", "",
+        "--tools", ",".join(BUILTIN_TOOLS),
         "--restricted",
         "--strict-mcp-config",
         "--setting-sources", "",

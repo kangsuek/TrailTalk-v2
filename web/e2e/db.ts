@@ -10,6 +10,8 @@ export interface TurnRow {
   text: string
   interrupted: number
   greeting: number
+  /** 검색·읽기 출처 JSON 문자열(없으면 null) */
+  sources: string | null
 }
 
 export interface SessionRow {
@@ -39,7 +41,7 @@ export function latestSession(): SessionRow {
 
 export function turnsOf(sessionId: string): TurnRow[] {
   return query<TurnRow>(
-    'SELECT seq, role, text, interrupted, greeting FROM turn WHERE session_id = ? ORDER BY seq',
+    'SELECT seq, role, text, interrupted, greeting, sources FROM turn WHERE session_id = ? ORDER BY seq',
     sessionId,
   )
 }

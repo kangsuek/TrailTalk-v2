@@ -20,23 +20,105 @@ from app.llm.events import (
     TurnFinished,
     TurnStarted,
 )
+from app.services.search import host_of
 
 logger = logging.getLogger("trailtalk.llm")
 
 _SUMMARY_LIMIT = 500
 
 
+_MAX_LINKS = 10
+_MAX_SOURCES = 3
+
+
+def _web_search_summary(query: Any, links: list[dict[str, Any]]) -> dict[str, Any]:
+    links = links[:_MAX_LINKS]
+    hosts = (host_of(link["url"]) for link in links)
+    sources = list(dict.fromkeys(h for h in hosts if h))[:_MAX_SOURCES]
+    return {
+        "kind": "web_search",
+        "query": query if isinstance(query, str) else None,
+        "links": links,
+        "sources": sources,
+    }
+
+
+def _web_fetch_summary(raw: dict[str, Any]) -> dict[str, Any]:
+    url = raw.get("url")
+    return {
+        "kind": "web_fetch",
+        "code": raw.get("code") if type(raw.get("code")) is int else None,
+        "bytes": raw.get("bytes") if type(raw.get("bytes")) is int else None,
+        "url": url if isinstance(url, str) else None,
+        "host": host_of(url),
+    }
+
+
 def _tool_summary(raw: Any) -> dict[str, Any] | None:
     """도구 결과에서 SSE에 필요한 부분만 남긴다(본문 전체는 싣지 않는다). 종류는 kind로 구분한다
-    (클라이언트 규약 2.6). 앱 도구(MCP) 결과만 다루며 알 수 없는 결과면 None.
-    웹 검색·fetch 요약은 검색을 만드는 M5에서 더한다."""
-    if not isinstance(raw, dict) or "structuredContent" not in raw:
+    (클라이언트 규약 2.6). 알 수 없는 결과면 None.
+
+    - 내장 WebSearch: user 이벤트의 tool_use_result `{query, results:[{content:[{title,url}]}]}`
+      (M5-01 ⑤, 문자열 파싱보다 안정적이다)
+    - 앱 도구(MCP)는 structuredContent에 담긴다. 검색 도구(search_naver 등)는 `{query, results:
+      [{title,url,...}]}`를 돌려주어 같은 web_search 요약이 되고, web_fetch는 `{code, bytes,
+      url}`를 돌려주어 web_fetch 요약이 된다."""
+    if not isinstance(raw, dict):
+        return None
+    if "query" in raw and "results" in raw:  # 내장 WebSearch
+        links = []
+        for result in raw.get("results") or []:
+            if not isinstance(result, dict):  # 결과 목록에 요약 문자열이 섞여 온다
+                continue
+            for item in result.get("content") or []:
+                if isinstance(item, dict) and isinstance(item.get("url"), str):
+                    title = item.get("title")
+                    links.append(
+                        {"title": title if isinstance(title, str) else None, "url": item["url"]}
+                    )
+        return _web_search_summary(raw.get("query"), links)
+    if "code" in raw and "bytes" in raw:  # 내장 WebFetch 형식
+        return _web_fetch_summary(raw)
+    if "structuredContent" not in raw:
         return None
     content = raw.get("structuredContent")
     # 문자열을 돌려주는 도구는 SDK가 {"result": 문자열}로 감싼다. 클라이언트에는 그 값만 준다
     if isinstance(content, dict) and set(content) == {"result"}:
         content = content["result"]
+    if isinstance(content, dict):
+        if "query" in content and isinstance(content.get("results"), list):
+            links = [
+                {
+                    "title": r.get("title") if isinstance(r.get("title"), str) else None,
+                    "url": r["url"],
+                }
+                for r in content["results"]
+                if isinstance(r, dict) and isinstance(r.get("url"), str)
+            ]
+            return _web_search_summary(content.get("query"), links)
+        if "code" in content and "bytes" in content:
+            return _web_fetch_summary(content)
     return {"kind": "result", "result": content}
+
+
+def tool_sources(raw: Any) -> tuple[dict[str, str | None], ...]:
+    """도구 결과에서 답변의 출처(turn.sources)가 될 항목 [{title, url, host}]을 뽑는다. 웹 검색
+    결과 링크(최대 10개)와 web_fetch로 읽은 페이지(HTTP 400 미만)만 해당한다. host는 화면에 보일
+    출처 호스트(www. 뗌)이며 요약의 sources와 같은 규칙이다."""
+    summary = _tool_summary(raw)
+    if summary is None:
+        return ()
+    if summary["kind"] == "web_fetch":
+        url, code = summary["url"], summary["code"]
+        if not url or (code is not None and code >= 400):
+            return ()
+        return ({"title": None, "url": url, "host": summary["host"]},)
+    if summary["kind"] != "web_search":
+        return ()
+    return tuple(
+        {"title": link["title"], "url": link["url"], "host": host_of(link["url"])}
+        for link in summary["links"]
+    )
 
 
 class StreamJsonParser:
@@ -127,6 +209,7 @@ class StreamJsonParser:
                         tool_use_id=block.get("tool_use_id", ""),
                         is_error=bool(block.get("is_error")),
                         summary=_tool_summary(event.get("tool_use_result")),
+                        sources=tool_sources(event.get("tool_use_result")),
                     )
                 )
         return events

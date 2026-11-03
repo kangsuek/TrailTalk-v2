@@ -912,6 +912,8 @@ export interface components {
             created_at: string;
             /** Attachments */
             attachments: components["schemas"]["AttachmentOut"][];
+            /** Sources */
+            sources: string[];
         };
         /** UploadAudioConfig */
         UploadAudioConfig: {
@@ -1094,7 +1096,7 @@ export interface components {
              * Summary
              * @default null
              */
-            summary: components["schemas"]["ToolResultSummary"] | null;
+            summary: (components["schemas"]["ToolResultSummary"] | components["schemas"]["WebSearchSummary"] | components["schemas"]["WebFetchSummary"]) | null;
             /**
              * Is Error
              * @default false
@@ -1151,6 +1153,49 @@ export interface components {
             text: string;
             /** Audio */
             audio: string | null;
+        };
+        /**
+         * WebFetchSummary
+         * @description web_fetch가 읽은 페이지(규약 2.6). code가 400 이상이면 읽지 못한 것.
+         */
+        WebFetchSummary: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "web_fetch";
+            /** Code */
+            code: number | null;
+            /** Bytes */
+            bytes: number | null;
+            /** Url */
+            url: string | null;
+            /** Host */
+            host: string | null;
+        };
+        /** WebLink */
+        WebLink: {
+            /** Title */
+            title: string | null;
+            /** Url */
+            url: string;
+        };
+        /**
+         * WebSearchSummary
+         * @description 웹 검색(내장 WebSearch와 검색 API 도구 모두 같은 형식, 규약 2.6). sources는 링크 호스트.
+         */
+        WebSearchSummary: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "web_search";
+            /** Query */
+            query: string | null;
+            /** Links */
+            links: components["schemas"]["WebLink"][];
+            /** Sources */
+            sources: string[];
         };
         StreamEvent: components["schemas"]["TranscriptEvent"] | components["schemas"]["TurnEvent"] | components["schemas"]["SentenceEvent"] | components["schemas"]["ToolEvent"] | components["schemas"]["DoneEvent"] | components["schemas"]["ErrorEvent"];
     };

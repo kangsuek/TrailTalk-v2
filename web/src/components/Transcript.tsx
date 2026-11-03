@@ -21,6 +21,13 @@ export default function Transcript({ turns, personaName }: { turns: Turn[]; pers
                   {mine ? text : <Markdown text={text} />}
                 </div>
               ))}
+              {!mine && bubble.sources.length > 0 && (
+                <ul className="bubble-sources" aria-label="출처">
+                  {bubble.sources.map((host) => (
+                    <li key={host}>{host}</li>
+                  ))}
+                </ul>
+              )}
             </div>
             {bubble.interrupted && (
               <span className="t-cut">
