@@ -23,6 +23,10 @@ async function silentMic(page: Page) {
 async function openVoiceStart(page: Page) {
   // 앞선 시험이 남긴 아이디어가 "지난 아이디어" 카드로 보이지 않게 빈 목록으로 고정한다
   await page.route('**/api/notes/open-ideas*', (route) => route.fulfill({ json: [] }))
+  // 앞선 시험이 서버에 남긴 한도 값이 헤더 막대에 보이지 않게 첫 답변 전 상태로 고정한다
+  await page.route('**/api/usage', (route) =>
+    route.fulfill({ json: { status: null, five_hour: null, seven_day: null, updated_at: null } }),
+  )
   await page.goto('/')
   const toggle = page.getByRole('group', { name: '대화 방식' })
   await expect(toggle.getByRole('button', { name: '음성으로' })).toBeEnabled({ timeout: 15_000 })

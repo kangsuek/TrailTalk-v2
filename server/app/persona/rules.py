@@ -3,9 +3,9 @@
 캐릭터와 무관한 앱 동작 규칙이다. 캐릭터 이름·성격·말투는 여기에 두지 않는다(NFR-08).
 도구 이름은 Spec 5.6의 캐릭터 도구와 맞춘다. 규칙은 v1에서 검증한 전문을 옮겨 두었고, M1은 실제로
 있는 도구(save_note, search_notes, search_conversations, summarize_session, pause_session,
-end_session, set_nickname, set_model)만 말한다. 웹 검색(WEB_SEARCH_RULES)·이메일(EMAIL_TOOL_RULE)·
-첨부(ATTACHMENT_RULES) 규칙은 그 기능을 만드는 M5에서 ROLE_RULE_SECTIONS에 넣는다. 없는 도구를
-쓸 수 있다고 알리면 모델이 지어내기 때문이다.
+end_session, set_nickname, set_model)만 말한다. 웹 검색(WEB_SEARCH_RULES)·첨부(ATTACHMENT_RULES)
+규칙은 그 기능을 만드는 M5에서 ROLE_RULE_SECTIONS에 넣는다(이메일은 2026-11-02에 제거했다).
+없는 도구를 쓸 수 있다고 알리면 모델이 지어내기 때문이다.
 일지 정리(추출) 지시문(EXTRACT_*, app/jobs/extract.py)도 앱 규칙이라 여기에 둔다.
 """
 
@@ -113,17 +113,6 @@ TOOL_RULES = (
     "등)은 "
     "할 수 있다고 하거나 한 것처럼 말하지 말고, 할 수 없다고 짧게 말한다. "
     "도구를 부르지 않았거나 실패한 일을 했다고 말하지 않는다.",
-)
-
-# M5(이메일)에서 TOOL_RULES에 넣는다
-EMAIL_TOOL_RULE = (
-    "사용자가 이 대화를 이메일로 보내 달라고 하면 send_email 도구를 부른다. 요약·정리·특정 형식"
-    "(예: 할 일만, 세 줄로)을 따로 요구하면 그 요청대로 네가 직접 쓴 글(마크다운 기호 없는 "
-    "일반 글)을 content에 넣고, 대화 전문도 함께 원하면 include_transcript를 켠다. 그 밖에는 "
-    "content 없이 부른다(일지 요약·노트·전문이 정해진 형식으로 간다). 받는 주소는 사용자가 "
-    "설정에 저장한 본인 주소로 도구가 알아서 보내므로 주소를 묻거나 말하지 않는다. 도구가 주소가 "
-    "없다고 알리면 설정 화면에서 이메일 주소를 넣으면 보낼 수 있다고 안내한다. 도구가 실패하면 "
-    "보내지 못했다고 말한다."
 )
 
 CALLING_RULES = (

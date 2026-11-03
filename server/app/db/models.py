@@ -104,7 +104,6 @@ class UserProfile(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nickname: Mapped[str | None] = mapped_column(String(50))
-    email: Mapped[str | None] = mapped_column(String(254))  # 대화 내용을 보낼 본인 주소
     interests: Mapped[list[str]] = mapped_column(MutableList.as_mutable(JSON), default=list)
     persona_id: Mapped[str | None] = mapped_column(ForeignKey("persona.id", ondelete="SET NULL"))
     voice: Mapped[str | None] = mapped_column(String(100))  # null이면 페르소나 기본

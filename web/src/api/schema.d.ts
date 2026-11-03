@@ -284,6 +284,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Usage */
+        get: operations["get_usage_api_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/voices": {
         parameters: {
             query?: never;
@@ -616,10 +633,6 @@ export interface components {
         ProfileResponse: {
             /** Nickname */
             nickname: string | null;
-            /** Email */
-            email: string | null;
-            /** Mail Ready */
-            mail_ready: boolean;
             /** Interests */
             interests: string[];
             /** Persona Id */
@@ -643,8 +656,6 @@ export interface components {
         ProfileUpdate: {
             /** Nickname */
             nickname?: string | null;
-            /** Email */
-            email?: string | null;
             /** Interests */
             interests?: string[] | null;
             /** Persona Id */
@@ -835,6 +846,22 @@ export interface components {
              * @constant
              */
             channels: 1;
+        };
+        /** UsageOut */
+        UsageOut: {
+            /** Status */
+            status: string | null;
+            five_hour: components["schemas"]["UsageWindowOut"] | null;
+            seven_day: components["schemas"]["UsageWindowOut"] | null;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** UsageWindowOut */
+        UsageWindowOut: {
+            /** Utilization */
+            utilization: number;
+            /** Resets At */
+            resets_at: string | null;
         };
         /**
          * VadConfig
@@ -1574,6 +1601,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_api_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageOut"];
                 };
             };
         };
