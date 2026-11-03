@@ -14,8 +14,7 @@
 | 항목 | 상태 |
 |---|---|
 | `POST /api/sessions/prepare`(2.1), `POST /api/sessions/{id}/turns/audio/record`(2.14), `POST /api/sessions/{id}/turns/{turn_id}/cancel`(2.12) | 미구현(M4, 자체 음성 보류 D9) |
-| `GET /api/usage`(1.3) | 미구현(M5) |
-| `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 서버 구현됨(M5-07, 2026-11-03), 웹 화면은 M5-08 |
+| `GET /api/usage`(1.3), `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 구현됨(M5, 2026-11-03: 서버·웹) |
 | 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 미구현(M6) |
 | `GET /api/journal?q=`, `GET /api/journal/{id}/export.md`(3절) | 미구현(P2) |
 | 그 밖의 `/api` 경로(세션 시작·종료·다시 열기, 글·음성 턴, 지연 보고, 일지·노트, 프로필, 보이스, 지연 요약, health) | 구현됨 |
@@ -219,7 +218,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 
 서버는 음성 턴마다 요청 처리를 시작한 때를 기준으로 단계 시간(ms)을 남긴다: `upload_ms`(세션 확인과 본문 다 받기까지), `stt_ms`(형식 변환과 인식), `first_token_ms`(CLI 첫 글자), `first_queued_ms`·`first_synth_ms`·`synth_wait_ms`(첫 문장 합성 구간), `first_sentence_ms`(첫 문장을 소리와 함께 보냄), `done_ms`(턴 끝), `audio_bytes`. `[v2]` 문장마다 쓴 합성 모델(`tts_model`)과 폴백 발동 여부도 남긴다.
 
-행은 음성 업로드로 시작한 턴(`turns/audio`)만 만든다(글 턴은 기록하지 않는다). 서버 기록은 `done`을 보내기 전에 한 번 쓰고(오류·끊김이면 그 뒤에 쓴다), 그래서 클라이언트가 `done` 직후 보고해도 행이 있다. 첫 문장 전에 끊긴 턴처럼 `done`이 없는 턴은 보고하지 않는다. `reply_chars`는 정상으로 끝난 턴의 글자 수다(오류·끊김은 0).
+행은 음성 업로드로 시작한 턴(`turns/audio`, `mode`=`voice`)과 `[v2]` 글 대화 턴(`mode`=`text`, 첨부 턴 포함)이 만든다. 글 턴은 서버 구간(`first_token_ms`·`first_sentence_ms`·`done_ms`·`cli_age_ms`·`searched`·`reply_chars`)만 채우고 음성 전용 열(`upload_ms`·`stt_ms`·`audio_bytes`와 클라이언트 보고)은 null이며, 클라이언트는 글 턴을 보고하지 않는다. 서버 기록은 `done`을 보내기 전에 한 번 쓰고(오류·끊김이면 그 뒤에 쓴다), 그래서 클라이언트가 `done` 직후 보고해도 행이 있다. 첫 문장 전에 끊긴 턴처럼 `done`이 없는 턴은 보고하지 않는다. `reply_chars`는 정상으로 끝난 턴의 글자 수다(오류·끊김은 0).
 
 클라이언트는 한 번만 보고한다: `POST /api/sessions/{id}/turns/{turn_id}/latency {speech_to_request_ms, request_to_playback_ms, first_sound_notice, ack_ms}` → 204.
 
@@ -234,6 +233,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 - 맞장구는 `turn` 이벤트(인식 약 1초 뒤)보다 먼저 나갈 수 있어 보고할 턴 ID가 아직 없으므로, 클라이언트는 `ack_ms`를 보관했다가 `turn` 수신 때 해당 턴의 보고에 싣는다.
 - `GET /api/latency?limit=100`(1~500) → `{turns: [..., first_sound_notice, total_ms], summary: {count, total_ms: {median, p90}, total_ms_reply: {median, p90}, stages: {단계: 중앙값}}}`(최근 음성 턴부터). `total_ms`는 두 보고값의 합(말 끝 → 첫 답변 소리), `total_ms_reply`는 첫 소리가 답변 문장인 턴만의 값이다(검색 턴은 안내 음성이 답변 지연을 가린다).
 - `[v2]` 요약에 필드를 더한다: `summary.ack_ms`(`{median, p90}`, 맞장구가 나간 턴의 값), `summary.search`(`{count, total_ms: {median, p90}, total_ms_reply: {median, p90}}`, 검색 턴만 따로 센 값이며 위 `total_ms`는 검색 제외), `summary.tts`(`{models: {<모델 이름>: 문장 수}, fallback_ratio}`, 기본 모델에서 대체 모델·기기 TTS로 넘어간 문장의 비율).
+- `[v2]` `summary.text`(`{count, first_token_ms: {median, p90}, done_ms: {median, p90}, search: {count, first_token_ms, done_ms}}`)는 글 대화 턴의 서버 구간 기준선이다(M5-16). 위 필드의 `turns`·`count`·`stages`·`total_ms`·`search`·`tts`는 `mode`=`voice` 행만 세어 글 턴이 음성 판정을 오염시키지 않는다. `text.count`와 `first_token_ms`·`done_ms`는 검색하지 않은 글 턴, `text.search`는 `web_search`를 쓴 글 턴이며, 값이 없으면 null이다. 이 값은 서버 구간일 뿐 5.1의 음성 목표 판정이 아니다. `limit`은 음성·글 각각의 최근 행 수에 적용한다.
 
 ## 3. 일지와 노트
 

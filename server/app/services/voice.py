@@ -69,6 +69,7 @@ class LatencyTracker:
     first_synth_ms: int | None = None
     first_sentence_ms: int | None = None
     searched: bool = False
+    mode: str = "voice"  # "text"면 글 대화 턴(음성 전용 열은 null)
     tts: list[tuple[int, str | None, bool]] = field(default_factory=list)
 
     def ms(self) -> int:
@@ -104,6 +105,7 @@ class LatencyTracker:
                         done_ms=self.ms(),
                         reply_chars=reply_chars,
                         searched=self.searched,
+                        mode=self.mode,
                     )
                 )
                 for index, model, fallback in self.tts:

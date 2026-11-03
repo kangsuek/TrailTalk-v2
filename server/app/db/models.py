@@ -262,6 +262,8 @@ class TurnLatency(Base):
     cli_age_ms: Mapped[int | None] = mapped_column(Integer)  # CLI 프로세스를 띄운 지 얼마나 됐는지
     reply_chars: Mapped[int | None] = mapped_column(Integer)
     searched: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # "voice"(음성 업로드 턴) 또는 "text"(글 대화 턴). 음성 요약에는 voice 행만 센다(M5-16)
+    mode: Mapped[str] = mapped_column(String(8), default="voice", server_default="voice")
     # 클라이언트 보고
     speech_to_request_ms: Mapped[int | None] = mapped_column(Integer)
     request_to_playback_ms: Mapped[int | None] = mapped_column(Integer)

@@ -73,6 +73,18 @@ class TtsStats(BaseModel):
     fallback_ratio: float  # 기본 모델에서 대체 모델·기기 TTS로 넘어간 문장의 비율
 
 
+class ServerStats(BaseModel):
+    count: int
+    first_token_ms: Stat | None  # 요청 시작 → CLI 첫 글자(서버 구간)
+    done_ms: Stat | None  # 요청 시작 → 턴 끝
+
+
+class TextStats(ServerStats):
+    """글 대화 턴의 서버 구간 기준선(M5-16). 검색 턴은 따로 센다. 음성 판정 값이 아니다."""
+
+    search: ServerStats
+
+
 class LatencySummary(BaseModel):
     count: int
     total_ms: Stat | None
@@ -81,6 +93,7 @@ class LatencySummary(BaseModel):
     ack_ms: Stat | None
     search: TotalStats
     tts: TtsStats
+    text: TextStats  # 글 대화 턴(음성 요약과 섞지 않는다)
 
 
 class LatencyOut(BaseModel):
@@ -121,9 +134,9 @@ async def report_latency(
 async def get_latency(
     db: DbSession, limit: Annotated[int, Query(ge=1, le=500)] = 100
 ) -> LatencyOut:
-    rows = list(
-        await db.scalars(select(TurnLatency).order_by(TurnLatency.created_at.desc()).limit(limit))
-    )
+    recent = select(TurnLatency).order_by(TurnLatency.created_at.desc()).limit(limit)
+    rows = list(await db.scalars(recent.where(TurnLatency.mode == "voice")))
+    text_rows = list(await db.scalars(recent.where(TurnLatency.mode == "text")))
     plain = [row for row in rows if not row.searched]
     searched = [row for row in rows if row.searched]
 
@@ -158,6 +171,16 @@ async def get_latency(
         key = item.model or "device"
         models[key] = models.get(key, 0) + 1
 
+    def server_stats(items: list[TurnLatency]) -> ServerStats:
+        return ServerStats(
+            count=len(items),
+            first_token_ms=_stat([r.first_token_ms for r in items if r.first_token_ms is not None]),
+            done_ms=_stat([r.done_ms for r in items if r.done_ms is not None]),
+        )
+
+    text_plain = server_stats([row for row in text_rows if not row.searched])
+    text_search = server_stats([row for row in text_rows if row.searched])
+
     return LatencyOut(
         turns=[
             LatencyTurn(
@@ -190,5 +213,6 @@ async def get_latency(
                 count=len(searched), total_ms=search_total, total_ms_reply=search_reply
             ),
             tts=TtsStats(models=models, fallback_ratio=(fallbacks / counted) if counted else 0.0),
+            text=TextStats(**text_plain.model_dump(), search=text_search),
         ),
     )
