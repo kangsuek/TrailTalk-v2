@@ -2,6 +2,7 @@
 // 서버 SSE 이벤트(docs/client-contract.md 2.4)를 말풍선 목록으로 바꾼다. 문장 분할·요약은 서버가 하고
 // 여기서는 받은 그대로 쌓기만 한다. UI·브라우저 API에 의존하지 않는다.
 
+import { bubbleAttachment, type BubbleAttachment } from './attachments.ts'
 import { groupTurns, type Turn } from './journal.ts'
 
 // 서버 SSE 이벤트(app/api/events.py, 규약 2.4). core는 api 폴더를 가져오지 않으므로 필요한 모양을
@@ -78,6 +79,8 @@ export interface UserMessage {
   role: 'user'
   id: string
   text: string
+  /** 글과 함께 보낸 첨부(없으면 생략) */
+  attachments?: BubbleAttachment[]
 }
 
 export interface AssistantMessage {
@@ -121,7 +124,7 @@ export type ConversationAction =
       personaName: string
       greeting: { turnId: string; text: string }
     }
-  | { type: 'send'; id: string; text: string }
+  | { type: 'send'; id: string; text: string; attachments?: BubbleAttachment[] }
   | { type: 'event'; event: StreamEvent }
   // code: 서버 오류 코드(세션이 이미 끝났으면 대화를 끝낸다), unsentId: 서버가 받기 전에 실패해
   // 입력창으로 되돌린 사용자 메시지(목록에서 뺀다)
@@ -281,7 +284,15 @@ export function conversationReducer(
         ...state,
         sending: true,
         error: null,
-        messages: [...state.messages, { role: 'user', id: action.id, text: action.text }],
+        messages: [
+          ...state.messages,
+          {
+            role: 'user',
+            id: action.id,
+            text: action.text,
+            ...(action.attachments?.length ? { attachments: action.attachments } : {}),
+          },
+        ],
       }
     case 'event':
       return applyEvent(state, action.event)
@@ -366,7 +377,12 @@ export function conversationReducer(
 export function messagesFromTurns(turns: readonly Turn[]): Message[] {
   return groupTurns(turns).map((bubble): Message => {
     if (bubble.role === 'user') {
-      return { role: 'user', id: bubble.id, text: bubble.texts.join('\n') }
+      return {
+        role: 'user',
+        id: bubble.id,
+        text: bubble.texts.join('\n'),
+        ...(bubble.attachments.length ? { attachments: bubble.attachments.map(bubbleAttachment) } : {}),
+      }
     }
     return {
       role: 'assistant',
