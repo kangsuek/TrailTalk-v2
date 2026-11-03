@@ -235,7 +235,7 @@ M3-01~M3-19 중 18개를 완료했다(M3-01~15는 2026-10-30까지, M3-16·17·1
 | M5-13 | E | 외부 MCP CLI 연결·이벤트 | (M5-01 ① 결과: CLI `--allowedTools`가 허용 밖 도구를 막으므로 서버 중계는 필요 없다. `--disallowedTools`로 이중 방어.) `--mcp-config`를 인자가 아닌 0600 파일(CLI 전용 작업 폴더 아래 `mcp-*`, CLI 종료·서버 시작 때 정리)로 넘기고, `--allowedTools`에 `mcp__<서버>__<도구>`만 더하며(외부에는 와일드카드 없음), 서버 형식은 stdio(`command`·`args`·`env`)와 http(`url`·`headers`) 둘 다 만들고(v1의 `mcp_client_config`는 http만 만들었다) `${MCP_<서버>_<이름>}` 치환 결과를 0600 `mcp.json`에만 쓰며(변수가 없거나 비면 시작 거부), 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체와 CLI 결과의 `error_message`에도 적용하고, stdio 서버는 셸 없이·절대 경로·최소 환경(`PATH`·`HOME`·`LANG`·`TMPDIR`+`env`에 적은 변수)·빈 하위 작업 폴더에서 실행. `tool` 이벤트는 접두사를 포함한 이름·`input: null`·결과 2000자·DB 미저장, 로그에 비밀·stderr·인자를 남기지 않고, 외부 도구 직후 턴의 쓰기 도구에 같은 검증을 적용. 화면은 "`<도구>` 사용 중"(서버 이름 비노출)과 결과를 글자 그대로 보인다. 시험(항목별로 따로 통과해야 완료): ① 구성 파일 생성·권한 0600·종료·시작 때 정리, ② stdio·http 구성과 치환(변수 없음·빈 값 거부), ③ 실행 격리(셸 없음·최소 환경·빈 작업 폴더), ④ `tool` 이벤트 변환(접두사 유지·`input: null`·2000자·DB 미저장), ⑤ 비밀 가림(로그·`error_message`·`headers`·`env`), ⑥ 외부 도구 직후 쓰기 도구 검증, ⑦ 화면 표시 | 대화 09(도구 알림 스타일 재사용) | 완료(2026-11-03). 시험 근거는 `server/tests/test_external_mcp_cli.py`(① `test_mcp_json_is_written_0600…`·`test_empty_work_folders…`·`test_mcp_json_and_folders_removed_when_open_fails`·`test_startup_purges…`·`test_server_start_purges…`, ② `test_stdio_and_http_entries_with_substituted_secrets`·`test_allowed_tools_get_full_names…`·`test_missing_or_blank_secret_variable…`, ③ `test_launcher_*`·`test_isolation_holds_through_the_whole_chain`, ④ `test_external_tool_events_keep_prefix…`·`…cut_at_2000…`·`…not_stored_and_never_becomes_a_source`, ⑤ `test_secret_never_reaches…`·`test_redaction_covers…`·`test_external_server_stderr…`, ⑥ `test_external_tool_turns_on_the_write_tool_guard…`)와 웹 ⑦ `conversation.test.ts`(`toolNotice`·`externalToolResult`)·`ConversationScreen.external.test.tsx`. CLI가 외부 서버를 직접 띄우므로 격리는 mcp.json의 command를 실행기 `app/mcp_launch.py`로 두어 처리(Spec 5.6 실행 절). 한계: 서버를 띄우는 것과 그 서버의 네트워크·파일 접근은 막지 못한다 |
 | M5-14 | E | 가짜 외부 MCP E2E | 가짜 stdio MCP 서버(허용 도구·허용 밖 도구)와 녹화 CLI로 허용 도구는 호출되고 허용 밖 도구는 **호출되지 않음**을 Playwright로 확인(CLI 레벨 거부 여부는 M5-01 결과에 따라 서버 중계 또는 CLI 규칙으로 보장), 설정 파일이 틀리면 서버가 시작하지 않음, 비밀이 화면·로그·응답에 나오지 않음 | - | 완료(2026-11-03, `web/e2e/external-mcp.spec.ts` 4개: 허용 도구 호출·화면, 허용 밖 도구(설정이 막은 것과 목록에 없는 것) 서버 미호출, 비밀 미노출(화면·응답·DB), 실행 격리. 가짜 CLI(`server/tests/fakes/fake_claude.py`의 `__mcp__` 지시어)가 mcp.json의 가짜 stdio 서버(`fake_mcp.py`)를 실제로 띄운다. 허용 판정은 가짜 CLI가 `--allowedTools`·`--disallowedTools`로 흉내 내므로 실제 CLI의 차단 자체는 M5-01 스파이크가 근거이고, 서버가 올바른 인자를 만드는지는 `test_external_mcp_cli.py`가 보장한다. 설정 파일이 틀리면 시작하지 않는 것은 E2E로 직접 보기 어려워 서버 단위 시험 `test_external_mcp.py`로 갈음) |
 | M5-15 | F | 실제 점검 | **실제 Claude·외부 서비스 사용량이 든다(사전 고지)**. ① 프롬프트 규칙(검색·첨부)가 바뀌었으니 톤 평가 재실행(20개 중 18개 이상·인사말 이후 호칭 0개, `docs/eval/`), ② 추출 평가 갱신(출처 케이스), ③ 실제 검색 대화(국내 `search_naver`·`search_naver_blog`, 해외·일반 `search_google`, 폴백 `WebSearch`) 확인, ④ 실제 첨부 대화(이미지·PDF·텍스트), ⑤ (이메일 제거로 없음), ⑥ (외부 MCP 실제 서버 점검은 하지 않는다, 확인 필요 4). ⑦ `search_google`·`search_google_detail` 실제 호출(주소·인증·응답 시간, 한국어·영어 질의, 폴백 시간 초과 시험, M5-09 착수 때 한 확인의 재확인). 키·계정이 없는 항목은 "막힘"으로 보고 | - | 대기 |
-| M5-16 | F | 검색 지연 기준선과 폰 첨부 확인 | 글 대화의 검색 턴 서버 구간(첫 토큰까지, `search_used`)을 `turn_latency`로 기록·`GET /api/latency`에서 검색 턴을 분리해 보고하는 기준선(확인 필요 1의 결정에 따라 음성 판정은 M3-18과 함께 이월). 폰에서 첨부(사진 선택·텍스트·PDF)가 되는지 **사용자가 직접 확인**해 결과를 받는다(실제 Claude 호출이라 실행 전에 알린다). 확인 필요 1에 동의하면 이 작업에서 Spec 12절·5.1·12절 추적표 NFR-01의 문구를 같은 커밋으로 고친다 | - | 대기 |
+| M5-16 | F | 검색 지연 기준선과 폰 첨부 확인 | 글 대화의 검색 턴 서버 구간(첫 토큰까지, `search_used`)을 `turn_latency`로 기록·`GET /api/latency`에서 검색 턴을 분리해 보고하는 기준선(확인 필요 1의 결정에 따라 음성 판정은 M3-18과 함께 이월). 폰에서 첨부(사진 선택·텍스트·PDF)가 되는지 **사용자가 직접 확인**해 결과를 받는다(실제 Claude 호출이라 실행 전에 알린다). 확인 필요 1에 동의하면 이 작업에서 Spec 12절·5.1·12절 추적표 NFR-01의 문구를 같은 커밋으로 고친다 | 서버·문서 `fb43223`(`turn_latency.mode` 0008, `summary.text`) | 서버·문서 완료, 폰 첨부 확인은 사용자 몫으로 대기 |
 | M5-17 | F | 문서 정합과 종료 | client-contract 2.5·2.6(`web_search`·외부 도구 요약 kind 확정)·1.3·2.13·4.1 점검과 Spec 5.6의 "스파이크 뒤" 문구 확정, CLAUDE.md·README·`.env.example` 점검, 8.3 완료 기준 표 채움, 8.4 종료 체크리스트, 요구사항 추적표(12절)에서 M5 항목 정리 | - | 대기 |
 
 ### 8.3 완료 기준
@@ -253,7 +253,7 @@ M3-01~M3-19 중 18개를 완료했다(M3-01~15는 2026-10-30까지, M3-16·17·1
 | WebFetch 차단 | 사설·루프백·메타데이터 대역·리다이렉트·재바인딩 거부 시험 전부 통과 | - | - |
 | 외부 MCP | 가짜 서버 E2E에서 허용 도구만 호출되고 허용 밖은 호출되지 않음, 설정 검증 시험, 비밀 미노출 | - | - |
 | 톤·추출 평가 | 톤 20개 중 18개 이상·인사말 이후 호칭 0개, 추출 평가 재현율 유지 | - | - |
-| 검색 턴 지연 | 글 대화 검색 턴 서버 구간 기준선 기록(음성 판정은 확인 필요 1의 결정에 따름) | - | - |
+| 검색 턴 지연 | 글 대화 검색 턴 서버 구간 기준선 기록(음성 판정은 확인 필요 1의 결정에 따라 M3-18과 함께 모든 개발 뒤로 이월) | 서버·시험 완료(`fb43223`), 폰 확인 대기 | M5-16 |
 | E2E·시각 기준 | Playwright 통과, 임시 경로 격리, 설정·토큰 막대·첨부·인용 시각 기준(라이트·다크) | - | - |
 | 게이트 | `scripts/verify.sh` 전체 통과(백그라운드 검증 통과 기록) | - | - |
 
@@ -299,7 +299,7 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 | FR-08 글 대화 | M1 | | FR-22 첨부 | M5 |
 | FR-09 브레인스토밍 | M1 | | FR-23 시작 화면 카드·상태·막대 | 최소 연결 표시 M0, 화면 M2 완료, 막대 M5 |
 | FR-10 정리 요약 | M1 | | FR-24 마크다운 렌더링 | M2 완료 |
-| FR-11 기억 | M1~M2 완료 | | NFR-01 응답 속도 | M3 계측, M4 판정, M5 검색 턴, M6 산책 |
+| FR-11 기억 | M1~M2 완료 | | NFR-01 응답 속도 | M3 계측, M4 판정, 검색 턴은 M3-18과 함께 모든 개발 뒤(M5는 글 대화 기준선), M6 산책 |
 | FR-12 즉시 기록·음성 보관 | M1, 보관 설정은 M5(FR-17) | | NFR-02 핸즈프리 | M4 |
 | FR-13 자동 추출 | M2 완료 | | NFR-03/05 인식률·배터리 | M6 |
 | FR-14 일지 목록·관리 | M2 완료 | | NFR-04 통신 불안정 | M4 |
