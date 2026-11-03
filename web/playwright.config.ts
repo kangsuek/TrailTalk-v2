@@ -1,11 +1,15 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@playwright/test'
+import { FAKE_SECRET, MCP_SERVERS_PATH, writeMcpServersFile } from './e2e/external-mcp.ts'
 import { API_PORT, MCP_PORT, WEB_PORT } from './e2e/ports.ts'
 
 // E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(기본 8100)를 띄우고, Claude CLI는
 // 가짜(녹화 재생)로 바꾼다. 포트는 e2e/ports.ts(E2E_*_PORT 환경 변수로 바꿈).
 // 사용자의 실제 서버(8000)와 DB(server/data)는 건드리지 않는다(CLAUDE.md).
 const DATA_DIR = '.e2e/data'
+
+// 가짜 외부 MCP 서버 설정 파일(0600, 폴더 0700)을 서버가 뜨기 전에 만든다(M5-14)
+writeMcpServersFile()
 
 export default defineConfig({
   testDir: 'e2e',
@@ -48,6 +52,8 @@ export default defineConfig({
         `FAKE_CLAUDE_ONESHOT="$PWD/tests/fixtures/claude_cli/extract.jsonl" ` +
         // 음성 인식·합성은 과금 없는 가짜(인식 결과는 고정 문장)로 바꾼다
         `VOICE_BACKEND=fake ` +
+        // 가짜 외부 MCP 서버(M5-14): 설정 파일과 비밀 변수. 호출 기록은 데이터 폴더와 함께 지워진다
+        `MCP_SERVERS_PATH="${MCP_SERVERS_PATH}" MCP_E2E_FAKE_API_KEY="${FAKE_SECRET}" ` +
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,
