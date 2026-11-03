@@ -43,3 +43,22 @@ export function turnsOf(sessionId: string): TurnRow[] {
     sessionId,
   )
 }
+
+export interface AttachmentRow {
+  name: string
+  mime: string
+  size: number
+  thumb_path: string | null
+  role: string
+  text: string
+}
+
+/** 세션의 첨부(붙은 턴의 역할·글 포함) */
+export function attachmentsOf(sessionId: string): AttachmentRow[] {
+  return query<AttachmentRow>(
+    `SELECT a.name, a.mime, a.size, a.thumb_path, t.role, t.text
+       FROM attachment a JOIN turn t ON t.id = a.turn_id
+      WHERE t.session_id = ? ORDER BY a.created_at, a.name`,
+    sessionId,
+  )
+}
