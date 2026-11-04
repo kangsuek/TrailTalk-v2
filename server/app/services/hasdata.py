@@ -119,7 +119,11 @@ class HasDataClient:
                 "HasData 오류: HTTP %d", status
             )  # 본문에 검색어가 있을 수 있어 남기지 않는다
             raise SearchError("failed", "검색에 실패했습니다.")
-        if allow_text and "json" not in response.headers.get("content-type", "").lower():
+        content_type = response.headers.get("content-type", "").lower()
+        if allow_text and "json" not in content_type:
+            if not content_type.startswith("text/") or content_type.startswith("text/html"):
+                logger.warning("HasData 응답 형식이 본문이 아닙니다")  # HTML 안내·오류 페이지 등
+                raise SearchError("failed", "검색 응답을 읽지 못했습니다.")
             return response.text  # 스크래핑(markdown)은 JSON이 아니라 본문을 그대로 준다
         try:
             return response.json()

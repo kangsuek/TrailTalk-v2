@@ -251,6 +251,17 @@ async def test_scrape_accepts_plain_text_markdown_body():
     assert exc.value.kind == "failed"
 
 
+@pytest.mark.parametrize("content_type", ["text/html; charset=utf-8", "application/octet-stream"])
+async def test_scrape_rejects_non_text_or_html_200_bodies(content_type):
+    """200이어도 HTML 안내·오류 페이지나 알 수 없는 형식은 본문으로 받지 않는다."""
+    response = httpx2.Response(
+        200, content=b"<html>blocked</html>", headers={"content-type": content_type}
+    )
+    with pytest.raises(SearchError) as exc:
+        await make(lambda r: response).scrape("https://a.test/")
+    assert exc.value.kind == "failed"
+
+
 def test_from_settings():
     settings = Settings(
         _env_file=None,
