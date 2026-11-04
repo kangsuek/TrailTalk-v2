@@ -791,7 +791,10 @@ def test_list_journals_date_filter_uses_local_days(client):
     assert "자정 직후" in on_29 and "자정 직전" not in on_29
 
 
-def test_get_memory_limits_and_excludes_old_journals(client):
+def test_get_memory_limits_and_excludes_old_journals(client, monkeypatch):
+    # 시험 데이터가 NOW 기준 고정 날짜라 서버 시각도 고정한다(실제 시각이 지나면 7일 창에서 빠진다)
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
+
     async def seed(db):
         for i in range(5):
             await web_session(db, f"최근 {i}", started=NOW - timedelta(days=i % 3 + 1, hours=i))
