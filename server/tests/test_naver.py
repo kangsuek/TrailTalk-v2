@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, date, datetime
 
@@ -53,6 +54,16 @@ def ok(items):
     return httpx2.Response(200, json={"total": len(items), "items": items})
 
 
+async def test_parses_json_body_served_as_text_plain():
+    """실제 NAVER API HUB 응답은 JSON 본문이지만 Content-Type이 text/plain;charset=UTF-8이다."""
+    body = json.dumps({"total": 1, "items": [item(1)]}).encode()
+    response = httpx2.Response(
+        200, content=body, headers={"content-type": "text/plain;charset=UTF-8"}
+    )
+    [r] = await make_search(lambda request: response).search("제주 올레길")
+    assert r.url == "https://news1.kr/a1"
+
+
 async def test_request_and_parsing(caplog):
     seen = {}
 
@@ -72,10 +83,11 @@ async def test_request_and_parsing(caplog):
     with caplog.at_level(logging.INFO, logger="trailtalk.search"):
         results = await make_search(handler).search("코스피 마감 시황")
 
-    assert seen["url"].path == "/v1/search/news.json"
+    assert seen["url"].path == "/search/v1/news"
     assert dict(seen["url"].params) == {"query": "코스피 마감 시황", "sort": "sim", "display": "10"}
-    assert seen["headers"]["x-naver-client-id"] == CLIENT_ID
-    assert seen["headers"]["x-naver-client-secret"] == CLIENT_SECRET
+    assert seen["headers"]["x-ncp-apigw-api-key-id"] == CLIENT_ID
+    assert seen["headers"]["x-ncp-apigw-api-key"] == CLIENT_SECRET
+    assert "x-naver-client-id" not in seen["headers"]  # 개발자센터 방식 헤더는 보내지 않는다
     [r] = results
     assert r.title == '코스피 5700선 회복 "반등"'
     assert r.snippet == "외국인 & 기관매수 이어져"
@@ -453,9 +465,10 @@ async def test_blog_request_and_parsing(caplog):
 
     with caplog.at_level(logging.INFO, logger="trailtalk.search"):
         results = await make_blog(handler).search("제주 맛집 후기")
-    assert seen["url"].path == "/v1/search/blog.json"
+    assert seen["url"].path == "/search/v1/blog"
     assert dict(seen["url"].params) == {"query": "제주 맛집 후기", "sort": "sim", "display": "10"}
-    assert seen["headers"]["x-naver-client-id"] == CLIENT_ID
+    assert seen["headers"]["x-ncp-apigw-api-key-id"] == CLIENT_ID
+    assert seen["headers"]["x-ncp-apigw-api-key"] == CLIENT_SECRET
     [r] = results
     assert r.title == "제주 후기 1" and r.snippet == "다녀온 이야기 1"
     assert r.url == "https://blog.naver.com/u1/1" and r.host == "blog.naver.com"
@@ -534,4 +547,5 @@ def test_blog_from_settings(tmp_path):
         _env_file=None, naver_client_id="a", naver_client_secret="b", search_max_results=3
     )
     blog = NaverBlogSearch.from_settings(httpx2.AsyncClient(), settings)
-    assert blog._path == "/v1/search/blog.json" and blog._max_results == 3
+    assert blog._path == "/search/v1/blog" and blog._max_results == 3
+    assert blog._base_url == "https://naverapihub.apigw.ntruss.com"

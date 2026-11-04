@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     # 키·검색어는 로그에 남기지 않는다(길이만)
     naver_client_id: SecretStr | None = None
     naver_client_secret: SecretStr | None = None
-    naver_base_url: str = "https://openapi.naver.com"
+    naver_base_url: str = "https://naverapihub.apigw.ntruss.com"  # NAVER API HUB(NCP)
     naver_fetch_count: int = Field(default=50, gt=0, le=100)  # 기간·매체 지정 때 받는 건수
     search_timeout_s: float = Field(default=5, gt=0)  # 네이버 검색 한 번의 전체 제한 시간
     search_max_results: int = Field(default=5, gt=0, le=10)  # 모델에 주는 결과 수
