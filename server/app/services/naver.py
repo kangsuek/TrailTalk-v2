@@ -1,5 +1,9 @@
 """네이버 뉴스·블로그 검색 API(M5-09). 캐릭터의 search_naver·search_naver_blog 도구가 쓴다.
 
+NAVER API HUB(NCP API Gateway, naverapihub.apigw.ntruss.com)를 쓴다(2026-11-04 전환). 인증은
+X-NCP-APIGW-API-KEY-ID(Client ID)·X-NCP-APIGW-API-KEY(Client Secret) 머리말이고, 네이버 개발자센터
+(openapi.naver.com)의 X-Naver-Client-* 키와는 호환되지 않는다.
+
 키는 요청 머리말에만 쓰고 로그에 남기지 않는다. 검색어도 길이만 남긴다. 네이버에는 날짜 범위
 필터와 언론사 필드가 없어서, 기간(time_range)이나 매체(domains)를 지정하면 날짜순으로 여러 건을
 받아 발행일·원문 주소 호스트로 직접 거른다. 블로그에도 날짜 필터가 없어 같은 방식으로
@@ -145,8 +149,8 @@ class _NaverBase:
                     f"{self._base_url}{self._path}",
                     params={"query": query, "sort": sort, "display": display},
                     headers={
-                        "X-Naver-Client-Id": self._client_id.get_secret_value(),
-                        "X-Naver-Client-Secret": self._client_secret.get_secret_value(),
+                        "X-NCP-APIGW-API-KEY-ID": self._client_id.get_secret_value(),
+                        "X-NCP-APIGW-API-KEY": self._client_secret.get_secret_value(),
                     },
                     timeout=self._timeout_s,
                 )
@@ -157,8 +161,10 @@ class _NaverBase:
             logger.warning("네이버 검색 요청 실패: %s", type(exc).__name__)
             raise SearchError("failed", "검색 서비스에 연결하지 못했습니다.") from exc
         status = response.status_code
-        if status in (401, 403):  # 키 오류, 또는 개발자 센터에서 검색 API를 켜지 않음
-            logger.error("네이버 검색 사용 불가: HTTP %d (키 또는 검색 API 권한 확인)", status)
+        if status in (401, 403):  # 키 오류, 또는 NCP 콘솔에서 NAVER API HUB 검색 API를 켜지 않음
+            logger.error(
+                "네이버 검색 사용 불가: HTTP %d (키 또는 NAVER API HUB 검색 API 권한 확인)", status
+            )
             raise SearchError("unavailable", "검색 서비스를 쓸 수 없습니다.")
         if status == 429:  # 하루 호출 한도(25,000회) 초과 포함
             logger.warning("네이버 검색 한도 또는 속도 제한: HTTP 429")
@@ -177,7 +183,7 @@ class _NaverBase:
 
 
 class NaverNewsSearch(_NaverBase):
-    _path = "/v1/search/news.json"
+    _path = "/search/v1/news"
 
     async def search(
         self,
@@ -286,7 +292,7 @@ class NaverBlogSearch(_NaverBase):
     postdate(YYYYMMDD, 한국 날짜)로 거른다. 출처 표시는 호스트(전부 blog.naver.com) 대신
     bloggername을 쓴다. 광고성 글은 거르지 않는다(규칙에 참고용이라고 적는다)."""
 
-    _path = "/v1/search/blog.json"
+    _path = "/search/v1/blog"
 
     async def search(
         self,
