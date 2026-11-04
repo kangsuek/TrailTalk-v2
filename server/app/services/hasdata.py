@@ -86,6 +86,7 @@ class HasDataClient:
         *,
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
+        allow_text: bool = False,
     ) -> Any:
         """직렬화한 요청 한 번. 대기 포함 전체 시간이 timeout_s를 넘으면 timeout."""
         key = self._key()
@@ -118,6 +119,8 @@ class HasDataClient:
                 "HasData 오류: HTTP %d", status
             )  # 본문에 검색어가 있을 수 있어 남기지 않는다
             raise SearchError("failed", "검색에 실패했습니다.")
+        if allow_text and "json" not in response.headers.get("content-type", "").lower():
+            return response.text  # 스크래핑(markdown)은 JSON이 아니라 본문을 그대로 준다
         try:
             return response.json()
         except ValueError as exc:
@@ -185,7 +188,9 @@ class HasDataClient:
         """URL의 본문을 HasData가 대신 가져온 마크다운(detail_max_chars까지)."""
         body = {"url": url, "outputFormat": ["markdown"], "removeBase64Images": True}
         started = time.monotonic()
-        data = await self._call("POST", self._scrape_path, self._scrape_timeout_s, json=body)
+        data = await self._call(
+            "POST", self._scrape_path, self._scrape_timeout_s, json=body, allow_text=True
+        )
         text = _markdown_of(data)
         if not text:
             logger.warning("HasData 스크래핑 응답에 본문이 없습니다")
@@ -203,7 +208,9 @@ class HasDataClient:
 
 
 def _markdown_of(data: Any) -> str:
-    """스크래핑 응답에서 마크다운 본문. 필드 이름은 확인 전 가정이라 흔한 위치를 차례로 본다."""
+    """스크래핑 응답에서 마크다운 본문. 실제는 text/plain 본문(11-04 확인), JSON이면 흔한 위치."""
+    if isinstance(data, str):
+        return data if data.strip() else ""
     if not isinstance(data, dict):
         return ""
     for holder in (data, data.get("data"), data.get("content")):

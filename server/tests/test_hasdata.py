@@ -237,6 +237,20 @@ async def test_scrape_clips_long_text_and_rejects_empty():
         assert exc.value.kind == "failed"
 
 
+async def test_scrape_accepts_plain_text_markdown_body():
+    """실제 HasData(2026-11-04 확인)는 markdown 출력이면 JSON이 아니라 text/plain 본문을 준다."""
+    body = "# 제목\n\n본문 내용   \n"
+    response = httpx2.Response(
+        200, content=body.encode(), headers={"content-type": "text/plain; charset=utf-8"}
+    )
+    text = await make(lambda r: response).scrape("https://a.test/")
+    assert text == "# 제목\n\n본문 내용"
+    empty = httpx2.Response(200, content=b"  \n", headers={"content-type": "text/plain"})
+    with pytest.raises(SearchError) as exc:
+        await make(lambda r: empty).scrape("https://a.test/")
+    assert exc.value.kind == "failed"
+
+
 def test_from_settings():
     settings = Settings(
         _env_file=None,
