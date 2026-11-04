@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import UTC, date, datetime
 
@@ -51,6 +52,16 @@ def item(n=1, pub="Wed, 21 Oct 2026 09:42:00 +0900", host="news1.kr", **kw):
 
 def ok(items):
     return httpx2.Response(200, json={"total": len(items), "items": items})
+
+
+async def test_parses_json_body_served_as_text_plain():
+    """실제 NAVER API HUB 응답은 JSON 본문이지만 Content-Type이 text/plain;charset=UTF-8이다."""
+    body = json.dumps({"total": 1, "items": [item(1)]}).encode()
+    response = httpx2.Response(
+        200, content=body, headers={"content-type": "text/plain;charset=UTF-8"}
+    )
+    [r] = await make_search(lambda request: response).search("제주 올레길")
+    assert r.url == "https://news1.kr/a1"
 
 
 async def test_request_and_parsing(caplog):
