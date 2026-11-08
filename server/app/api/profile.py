@@ -60,7 +60,9 @@ class ProfileUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nickname: Nickname | None = None
-    interests: list[Interest] | None = None
+    # 중복 제거 전 배열 길이 상한(제거 뒤 10개 제한은 아래 검증기).
+    # 같은 값 수만 개로 서버를 붙잡지 못하게 한다
+    interests: Annotated[list[Interest], Field(max_length=100)] | None = None
     persona_id: str | None = None
     voice: Annotated[str, AfterValidator(_stripped), Field(min_length=1, max_length=100)] | None = (
         None

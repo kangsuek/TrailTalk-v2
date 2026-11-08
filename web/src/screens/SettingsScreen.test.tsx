@@ -125,6 +125,20 @@ describe('SettingsScreen', () => {
     expect(await screen.findByText('저장 안 됨')).toBeInTheDocument()
   })
 
+  it('서버에 보내지 않는 검증 오류(중복·빈 입력)는 "저장 안 됨"으로 표시하지 않는다', async () => {
+    const puts = mockProfile(baseProfile())
+    render(<SettingsScreen connection="connected" />)
+    const input = await screen.findByLabelText('관심사 추가')
+    await userEvent.type(input, '전시{Enter}') // 이미 있는 관심사
+    expect(await screen.findByRole('alert')).toHaveTextContent('이미 있는 관심사예요.')
+    await userEvent.clear(input)
+    await userEvent.type(input, '{Enter}') // 빈 입력
+    expect(await screen.findByRole('alert')).toHaveTextContent('관심사를 입력해 주세요.')
+    expect(puts).toEqual([])
+    expect(screen.queryByText('저장 안 됨')).not.toBeInTheDocument()
+    expect(screen.queryByText('저장 중…')).not.toBeInTheDocument()
+  })
+
   it('관심사는 Enter로 더하고 ×로 지우며 그때마다 바로 저장한다', async () => {
     const puts = mockProfile(baseProfile())
     render(<SettingsScreen connection="connected" />)

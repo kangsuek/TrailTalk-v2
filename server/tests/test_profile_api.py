@@ -74,6 +74,13 @@ def test_interests_are_trimmed_and_deduplicated_in_order(client):
     assert body["interests"] == ["등산", "사진"]
 
 
+def test_interests_request_length_is_capped_before_deduplication(client):
+    """중복 제거 전의 배열 길이에도 상한이 있어, 같은 값 수만 개를 보내 서버를 붙잡을 수 없다."""
+    assert put(client, interests=["등산"] * 100).json()["interests"] == ["등산"]
+    assert put(client, interests=["등산"] * 101).status_code == 422
+    assert put(client, interests=["등산"] * 50_000).status_code == 422
+
+
 def test_interests_limits(client):
     assert put(client, interests=[f"관심{i}" for i in range(10)]).status_code == 200
     assert put(client, interests=[f"관심{i}" for i in range(11)]).status_code == 422

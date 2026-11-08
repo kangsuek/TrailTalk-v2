@@ -25,6 +25,9 @@ from app.services.search import host_of
 logger = logging.getLogger("trailtalk.llm")
 
 _SUMMARY_LIMIT = 500
+_ERROR_RAW_LIMIT = (
+    4000  # 오류 문구는 비밀을 가린 뒤 _SUMMARY_LIMIT로 자른다(자르고 가리면 경계의 비밀이 남는다)
+)
 
 
 _MAX_LINKS = 10
@@ -236,7 +239,7 @@ class StreamJsonParser:
         result_text = event.get("result") if isinstance(event.get("result"), str) else ""
         error_message = None
         if is_error and not interrupted:
-            error_message = (result_text or str(event.get("subtype") or "오류"))[:_SUMMARY_LIMIT]
+            error_message = (result_text or str(event.get("subtype") or "오류"))[:_ERROR_RAW_LIMIT]
         return TurnFinished(
             text="" if is_error else result_text,
             is_error=is_error,

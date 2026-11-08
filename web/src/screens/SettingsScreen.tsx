@@ -92,12 +92,14 @@ export default function SettingsScreen({ connection }: Props) {
     setSave('saving')
     const run = queue.current.then(async () => {
       let ok = true
+      let invalid = false // 서버에 보내기 전에 걸러진 입력 오류(저장을 시도하지 않았다)
       try {
         const current = latest.current
         const patch = current ? build(current) : null
         if (patch !== null && 'error' in patch && typeof patch.error === 'string') {
           setErrors((e) => ({ ...e, [field]: patch.error as string }))
           ok = false
+          invalid = true
         } else if (patch !== null) {
           const next = await updateProfile(patch as ProfilePatch)
           latest.current = next
@@ -110,9 +112,10 @@ export default function SettingsScreen({ connection }: Props) {
         setErrors((e) => ({ ...e, [field]: errorText(error) }))
         ok = false
       }
-      // 대기 중인 저장이 모두 끝났을 때만 결과를 보인다
+      // 대기 중인 저장이 모두 끝났을 때만 결과를 보인다. 입력 오류는 필드 옆 문구로 충분하고, 저장을
+      // 시도하지 않았으니 "저장 안 됨"은 서버가 거절하거나 연결이 안 됐을 때만 쓴다
       pending.current -= 1
-      if (pending.current === 0) setSave(ok ? 'saved' : 'failed')
+      if (pending.current === 0) setSave(invalid ? 'idle' : ok ? 'saved' : 'failed')
       return ok
     })
     queue.current = run

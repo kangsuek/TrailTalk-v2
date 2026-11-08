@@ -427,6 +427,25 @@ def test_secret_never_reaches_the_screen_events_or_logs(ext_api, caplog):
     assert SECRET not in stored
 
 
+async def test_secret_on_the_error_message_cut_boundary_is_redacted_before_cutting(
+    fake_cli, external
+):
+    """오류 문구를 500자로 자르기 전에 가려야, 경계에 걸린 비밀의 앞부분이 남지 않는다."""
+    from app.llm.parser import StreamJsonParser
+
+    session = await open_with(fake_cli, external)
+    try:
+        message = "x" * 490 + SECRET + " 끝"
+        [finished] = (
+            StreamJsonParser._result({"type": "result", "is_error": True, "result": message}),
+        )
+        safe = session._redact_event(finished).error_message
+        assert SECRET[:8] not in safe and SECRET not in safe
+        assert len(safe) <= 500 and safe.startswith("x" * 490 + "***")
+    finally:
+        await session.close()
+
+
 async def test_redaction_covers_headers_env_values_and_error_message(fake_cli, external):
     session = await open_with(fake_cli, external)
     try:

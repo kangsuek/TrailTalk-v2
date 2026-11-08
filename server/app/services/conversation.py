@@ -914,6 +914,9 @@ async def _run_turn(
                         name = tool_names.setdefault(
                             event.tool_use_id, public_tool_name(event.name)
                         )
+                        # 시작 이벤트 없이 호출만 와도 가드가 켜지게 같은 판정을 한 번 더 한다
+                        if name in ("web_search", "web_fetch") or is_external_tool(name):
+                            runtime.web_content_seen = True
                         yield encode_sse(
                             ToolEvent(
                                 phase="call",

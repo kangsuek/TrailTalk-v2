@@ -48,7 +48,7 @@ _HEADERS = {
 
 class FetchError(Exception):
     """code: invalid_url, blocked_address, resolve_failed, too_many_redirects, timeout,
-    connect_failed, unsupported_content."""
+    connect_failed, read_failed, unsupported_content."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -358,15 +358,20 @@ class WebFetcher:
         chunks: list[bytes] = []
         size = 0
         truncated = False
-        async for chunk in response.aiter_bytes():
-            room = self._max_bytes - size
-            if len(chunk) > room:
-                chunks.append(chunk[:room])
-                size += room
-                truncated = True
-                break
-            chunks.append(chunk)
-            size += len(chunk)
+        try:
+            async for chunk in response.aiter_bytes():
+                room = self._max_bytes - size
+                if len(chunk) > room:
+                    chunks.append(chunk[:room])
+                    size += room
+                    truncated = True
+                    break
+                chunks.append(chunk)
+                size += len(chunk)
+        except httpx2.TimeoutException:  # 헤더 뒤 본문이 느린 서버
+            raise FetchError("timeout", "시간이 초과되었습니다.") from None
+        except httpx2.HTTPError:  # 본문을 읽다 끊김·프로토콜 오류·압축 해제 실패
+            raise FetchError("read_failed", "본문을 읽다가 끊겼습니다.") from None
         text = extract_text(_decode(b"".join(chunks), content_type), content_type)
         if len(text) > self._max_chars:
             text = text[: self._max_chars].rstrip()
