@@ -44,6 +44,7 @@ ENV_ALLOWLIST = (
     "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy",
 )  # fmt: skip
 _STDOUT_LIMIT = 16 * 1024 * 1024
+_ERROR_MESSAGE_LIMIT = 500  # CLI 결과의 오류 문구는 비밀을 가린 뒤 이 길이로 자른다
 _STDERR_TAIL = 20
 _ABORT_GRACE_S = 5.0
 _EXIT_WAIT_S = 1.0
@@ -297,14 +298,16 @@ class ClaudeCliSession:
 
     def _redact_event(self, event: LlmEvent) -> LlmEvent:
         """도구 결과·오류 문구에서 비밀을 가린다(CLI 결과의 error_message 포함)."""
-        if not self._secrets:
-            return event
         if isinstance(event, TurnFinished):
+            # 오류 문구는 가린 뒤에 자른다(500자 경계에 걸린 비밀의 앞부분이 남지 않게)
+            message = self._redact(event.error_message) if event.error_message else None
             return replace(
                 event,
                 text=self._redact(event.text),
-                error_message=self._redact(event.error_message) if event.error_message else None,
+                error_message=message[:_ERROR_MESSAGE_LIMIT] if message else None,
             )
+        if not self._secrets:
+            return event
         if isinstance(event, ToolFinished) and event.result_text is not None:
             return replace(event, result_text=self._redact(event.result_text))
         return event
