@@ -8,7 +8,7 @@
 - 상태값은 `대기`, `진행 중`, `완료`, `막힘`, `취소` 다섯 가지다. 막힘과 취소에는 이유를 한 줄 적는다.
 - 작업을 시작할 때 `진행 중`으로, 끝낼 때 `완료`로 바꾸고 같은 커밋에 넣는다. 진행 중인 작업은 한 번에 하나만 둔다. 계획서가 묶은 작업 묶음은 하나로 보며, 묶음 안의 작업은 함께 `진행 중`일 수 있다.
 - 마일스톤 하나는 "구현 → 검증 → 사용자 확인"을 마친 뒤 다음으로 넘어간다. 종료 체크리스트는 각 마일스톤 상세 절의 끝에 있다.
-- 상세 절은 마일스톤마다 하나이고 대시보드 행과 1:1이다(3 M0, 4 M1, 5 M2, 6 M3, 7 M4, 8 M5, 9 M6, 10 MA, 11 P2). M0~M3은 완료(M3은 부분 종료) 형식으로 정리했고 M5는 착수 전 상세 계획(8절)이 있다. 보류·대기 중인 M4·M6·P2는 착수할 때 같은 형식(작업 표, 완료 기준 표)으로 상세화한다.
+- 상세 절은 마일스톤마다 하나이고 대시보드 행과 1:1이다(3 M0, 4 M1, 5 M2, 6 M3, 7 M4, 8 M5, 9 M6, 10 MA, 11 P2). M0~M3과 M5는 완료(M3은 부분 종료) 형식으로 정리했다. 보류·대기 중인 M4·M6·P2는 착수할 때 같은 형식(작업 표, 완료 기준 표)으로 상세화한다.
 - 완료한 마일스톤은 작업 표를 한 줄 요약으로 접는다.
 
 ## 2. 진행 대시보드
@@ -20,13 +20,13 @@
 | M2 | 일지 | 완료 | 15/15 | 2026-10-27 | 2026-10-29 | 53e2c62 |
 | M3 | 음성 | 부분 종료(M3-18 실측 보류) | 18/19 | 2026-10-29 | - | - |
 | M4 | 신뢰성 | 음성 항목 보류 | - | - | - | - |
-| M5 | 확장 기능 | 상세화 완료(착수 전, 8절. 확인 필요 4건 답변 대기) | 0/17 | - | - | - |
+| M5 | 확장 기능 | 완료(음성 항목은 D9 보류, 8절) | 17/17 | 2026-11-02 | 2026-11-08 | bdf3fe7 |
 | M6 | 보안·마무리 | 대기 | - | - | - | - |
 | MA | Claude 앱 MCP 연계(상세·진행 상태 정본: [MCP/implementation-plan.md](MCP/implementation-plan.md)) | 진행 중(묶음 A~D 병합, MA-12 폰 실측·MA-13 시안 수정 대기) | 13/16 | 2026-10-30 | - | - |
 | P2 | 내보내기·검색·브리핑 | 대기 | - | - | - | - |
 
-현재 작업: 없음(MA는 MA-12 폰 실측·MA-13 시안 수정 대기). MA 묶음 A~D `main` 병합: `071dd02`, `8f69341`, `dc8c064`, `47d12fb`. M3 부분 종료(2026-11-01, 묶음 A~D `main` 병합: `4f4d1f7`, `3a8d117`, `f96b97f`, `5806880`; M3-18 실측은 모든 개발이 끝날 때까지 보류). M2 종료(2026-10-29, 묶음 A~D `main` 병합: `ebd2e2e`, `dad338c`, `c063e83`, `53e2c62`). M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
-다음 작업: M5 착수(묶음 A `m5-a-spikes`부터, 8절의 확인 필요 4건에 사용자 답변 뒤), MA-12 폰 실측(사용자 수행), MA-13(시안 수정 지시 뒤). MA 진행 상태는 MCP/implementation-plan.md가 정본이다.
+현재 작업: 없음(MA는 MA-12 폰 실측·MA-13 시안 수정 대기). M5 종료(2026-11-08, 묶음 A~I `main` 병합: `26d7aca`, `f236be0`, `ded1e9a`, `0c0ec26`, `0f27fc8`, `ebbbd92`, `57068a1`, `ab630e5`, `bdf3fe7`). MA 묶음 A~D `main` 병합: `071dd02`, `8f69341`, `dc8c064`, `47d12fb`. M3 부분 종료(2026-11-01, 묶음 A~D `main` 병합: `4f4d1f7`, `3a8d117`, `f96b97f`, `5806880`; M3-18 실측은 모든 개발이 끝날 때까지 보류). M2 종료(2026-10-29, 묶음 A~D `main` 병합: `ebd2e2e`, `dad338c`, `c063e83`, `53e2c62`). M1 종료(묶음 A~D `main` 병합: `4243d77`, `9d1f2b4`, `0bd5816`, `4737f99`)
+다음 작업: M6 보안·마무리(사용자 지시 뒤), MA-12 폰 실측(사용자 수행), MA-13(시안 수정 지시 뒤). MA 진행 상태는 MCP/implementation-plan.md가 정본이다.
 
 ## 3. M0 기반
 
@@ -183,13 +183,13 @@ M3-01~M3-19 중 18개를 완료했다(M3-01~15는 2026-10-30까지, M3-16·17·1
 
 **완료 기준(재개할 때)**: 비행기 모드 유실 0, 병합 시나리오 15회(5.3), 60턴 지연 판정(첫 반응 2.2초·첫 답변 6.9초/p90 9.0초, 5.1).
 
-## 8. M5 확장 기능 (2026-11-01 상세화, 착수 전)
+## 8. M5 확장 기능 (2026-11-08 종료)
 
 **범위 변경(2026-11-02 사용자 결정)**: 이메일(FR-21: `send_email`·SMTP·프로필 `email`·`mail_ready`)과 해외 검색 `search_USA`(Tavily)는 만들지 않는다(기능 제거). 해외·그 밖의 검색은 HasData 구글 검색 내부 도구 `search_google`·`search_google_detail`이 기본이고 내장 `WebSearch`는 폴백이다(외부 MCP가 아니라 내부 도구로 만든다). 이미 `main`에 있는 `email`·`mail_ready`(프로필 API·`user_profile.email` 열·시험·E2E)와 `rules.py`의 `EMAIL_TOOL_RULE`·`search_USA` 문구는 **묶음 B의 코드 커밋에서 Alembic 리비전·계약(client-contract 4.1)·`gen:api`·기존 시험 수정과 함께 제거**한다(기존 시험 수정이라 그때 수정 목록으로 사용자 승인을 받는다). 작업 ID는 바꾸지 않고 M5-04는 "제거"로 남긴다.
 
 **목표**: 글 대화를 "검색하고 출처를 밝히며, 파일을 보고, 설정할 수 있는" 수준으로 넓힌다. 웹 검색 도구와 출처 인용(FR-20), 파일 첨부(FR-22), 설정 화면(FR-17), 남은 토큰 막대(FR-23), CLI 내장 `WebFetch` 차단(D7), 서버 설정 파일의 외부 MCP 연결(FR-25, D8)을 만든다. 내용·완료 기준의 정본은 Spec 12절·5.6이고, 첨부·사용량·프로필·도구 요약의 계약은 이미 [client-contract.md](client-contract.md) 1.3·2.5·2.6·2.13·4.1에 적혀 있다(M5는 계약을 구현하고 스파이크 결과로 확정할 부분만 고친다).
 
-**착수 전 현재 상태(코드 확인 2026-11-01)**: 서버에는 프로필 API(`email`·`chat_model` 저장, `mail_ready`는 항상 `false`, 둘 다 제거 대상)와 내부 MCP 도구(`save_note`·`search_notes`·`set_model` 등)가 있고, `persona/rules.py`에 검색·이메일·첨부 규칙 상수(`WEB_SEARCH_RULES`·`EMAIL_TOOL_RULE`(제거 대상)·`ATTACHMENT_RULES`)가 있으나 프롬프트 조립에는 아직 연결하지 않았다. CLI는 `--tools ""`·`--allowedTools mcp__trailtalk__*`로 내장 도구를 모두 끈 상태다. DB에는 `turn.sources`·`conversation_session.summary_cites`·`citations`·`note.cites` 열이 있으나 `attachment` 테이블은 없고 일지 상세의 `turns[].attachments`는 항상 빈 목록이다. CLAUDE.md가 말하는 `purge_orphans`(DB에 없는 첨부 정리)도 아직 코드에 없고 M5-07에서 처음 만든다(그전까지 검증 서버는 첨부 폴더를 지우지 않는다). `GET /api/usage`와 설정 화면(하단 탭에 "준비 중" 자리만 있음)은 없다. 서버 의존성 `Pillow`·`pypdf`는 2026-11-02 사용자 승인으로 `m5-c-attachments` 브랜치에 추가했다(`e12b402`). v1(`~/pythonProject/TrailTalk/`)에 같은 기능의 검증된 구현이 있어(`server/app/services/search.py`·`naver.py`·`attachments.py`, `api/usage.py`, 웹 `core/usage.ts`·`attachments.ts`·`settings.ts`·`SettingsScreen.tsx`, 스파이크 문서 `docs/spikes/`) 이식을 기본으로 하되 v2 규약(서비스 계층·계약·시각 기준)에 맞춰 다시 쓴다.
+**착수 전 상태(2026-11-01 기록, 종료 시점과 다름)**: 서버에는 프로필 API(`email`·`chat_model` 저장, `mail_ready`는 항상 `false`, 둘 다 제거 대상)와 내부 MCP 도구(`save_note`·`search_notes`·`set_model` 등)가 있고, `persona/rules.py`에 검색·이메일·첨부 규칙 상수(`WEB_SEARCH_RULES`·`EMAIL_TOOL_RULE`(제거 대상)·`ATTACHMENT_RULES`)가 있으나 프롬프트 조립에는 아직 연결하지 않았다. CLI는 `--tools ""`·`--allowedTools mcp__trailtalk__*`로 내장 도구를 모두 끈 상태다. DB에는 `turn.sources`·`conversation_session.summary_cites`·`citations`·`note.cites` 열이 있으나 `attachment` 테이블은 없고 일지 상세의 `turns[].attachments`는 항상 빈 목록이다. CLAUDE.md가 말하는 `purge_orphans`(DB에 없는 첨부 정리)도 아직 코드에 없고 M5-07에서 처음 만든다(그전까지 검증 서버는 첨부 폴더를 지우지 않는다). `GET /api/usage`와 설정 화면(하단 탭에 "준비 중" 자리만 있음)은 없다. 서버 의존성 `Pillow`·`pypdf`는 2026-11-02 사용자 승인으로 `m5-c-attachments` 브랜치에 추가했다(`e12b402`). v1(`~/pythonProject/TrailTalk/`)에 같은 기능의 검증된 구현이 있어(`server/app/services/search.py`·`naver.py`·`attachments.py`, `api/usage.py`, 웹 `core/usage.ts`·`attachments.ts`·`settings.ts`·`SettingsScreen.tsx`, 스파이크 문서 `docs/spikes/`) 이식을 기본으로 하되 v2 규약(서비스 계층·계약·시각 기준)에 맞춰 다시 쓴다.
 
 **범위 밖(자체 음성 보류 D9와 다른 마일스톤 몫)**: 설정의 보이스 선택·말 속도·맞장구·음성 원본 보관(FR-17 보류 항목, 시안 설정 02·03의 해당 부분), 대화 05 "검색 중"의 검색 안내 음성과 음성 세션의 검색 안내 `notice`, 음성 세션의 첨부(계약상 400), 검색 턴의 **음성** 지연 판정(아래 확인 필요 1), 키워드 검색 `q`·Markdown 내보내기·주간 브리핑(P2), CSRF·PWA·iOS(M6). 시안에는 있지만 이 목록 때문에 만들지 않는 부분은 해당 작업 행에 적었다(CLAUDE.md 화면 디자인 규칙).
 
@@ -203,7 +203,7 @@ M3-01~M3-19 중 18개를 완료했다(M3-01~15는 2026-10-30까지, M3-16·17·1
 
 **위험**: 묶음 A는 실제 Claude 사용량과 검색 키에 달려 있다. A가 막히면 B·C는 진행하고 D·E는 보류한다. 스파이크 결과가 "허용 밖 도구를 CLI가 막지 못함"(M5-01 ①)이면 M5-13·14가 서버 중계(`tools/list` 필터)로 커지고, "`WebFetch`를 CLI 규칙으로 못 막음"(②)이면 M5-11이 서버 `web_fetch`를 만드는 큰 작업이 되며 M5-09의 `--tools` 구성도 달라진다. 이때는 해당 작업을 쪼개 작업 표를 고친 뒤 착수한다. **계약 변경은 같은 커밋**(CLAUDE.md): M5-02·04·09·13 등 계약(2.5·2.6·오류 코드·엔드포인트)을 바꾸는 작업은 그 작업의 커밋에서 client-contract를 함께 고치고, M5-17은 최종 점검만 맡는다. Spec 5.6과 이 계획서 13절이 "M5 첫 작업"으로 정한 `.gitignore`(`server/mcp-servers.yaml`)는 M5-01에서 하고, 예시 파일(`mcp-servers.example.yaml`)은 스파이크가 정하는 차단 방식을 반영해야 하므로 M5-12에서 커밋한다.
 
-### 8.1 묶음별 진행 상태 (2026-11-08 기준)
+### 8.1 묶음별 진행 상태 (2026-11-08 종료)
 
 | 묶음 | 브랜치 | 작업 | 내용 | 상태 | 병합 커밋 |
 |---|---|---|---|---|---|
@@ -212,61 +212,44 @@ M3-01~M3-19 중 18개를 완료했다(M3-01~15는 2026-10-30까지, M3-16·17·1
 | C | `m5-c-attachments` | M5-06~08 (3/3) | 첨부 서버 저장소·검증, 첨부 턴·CLI 전달, 첨부 화면 | 완료 | `ded1e9a` |
 | D | `m5-d-search` | M5-09~11 (3/3) | 검색 도구, 출처 인용, WebFetch 차단 | 완료 | `0c0ec26` |
 | E | `m5-e-external-mcp` | M5-12~14 (3/3) | 외부 MCP 설정 파일·CLI 연결·가짜 서버 E2E | 완료 | `0f27fc8` |
-| F | `m5-f-verify` | M5-15~17 (3/3) | 실제 점검, 검색 지연 기준선·폰 첨부, 문서 정합·종료 | M5-15·16·17 완료, **실제 폰 첨부 확인(사용자) 대기** | `ebbbd92`(M5-16·17), `57068a1`(M5-15, 브랜치 `m5-g-real-check`) |
+| F | `m5-f-verify` | M5-15~17 (3/3) | 실제 점검, 검색 지연 기준선·폰 첨부, 문서 정합·종료 | M5-15·16·17 완료 | `ebbbd92`(M5-16·17), `57068a1`(M5-15, 브랜치 `m5-g-real-check`) |
 | H | `m5-h-naver-ncp` | 순서 밖 추가(2026-11-04 사용자 결정, F 뒤에 병합. 묶음 G는 F의 M5-15 브랜치 이름) | 네이버 검색을 NAVER API HUB(NCP)로 전환(13절). 카페글 검색은 도입하지 않음 | 완료 | `ab630e5` |
+| I | `m5-i-chip-contrast` | 순서 밖 추가(2026-11-08, 사용자 실제 브라우저 확인 중 발견) | 서버에 저장된 첨부의 링크 칩이 말풍선에서 안 보이던 결함(`.bubble a` 글자색 상속) 수정, 새로고침 뒤 칩 글자색 E2E(라이트·다크), 시간 의존 시험 1건의 서버 시각 고정 | 완료 | `bdf3fe7` |
 
 순서는 A → B → C → D → E → F다(B·C는 A와 독립이라 먼저 해도 되지만 위험이 큰 스파이크 결과를 D·E에 반영하려고 A를 먼저 한다). 묶음마다 브랜치 하나, 병합 승인 전에 검증 전부·Playwright 실구동·독립 서브에이전트 diff 리뷰를 거친다(CLAUDE.md).
 
-### 8.2 작업 표
+### 8.2 작업 요약
 
-| ID | 묶음 | 작업 | 산출물 | 대상 시안 | 상태 |
-|---|---|---|---|---|---|
-| M5-01 | A | CLI 도구 권한 스파이크(D7·FR-25) | 실제 CLI로 확인하고 `docs/spikes/m5-cli.md`에 결론·근거 로그를 남긴다(v1 `docs/spikes/claude-cli/check_*.py`를 참고한 재현 스크립트 포함). ① `--allowedTools`가 비대화형(`-p`)에서 허용 밖 MCP 도구 호출을 막는지(가짜 stdio 서버의 허용·비허용 도구 2개), 막지 않으면 대안(`--disallowedTools`·`tools/list`를 걸러 주는 중계), ② 내장 `WebFetch`를 CLI 권한 규칙만으로 `localhost`·사설 대역·메타데이터 주소에 못 가게 할 수 있는지(불가능하면 내장 `WebFetch`를 끄고 M5-11에서 서버가 검사하는 `web_fetch`를 만든다), ③ 전체 도구 이름 64자 한도와 `__` 경계, ④ `ENABLE_TOOL_SEARCH=false`에서 도구 정의가 많을 때 첫 토큰 지연·토큰 증가, ⑤ 내장 `WebSearch`·`WebFetch`와 MCP 검색 도구 결과의 stream-json 이벤트 형식(`web_search`·`web_fetch` 요약·링크 추출 방법). 결과에 따라 8절의 위험 문단대로 M5-09·11·13·14를 고친다. 이 작업에서 `.gitignore`에 `server/mcp-servers.yaml`을 더한다(Spec 5.6 "M5 첫 작업"). **실제 Claude 사용량이 든다(사전 고지)** | - | 완료(2026-11-02, 결론 [spikes/m5-cli.md](spikes/m5-cli.md): ① `--allowedTools`로 허용 밖 도구 차단됨, ② 내장 `WebFetch`는 사설 대역을 규칙으로 못 막아 M5-11은 서버 `web_fetch`, ④ 지연 영향 작음) |
-| M5-02 | A | 검색 공급자·외부 MCP 후보 스파이크(D8) | `docs/spikes/m5-search.md`: 네이버 뉴스(`search_naver`)·블로그(`search_naver_blog`, 2026-11-02 추가) 키·응답·지연 확인(v1 `docs/spikes/naver-news.md` 재확인, 블로그는 `/v1/search/blog.json`의 필드(제목·요약·블로거·작성일·링크)와 날짜 필터 부재 확인), HasData는 2026-11-02 결정으로 외부 MCP가 아니라 내부 도구(`search_google`·`search_google_detail`, 서버가 HasData REST API 직접 호출)로 만든다. 이 스파이크에서는 커넥터로 구글 검색·웹 스크래핑 결과 형식과 한국어 품질을 확인했고, 실제 REST 호출(주소·인증·응답 시간)은 M5-09 착수 때 `.env` 키로 확인한다. 사용자 요청으로 HasData 웹 스크래핑 도구로 검색 결과의 상세 내용을 가져올 수 있는지도 확인한다. 해외·그 밖의 검색을 내장 `WebSearch`와 HasData 중 무엇으로 할지, `web_search` 요약·표시 이름, 외부 도구 결과의 출처 인용 처리(`turn.sources`에 넣을지)도 결정해 **같은 커밋에서** client-contract 2.5·2.6과 Spec 5.6, 이 계획서 13절 "D8 후속"을 고친다. 키가 없으면 해당 항목은 "막힘"으로 보고 | - | 완료(2026-11-02, 결론 [spikes/m5-search.md](spikes/m5-search.md). HasData는 커넥터 경유로 결과 형식·품질만 확인했고, 실제 REST 호출(주소·인증)·응답 시간·동시 1개 제한은 **미검증, M5-09 착수 때 확인**하며 2026-11-02에 외부 MCP가 아닌 내부 도구로 바꿨다) |
-| M5-03 | B | 남은 토큰 막대 | 서버: CLI의 `rate_limit_event` 마지막 값을 메모리에 두고 `GET /api/usage`(계약 1.3 그대로, 첫 답변 전 `null`), `llm/` 이벤트 파서에 한도 이벤트 추가. 웹: `core/usage.ts`(덜 남은 쪽 선택·초기화 시각 지난 한도는 100%·"남은 %·N시간 뒤 초기화" 계산), 헤더 오른쪽 막대(시작·대화 화면 같은 위치), 서버 연결 확인과 함께 30초마다·화면이 다시 보일 때 갱신, 오프라인이면 "확인 불가". 시험: 계산 단위 시험, 가짜 한도 값 E2E, 시각 기준 갱신 | 대화 01 시작(헤더), 대화 08 정리·끝남, 대화 09 글 대화, 대화 11 종료 확인(M2에서 이월한 막대 자리) | 완료(서버 `GET /api/usage`·헤더 막대·30초 갱신·확인 불가, 시안과 다른 점: 연결 상태는 막대 옆 아이콘만 보이고 문구는 낭독용) |
-| M5-04 | B | ~~이메일~~ (제거, 2026-11-02) | 기능을 만들지 않는다(`send_email`·SMTP). 대신 이 묶음의 코드 커밋에서 기존 코드를 지운다: 프로필 `email`·`mail_ready`(API·`user_profile.email` 열 Alembic 리비전·계약 4.1·`gen:api`), `EMAIL_TOOL_RULE`·`search_USA` 문구(`rules.py`·`test_mcp.py`)와 관련 시험·E2E 수정(기존 시험 수정이라 수정 목록으로 사용자 승인을 받는다). 시험: 프로필 시험 갱신, 프롬프트 스냅샷 | - | 완료(프로필 `email`·`mail_ready`·`user_profile.email` 열(0006)·`EMAIL_TOOL_RULE`·계약 4.1 제거. `WEB_SEARCH_RULES`의 `search_USA` 문구는 M5-09에서 규칙을 다시 쓸 때 함께 지운다) |
-| M5-05 | B | 설정 화면 | 하단 탭 "설정"의 "준비 중" 자리를 시안 3장으로 채운다. ① 내 정보: 호칭 1~20자·관심사 최대 10개(이메일 칸은 만들지 않는다), ② 대화 모델(haiku·sonnet·opus, 기본값 표시), ③ 화면 모드(시스템·라이트·다크, 이 기기에만 저장)·새 버전 적용 버튼·서버 연결 상태·캐릭터·버전. 값을 바꾸면 바로 `PUT /api/profile`로 저장하고 헤더 오른쪽에 "저장됨", 검증 오류(422)는 그 필드 옆에 보이고 값을 되돌린다. **만들지 않는 부분(D9 보류, 시안 적용 이월)**: 보이스 선택·미리 듣기, 말 속도, 맞장구 스위치, 음성 원본 보관 스위치. 시험: 컴포넌트·E2E(저장·새로고침 뒤 유지·오류 복구), 시각 기준(설정 3화면 라이트·다크) | 설정 01·02(대화 모델만)·03(보관 스위치 제외) | 완료(호칭·관심사·대화 모델 즉시 저장·422 복구·저장됨 표시, 화면 모드 기기 저장, 앱 정보. "새 버전 적용"은 M6로 이월, 시안과 다른 점은 13절) |
-| M5-06 | C | 첨부 서버 저장소와 검증 | **`Pillow`·`pypdf` 의존성은 추가 완료(`e12b402`, 2026-11-02 승인).** Alembic `attachment` 테이블(턴에 CASCADE), 업로드 검증·정규화(이미지: EXIF 회전 적용 뒤 제거·긴 변 1024px 이하 PNG(알파)·JPEG 재인코딩·GIF 첫 프레임·320px 썸네일, 텍스트: UTF-8(BOM 허용)·CP949 폴백·NUL 거절, PDF: `%PDF-` 시그니처·암호화·손상 거절·쪽수), 한도(계약 2.13의 파일당·메시지당·세션 누적, 넘으면 413 `attachment_too_large`·400 `attachment_invalid`), 저장 경로 `attachments_dir/{session_id}/`(폴더 0700·파일 0600), 서버 설정(`Settings`)에 한도를 두고 `GET /api/profile`의 `client.attachments`로 내려보냄(계약 7절대로 `shared/client-defaults.json`에는 넣지 않는다). 시험: 형식·한도 경계값·손상 파일·가짜 확장자·경로 이탈 | - | 완료(2026-11-03, 서버 `app/services/attachments.py`·0007·`Settings.attachment_*`·`client.attachments`. 한도 필드가 `client`에 붙으므로 응답 모델은 `ProfileClientConfig`(기본값 파일 검증용 `ClientConfig`는 그대로)) |
-| M5-07 | C | 첨부 턴과 CLI 전달 | `POST /api/sessions/{id}/turns/files`(multipart `text`+`files`, 글 대화만·음성 세션 400), 이미지·`document`(PDF)·텍스트(`<attachment name="…">` 래퍼) 블록으로 CLI 입력 구성, `turn.text`에는 글만 저장, `GET /api/attachments/{id}`(`?thumb=1`, 이미지 `inline`·텍스트 `text/plain; charset=utf-8`·PDF 첨부, 항상 `nosniff`), 일지 상세·다시 열기의 `turns[].attachments`, 대화 삭제 시 행·폴더 삭제와 `purge_orphans`(DB에 없는 파일은 1시간 뒤 정리. Spec 9절대로 `ATTACHMENTS_DIR`이 기본 경로가 아니면 동작하지 않게 하는 안전장치를 두고, `claude_app` 세션의 첨부를 고아로 오인하지 않는 시험(MCP Spec 9절·design.md)을 넣는다), 다시 열기 규칙(이미지·PDF는 `[첨부: 이름]`만, 텍스트는 최신순 1만 자), 일지 정리에는 이름만 전달, `ATTACHMENT_RULES` 연결·스냅샷. `npm run gen:api`로 타입 갱신. 시험: 녹화 CLI로 입력 블록 구성·저장·삭제·다시 열기 | - | 완료(2026-11-03, 서버 `POST /turns/files`·`GET /api/attachments/{id}`·`turns[].attachments`·`purge_orphans`(서버 시작 때 한 번, 기본 폴더일 때만)·`ATTACHMENT_RULES` 연결과 스냅샷 5개 갱신. 웹 `profile.ts`의 `ClientConfig` 타입 별칭만 `ProfileClientConfig`로 바꿨다. 톤 평가는 하지 않음(M5-17 전에 실행)) |
-| M5-08 | C | 첨부 화면 | 글 대화 입력창의 첨부 버튼·선택 목록·제거, 한도 안내(`client.attachments` 값은 보내기 전 안내에만, 서버가 다시 검증), 글이 비면 보내지 못하고 힌트, `attachment_*` 오류 때 쓴 글·첨부 목록을 입력창에 되돌림, 말풍선과 일지 상세 전문의 이미지 썸네일·텍스트/PDF 칩, `core/attachments.ts`. 시험: 컴포넌트, 격리 서버 E2E(이미지·텍스트·PDF 첨부 → 답변 → 일지 전문에 썸네일), 시각 기준(첨부 선택 상태·전문 썸네일 라이트·다크) | 대화 09 글 대화·첨부, 일지 05 상세·전문 | 완료(2026-11-03, `web/src/core/attachments.ts`·`components/Attachments.tsx`·`ConversationScreen` 입력창·`Transcript` 썸네일. 서버 변경 없음, 가짜 CLI도 그대로(첨부 블록을 이미 받는다). 시안과 다른 점은 13절) |
-| M5-09 | D | 검색 도구 | 내부 MCP `search_naver`(네이버 뉴스: `recency`·`site`·정렬, 50건을 받아 거르는 v1 전략)·`search_naver_blog`(네이버 블로그, 2026-11-02 추가: 후기·경험담용, `recency`는 `postdate`로 거르고 출처는 `bloggername`으로 표시, 광고성 글 걸러내기는 하지 않고 규칙에 "참고용"으로 적음)와 오류 시 내장 `WebSearch` 폴백, `--tools`는 `WebSearch`만 켜고 `WebFetch`는 끈다(M5-01·02 결정: 해외·일반 검색은 `search_google`이 기본, 내장 `WebSearch`는 폴백이라 켜 둔다), `web_search` 요약(`query`·`links` 최대 10·`sources` 호스트 최대 3)으로 같은 이름 전달, 검색 직후 턴의 쓰기 도구(`save_note`·`set_nickname`·`set_model`) 서버 검증, `WEB_SEARCH_RULES` 연결·스냅샷, 키 이름 `.env.example`. 시험: 가짜 검색 백엔드(과금 없음)·폴백·검증 경로. **글 대화의 도구 알림("검색 중"→결과)만 만들고 음성 안내는 보류** **추가(2026-11-02)**: 내부 도구 `search_google`(HasData 구글 검색 REST `x-api-key`, `q`·`gl`·`hl`·`tbs` 기간·`num`, `organicResults`만 추려 모델에 줌)와 `search_google_detail`(HasData 웹 스크래핑, 마크다운 출력, 크기 한도, `web_fetch`가 못 가져오는 페이지용 보조). 동시 요청 1개 제한 때문에 서버가 HasData 호출을 직렬화하고, 시간 제한(예: 6초, 착수 때 실측으로 정함)·오류·키 없음이면 내장 `WebSearch`로 폴백한다. **착수 전에 `.env` 키로 REST 주소·인증·응답 시간을 먼저 확인한다(실제 호출, 사전 고지·승인).** `WEB_SEARCH_RULES`는 "국내 뉴스 → `search_naver`, 국내 후기 → `search_naver_blog`, 그 밖 → `search_google`, 실패 시 `WebSearch`"로 쓰고, 출처는 `organicResults[].link` 호스트를 `turn.sources`에 직접 넣는다. `search_google_detail`은 임의 URL을 HasData가 가져오므로 NFR-06 예외로 밝힌다 | 대화 05 검색 중(글 대화의 도구 알림 부분) | 서버 완료(2026-11-03, 브랜치 `m5-d-search`: 내부 MCP `search_naver`·`search_naver_blog`·`search_google`·`search_google_detail`(`app/mcp/search_tools.py`, 어댑터 `services/naver.py`·`hasdata.py`), 키 없음·오류·시간 초과(`HASDATA_SEARCH_TIMEOUT_S` 기본 6초)면 도구 오류로 `WebSearch` 폴백 안내, HasData 호출 세마포어 직렬화, `--tools WebSearch`·`--allowedTools mcp__trailtalk__*,WebSearch`, `web_search` 요약(`parser._tool_summary`, 이벤트 모델 `WebSearchSummary`)·이름 합치기, 웹 내용 직후 턴 `save_note` 검증(이번 사용자 발화에 저장 요청 말이 있을 때만; `set_nickname`·`set_model`은 원래 사용자 발화만 근거), `WEB_SEARCH_RULES` 연결(`search_USA` 문구 삭제)·스냅샷 5개 갱신. **HasData REST 주소·`x-api-key`·GET 검색/POST 스크래핑 요청 형식·스크래핑 응답 필드는 가정이며 실제 호출은 미확인**(설정 `HASDATA_*`로 바꿀 수 있고 시험은 가짜 HTTP로만 했다). 음성 안내(notice)는 보류. 웹 화면(말풍선 출처·"검색 중" 표시)은 M5-10) |
-| M5-10 | D | 출처 인용 | `turn.sources` 저장, 일지 정리(추출)가 `summary_cites`·`citations`·노트 `cites`를 채우도록 프롬프트·검증 갱신(M2에서 열·화면 자리만 만들어 둠), 화면: 답변 말풍선의 출처 호스트(서버가 준 호스트를 그대로, URL 해석 없음. `search_google` 결과의 호스트도 같은 방식으로 `turn.sources`에 들어간다), 일지 상세 인용 구역·노트 인용 번호. 시험: 추출 평가(`docs/eval/`)에 출처 있는 케이스 추가, 인용이 없는 대화는 빈 목록, 링크 마크다운 안전 렌더링 | 일지 03 상세·요약, 일지 04 상세·노트 | 구현 완료(2026-11-03, 브랜치 `m5-d-search`: 서버가 검색·읽기 도구 결과(`ToolFinished.sources`, `parser.tool_sources`: 내장 `WebSearch`·`search_*`의 링크 최대 10개, `web_fetch`는 HTTP 400 미만 페이지)를 답변 턴의 `turn.sources`(`[{title, url, host}]`, 한 턴 20개까지, URL 중복 없이)로 저장하고 일지 상세·다시 열기의 `turns[].sources`로 호스트(중복 없이 최대 5개)를 준다(계약 3.2). 일지 정리(추출)의 출처 번호 목록·번호 검증·`summary_cites`·`citations`·노트 `cites` 변환은 M2에서 이미 있었으므로 프롬프트·스냅샷은 바꾸지 않았다. 웹은 답변 말풍선 아래 출처 호스트 칩(실시간은 `tool` 요약의 `sources`·`host`, 다시 연 대화·일지 전문은 저장된 호스트)과 검색·읽기 알림(진행 중·실패·출처 없음일 때만)을 더했고 인용 구역·노트 번호는 M2 화면 그대로다. 시험: 서버 `test_turn_sources.py`·`test_llm_parser.py`, 웹 `conversation.sources.test.ts`·`ConversationScreen.sources.test.tsx`·`Transcript.test.tsx`, E2E `citations.spec.ts`(가짜 CLI `__play__:web_search` 지시어 추가), 시각 `visual-citations.spec.ts`(일지 03 인용 구역·04 노트 인용 번호·대화 출처 칩, 라이트·다크 6장), 추출 평가 `cases.yaml`의 `cited_cases` 3개와 `extract_eval/cited.py`(번호 자동 채점, 실제 실행은 M5-15). 다르게 한 점: 블로그를 `bloggername`으로 표시하는 것은 M5-09 시험이 요약의 `sources`를 호스트로 고정해 두어 하지 않았고 칩은 호스트만 보인다) |
-| M5-11 | D | WebFetch 차단(D7) | **M5-01 ② 결과로 확정: 내장 `WebFetch`는 끄고 내부 MCP `web_fetch`를 만든다**(http/https만, 루프백·사설·링크로컬·메타데이터 대역 차단, 리다이렉트마다 다시 검사, DNS 재바인딩 방어(확인한 IP로 연결), 크기·시간 한도, 본문 텍스트 추출, `web_fetch` 요약 `code`·`bytes`·`url`·`host`). 시험: `localhost`·`127.0.0.1`·`10.x`·`192.168.x`·`169.254.169.254`·IPv6·리다이렉트·재바인딩 거부, 정상 외부 주소 허용(가짜 서버). 내장 `WebFetch`가 꺼져 있고 허용 도구에 없음을 CLI 인자 시험으로 확인한다. `web_fetch` 요약은 서버가 직접 만든다(내장 이벤트 형식 `{bytes, code, url}`과 같은 필드를 쓴다) | - | 완료(2026-11-03, 서버 `app/services/web_fetch.py`·내부 MCP `web_fetch`: http/https만, 루프백·사설·링크로컬·메타데이터·CGNAT·IPv6(매핑·6to4·Teredo·NAT64 포함) 차단, 이름을 한 번 해석해 확인한 IP로만 연결(Host·SNI는 원래 이름), 리다이렉트마다 재검사(기본 4회), 환경 프록시 미사용, 시간·크기(압축 해제 후)·글자 수 한도, HTML 본문 추출, `web_fetch` 요약. 내장 `WebFetch`는 `--tools`·`--allowedTools`에 없음(CLI 인자 시험). 시험은 가짜 리졸버·MockTransport만 사용) |
-| M5-12 | E | 외부 MCP 설정 파일 | `MCP_SERVERS_PATH`(기본 `server/mcp-servers.yaml`, 없으면 외부 서버 없음)의 로더·검증(Spec 5.6 "외부 MCP"의 모든 규칙: 이름 `[a-z0-9-]{1,32}`·예약어 `trailtalk`·`servers`·중복 거부, `allowed_tools` 필수·비면 거부·`*` 거부, 전체 이름 64자, stdio `command` 절대 경로·`args` 문자열 목록, 비밀은 `${MCP_<서버>_<이름>}` 접두사 규칙, `url`에 비밀 금지, 파일·폴더 권한(그룹·타인 쓰기·소유자 불일치·심볼릭 링크 거부, 읽기 가능은 경고)), 틀리면 서버 시작 거부, `mcp-servers.example.yaml` 커밋(주석에 NFR-06 예외(외부 서비스형 서버는 도구 인자로 발화 일부가 서버 밖으로 나갈 수 있음)·도구 부작용은 허용 목록 작성자 책임·임의 URL을 가져오는 도구는 허용 목록으로만 통제함을 밝힘). 시험: 규칙별 허용·거부, 권한 검사 | - | 완료(2026-11-03, `server/app/external_mcp.py`·`mcp-servers.example.yaml`·`tests/test_external_mcp.py` 99개. 규칙 밖 추가: 선택 키 `denied_tools`(CLI `--disallowedTools` 이중 방어용, Spec 5.6 반영), 서버 자신의 `MCP_*` 설정 변수(`MCP_OWNER_PASSWORD` 등)는 서버 이름이 같은 접두사여도 읽지 못하게 거부, 더 긴 접두사를 가진 다른 서버의 변수(`foo`의 `MCP_FOO_BAR_*`)도 거부) |
-| M5-13 | E | 외부 MCP CLI 연결·이벤트 | (M5-01 ① 결과: CLI `--allowedTools`가 허용 밖 도구를 막으므로 서버 중계는 필요 없다. `--disallowedTools`로 이중 방어.) `--mcp-config`를 인자가 아닌 0600 파일(CLI 전용 작업 폴더 아래 `mcp-*`, CLI 종료·서버 시작 때 정리)로 넘기고, `--allowedTools`에 `mcp__<서버>__<도구>`만 더하며(외부에는 와일드카드 없음), 서버 형식은 stdio(`command`·`args`·`env`)와 http(`url`·`headers`) 둘 다 만들고(v1의 `mcp_client_config`는 http만 만들었다) `${MCP_<서버>_<이름>}` 치환 결과를 0600 `mcp.json`에만 쓰며(변수가 없거나 비면 시작 거부), 비밀 가림은 `Authorization`뿐 아니라 `headers`·`env` 값 전체와 CLI 결과의 `error_message`에도 적용하고, stdio 서버는 셸 없이·절대 경로·최소 환경(`PATH`·`HOME`·`LANG`·`TMPDIR`+`env`에 적은 변수)·빈 하위 작업 폴더에서 실행. `tool` 이벤트는 접두사를 포함한 이름·`input: null`·결과 2000자·DB 미저장, 로그에 비밀·stderr·인자를 남기지 않고, 외부 도구 직후 턴의 쓰기 도구에 같은 검증을 적용. 화면은 "`<도구>` 사용 중"(서버 이름 비노출)과 결과를 글자 그대로 보인다. 시험(항목별로 따로 통과해야 완료): ① 구성 파일 생성·권한 0600·종료·시작 때 정리, ② stdio·http 구성과 치환(변수 없음·빈 값 거부), ③ 실행 격리(셸 없음·최소 환경·빈 작업 폴더), ④ `tool` 이벤트 변환(접두사 유지·`input: null`·2000자·DB 미저장), ⑤ 비밀 가림(로그·`error_message`·`headers`·`env`), ⑥ 외부 도구 직후 쓰기 도구 검증, ⑦ 화면 표시 | 대화 09(도구 알림 스타일 재사용) | 완료(2026-11-03). 시험 근거는 `server/tests/test_external_mcp_cli.py`(① `test_mcp_json_is_written_0600…`·`test_empty_work_folders…`·`test_mcp_json_and_folders_removed_when_open_fails`·`test_startup_purges…`·`test_server_start_purges…`, ② `test_stdio_and_http_entries_with_substituted_secrets`·`test_allowed_tools_get_full_names…`·`test_missing_or_blank_secret_variable…`, ③ `test_launcher_*`·`test_isolation_holds_through_the_whole_chain`, ④ `test_external_tool_events_keep_prefix…`·`…cut_at_2000…`·`…not_stored_and_never_becomes_a_source`, ⑤ `test_secret_never_reaches…`·`test_redaction_covers…`·`test_external_server_stderr…`, ⑥ `test_external_tool_turns_on_the_write_tool_guard…`)와 웹 ⑦ `conversation.test.ts`(`toolNotice`·`externalToolResult`)·`ConversationScreen.external.test.tsx`. CLI가 외부 서버를 직접 띄우므로 격리는 mcp.json의 command를 실행기 `app/mcp_launch.py`로 두어 처리(Spec 5.6 실행 절). 한계: 서버를 띄우는 것과 그 서버의 네트워크·파일 접근은 막지 못한다 |
-| M5-14 | E | 가짜 외부 MCP E2E | 가짜 stdio MCP 서버(허용 도구·허용 밖 도구)와 녹화 CLI로 허용 도구는 호출되고 허용 밖 도구는 **호출되지 않음**을 Playwright로 확인(CLI 레벨 거부 여부는 M5-01 결과에 따라 서버 중계 또는 CLI 규칙으로 보장), 설정 파일이 틀리면 서버가 시작하지 않음, 비밀이 화면·로그·응답에 나오지 않음 | - | 완료(2026-11-03, `web/e2e/external-mcp.spec.ts` 4개: 허용 도구 호출·화면, 허용 밖 도구(설정이 막은 것과 목록에 없는 것) 서버 미호출, 비밀 미노출(화면·응답·DB), 실행 격리. 가짜 CLI(`server/tests/fakes/fake_claude.py`의 `__mcp__` 지시어)가 mcp.json의 가짜 stdio 서버(`fake_mcp.py`)를 실제로 띄운다. 허용 판정은 가짜 CLI가 `--allowedTools`·`--disallowedTools`로 흉내 내므로 실제 CLI의 차단 자체는 M5-01 스파이크가 근거이고, 서버가 올바른 인자를 만드는지는 `test_external_mcp_cli.py`가 보장한다. 설정 파일이 틀리면 시작하지 않는 것은 E2E로 직접 보기 어려워 서버 단위 시험 `test_external_mcp.py`로 갈음) |
-| M5-15 | F | 실제 점검 | **실제 Claude·외부 서비스 사용량이 든다(사전 고지)**. ① 프롬프트 규칙(검색·첨부)가 바뀌었으니 톤 평가 재실행(20개 중 18개 이상·인사말 이후 호칭 0개, `docs/eval/`), ② 추출 평가 갱신(출처 케이스), ③ 실제 검색 대화(국내 `search_naver`·`search_naver_blog`, 해외·일반 `search_google`, 폴백 `WebSearch`) 확인, ④ 실제 첨부 대화(이미지·PDF·텍스트), ⑤ (이메일 제거로 없음), ⑥ (외부 MCP 실제 서버 점검은 하지 않는다, 확인 필요 4). ⑦ `search_google`·`search_google_detail` 실제 호출(주소·인증·응답 시간, 한국어·영어 질의, 폴백 시간 초과 시험, M5-09 착수 때 한 확인의 재확인). 키·계정이 없는 항목은 "막힘"으로 보고 | - | 완료(2026-11-04, 브랜치 `m5-g-real-check`). ⑦ HasData 실제 REST: 주소·`x-api-key`·검색 파라미터 가정 일치, 검색 약 1.6초(한국어·영어)·스크래핑 약 2.0~2.5초·잘못된 키 401(0.2초), 동시 2건도 200, `removeBase64Images` 허용. **스크래핑은 JSON이 아니라 `text/plain` 마크다운 본문**이라 `scrape()`가 항상 실패하던 버그를 회귀 시험과 함께 고침(`5d38292`). 시간 제한 기본값(검색 6초·스크래핑 20초)은 그대로 둔다. ③ 격리 서버(8120)·실제 CLI: `search_naver`(서버 구간 114ms)·`search_naver_blog`(190ms)·`search_google`(1.4초) 호출·답변·`turn.sources` 저장 확인, 폴백은 `HASDATA_SEARCH_TIMEOUT_S=0.5`로 `search_google`을 시간 초과시켜 내장 `WebSearch`로 넘어가는 것 확인(로그에 키·검색어 없음). ④ 이미지·PDF·텍스트 첨부를 실제 Claude가 정확히 읽음. ① 톤 평가: 규칙 추가 전 16·15/20(미달)→원인 분리(검색 규칙 제외 실험 18/20)→`LENGTH_RULES`와 "검색 도구가 없으면 찾아볼게요 약속 금지" 규칙 추가·스냅샷 5개 갱신 뒤 19/20·호칭 0(`220eaa1`, 남은 실패 `walk-weather`). ② 추출 평가 재현율 28/28·수락하지 않은 제안 0/5, 인용 3/3·범위 밖 0·잘못된 인용 0(`05f4bba`). 부수: 시간 의존 기존 시험 `test_get_memory_limits_...`를 서버 시각 고정으로 수정(`ec91fd4`, 승인). 처음 구동 때 `INTERNAL_BASE_URL`을 격리 서버 포트에 맞추지 않아 CLI 3턴이 도구 없이 무효로 쓰였다(구동 설정 누락, 서버 결함 아님) |
-| M5-16 | F | 검색 지연 기준선과 폰 첨부 확인 | 글 대화의 검색 턴 서버 구간(첫 토큰까지 `first_token_ms`·`done_ms`, 검색 여부 `searched`)을 `turn_latency`(`mode=text`)로 기록·`GET /api/latency`에서 검색 턴을 분리해 보고하는 기준선(확인 필요 1의 결정에 따라 음성 판정은 M3-18과 함께 이월). 폰에서 첨부(사진 선택·텍스트·PDF)가 되는지 **사용자가 직접 확인**해 결과를 받는다(실제 Claude 호출이라 실행 전에 알린다). 확인 필요 1의 결정(이월 동의)에 따라 Spec 12절·5.1과 12절 추적표 NFR-01의 문구를 고쳤다 | 서버·문서 `fb43223`(`turn_latency.mode` 0008, `summary.text`) | 서버·문서 완료, 폰 첨부 확인은 사용자 몫으로 대기 |
-| M5-17 | F | 문서 정합과 종료 | client-contract 2.5·2.6(`web_search`·외부 도구 요약 kind 확정)·1.3·2.13·4.1 점검과 Spec 5.6의 "스파이크 뒤" 문구 확정, CLAUDE.md·README·`.env.example` 점검, 8.3 완료 기준 표 채움, 8.4 종료 체크리스트, 요구사항 추적표(12절)에서 M5 항목 정리 | - | 문서 점검 완료(계약 상태 표·`.env.example`·8.3 표·8.4 체크리스트). 종료 처리(8.1·대시보드·추적표 정리, 작업 표 접기)는 M5-15 실제 점검과 폰 첨부 확인 뒤 |
+M5-01~M5-17 17개 작업을 모두 완료했다(2026-11-08, 종료 시점 `main` 병합 `bdf3fe7`). 묶음 A(M5-01~02 CLI 도구 권한·검색 공급자 스파이크, `26d7aca`), B(M5-03~05 남은 토큰 막대·설정 화면·이메일 제거, `f236be0`), C(M5-06~08 첨부 저장소·첨부 턴·첨부 화면, `ded1e9a`), D(M5-09~11 검색 도구·출처 인용·서버 `web_fetch`로 WebFetch 차단, `0c0ec26`), E(M5-12~14 외부 MCP 설정·CLI 연결·가짜 서버 E2E, `0f27fc8`), F(M5-16·17 글 대화 검색 턴 지연 기준선·문서 정합, `ebbbd92`)와 M5-15 실제 점검(`57068a1`), 순서 밖으로 더한 H(네이버 검색을 NAVER API HUB(NCP)로 전환, `ab630e5`)·I(첨부 링크 칩 글자색 결함 수정, `bdf3fe7`)를 병합했다. 이메일(FR-21)·`search_USA`는 2026-11-02 결정으로 만들지 않았고 외부 MCP 실제 서버 점검은 하지 않았다(가짜 서버 E2E까지). 검색 턴의 음성 지연 판정은 M3-18과 함께 이월했고, 자체 음성(설정의 보이스·말 속도·맞장구·음성 원본 보관, 검색 안내 음성)은 D9 보류다. M5-15 실제 점검에서 HasData 스크래핑이 JSON이 아니라 `text/plain` 본문을 주는 것을 확인해 고쳤고, 톤 평가가 규칙 추가 뒤 16·15/20으로 떨어져 답변 길이 규칙과 "검색 도구가 없으면 찾아볼게요 약속 금지" 규칙을 더해 19/20으로 회복했다. 폰 첨부와 Claude 대화는 사용자가 폰에서 직접 확인했다. 시안과 다르게 한 점과 결정은 13절, 평가 결과는 8.3 표와 `docs/eval/`에 있다. 작업별 상세(산출물·시험·결정)는 `git log -- docs/implementation-plan.md`와 각 병합 커밋 메시지, `docs/spikes/m5-cli.md`·`m5-search.md`에 남아 있다.
 
 ### 8.3 완료 기준
 
 | 기준 | 목표 | 측정값 | 결과 |
 |---|---|---|---|
-| 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과(첨부·검색·외부 MCP·사용량 시험 포함) | 서버 pytest 1169 통과, ruff check·format 통과(첨부 47·web_fetch 107·외부 MCP 121·사용량·검색·출처 시험 포함) | 통과 |
+| 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과(첨부·검색·외부 MCP·사용량 시험 포함) | 서버 pytest 1173 통과, ruff check·format 통과(첨부 47·web_fetch 107·외부 MCP 121·사용량·검색·출처 시험 포함) | 통과 |
 | 웹 | typecheck 두 종류, lint, test, build 통과 | typecheck 두 종류·lint·vitest 476·build 통과 | 통과 |
 | 타입 생성 | `npm run gen:api -- --check` 통과 | `gen:api --check` 통과 | 통과 |
 | 계약 일치 | client-contract 1.3·2.5·2.6·2.13·4.1과 CLAUDE.md·README·`.env.example`이 코드와 같음 | 계약 0절 상태 표를 코드와 대조해 고침(`GET /api/usage`·첨부 구현됨), 1.3·2.5·2.6·2.13·2.15·3.2·4.1 갱신, `.env.example`에 검색·외부 MCP 키 이름 추가, 프로필 `email`·`mail_ready` 제거 | 통과 |
 | 남은 토큰 막대 | 시작·대화 화면 헤더에 표시, 30초 갱신, 오프라인 "확인 불가", 첫 답변 전 `null` 처리 | E2E `usage.spec` 7건(값·값 없음·경고·소진·확인 불가·실제 서버), 시각 기준 2장, 실제 화면에서 54% 표시 확인(2026-11-03) | 통과 |
 | 설정 | 설정 3화면에서 값 변경이 바로 저장되고 새로고침 뒤 유지, 422 복구, 보류 항목(보이스·말 속도·맞장구·음성 원본)이 없음 | E2E `settings.spec` 5건(저장·새로고침 유지·422 복구·화면 모드·보류 항목 없음), 시각 기준 6장, 실제 화면 확인 | 통과(저장은 격리 서버 시험으로 확인) |
-| 첨부 | 서버 한도·검증 전 경로 시험, E2E(이미지·텍스트·PDF), 폰 첨부 확인(사용자) | 서버 첨부 시험 47건, E2E `attachments.spec` 3건(이미지·텍스트·PDF·오류 복구), 시각 기준 4장. **실제 폰 첨부 확인은 사용자 몫.** 대신 Playwright Chromium의 폰 에뮬레이션(iPhone 13 크기 390×664·터치, 데스크톱 브라우저)으로 격리 서버(8130)·실제 Claude에서 이미지·텍스트·PDF를 한 메시지로 보내 첨부 칩·썸네일 표시, 세 파일 내용을 정확히 설명한 답변, 콘솔 오류 0건을 확인했다(2026-11-08). OS 사진 선택기와 Tailscale HTTPS 접속은 에뮬레이션으로 확인할 수 없다 | 폰 확인 대기(에뮬레이션 통과) |
+| 첨부 | 서버 한도·검증 전 경로 시험, E2E(이미지·텍스트·PDF), 폰 첨부 확인(사용자) | 서버 첨부 시험 47건, E2E `attachments.spec` 3건(이미지·텍스트·PDF·오류 복구), 시각 기준 4장. **실제 폰 첨부 확인(2026-11-08, 사용자): 폰에서 파일 첨부와 Claude 대화가 정상 처리됨(Tailscale HTTPS 8443).** 사전 확인으로 Playwright Chromium의 폰 에뮬레이션(iPhone 13 크기 390×664·터치, 데스크톱 브라우저)으로 격리 서버(8130)·실제 Claude에서 이미지·텍스트·PDF를 한 메시지로 보내 첨부 칩·썸네일 표시, 세 파일 내용을 정확히 설명한 답변, 콘솔 오류 0건을 확인했다(2026-11-08). OS 사진 선택기와 Tailscale HTTPS 접속은 에뮬레이션으로 확인할 수 없다 | 통과 |
 | 검색·출처 | 가짜 검색 백엔드 E2E, 실제 국내(`search_naver`)·그 밖(M5-02가 정한 경로) 검색 대화 각 1, 말풍선·일지에 출처가 보이고 인용 없는 대화는 빈 목록 | 가짜 검색 백엔드·`WebSearch` 폴백·쓰기 도구 검증 시험, 출처 저장 시험, E2E `citations.spec`, 시각 기준 6장. 실제 검색 대화(2026-11-04, M5-15): 국내 뉴스·블로그·해외 검색과 `WebSearch` 폴백 모두 확인, 출처 저장 확인 | 통과 |
 | WebFetch 차단 | 사설·루프백·메타데이터 대역·리다이렉트·재바인딩 거부 시험 전부 통과 | `test_web_fetch` 107건(사설·루프백·메타데이터·IPv6·리다이렉트·재바인딩·IDN·`fec0::` 등) | 통과 |
 | 외부 MCP | 가짜 서버 E2E에서 허용 도구만 호출되고 허용 밖은 호출되지 않음, 설정 검증 시험, 비밀 미노출 | `test_external_mcp` 100건, `test_external_mcp_cli` 22건(항목 ①~⑥), 웹 ⑦, E2E `external-mcp.spec` 4건, 비밀 미노출 시험. 실제 CLI 차단은 M5-01 스파이크가 근거 | 통과 |
 | 톤·추출 평가 | 톤 20개 중 18개 이상·인사말 이후 호칭 0개, 추출 평가 재현율 유지 | 톤 최종 19/20·호칭 0(리포트 `docs/eval/persona-2026-11-04-5.md`, 리뷰 반영 뒤 최종 규칙, 앞선 두 회 16·15/20은 규칙 보강으로 해소), 추출 재현율 28/28·인용 3/3·범위 밖 0·잘못된 인용 0(`extract-2026-11-04.md`) | 통과 |
-| 검색 턴 지연 | 글 대화 검색 턴 서버 구간 기준선 기록(음성 판정은 확인 필요 1의 결정에 따라 M3-18과 함께 모든 개발 뒤로 이월) | 서버·시험 완료(`fb43223`), 폰 확인 대기 | M5-16 |
-| E2E·시각 기준 | Playwright 통과, 임시 경로 격리, 설정·토큰 막대·첨부·인용 시각 기준(라이트·다크) | Playwright 79건 통과(격리 서버 8100·가짜 CLI, 사용자 서버 8000 미접촉). 시각 기준: 설정·토큰 막대·첨부·인용 라이트·다크 | 통과 |
-| 게이트 | `scripts/verify.sh` 전체 통과(백그라운드 검증 통과 기록) | `scripts/verify.sh` 전체 통과 기록(묶음 A~F 병합 시점마다) | 통과 |
+| 검색 턴 지연 | 글 대화 검색 턴 서버 구간 기준선 기록(음성 판정은 확인 필요 1의 결정에 따라 M3-18과 함께 모든 개발 뒤로 이월) | 서버·시험 완료(`fb43223`), 폰 첨부 확인 완료 | 통과(M5-16) |
+| E2E·시각 기준 | Playwright 통과, 임시 경로 격리, 설정·토큰 막대·첨부·인용 시각 기준(라이트·다크) | Playwright 81건 통과(격리 서버 8100·가짜 CLI, 사용자 서버 8000 미접촉). 시각 기준: 설정·토큰 막대·첨부·인용 라이트·다크 | 통과 |
+| 게이트 | `scripts/verify.sh` 전체 통과(백그라운드 검증 통과 기록) | `scripts/verify.sh` 전체 통과 기록(묶음 A~I 병합 시점마다) | 통과 |
 
 ### 8.4 M5 종료 체크리스트
 
 - [x] 단위 테스트와 Playwright 실구동 통과, 완료 기준 표 채움(실제 호출이 필요한 칸은 "대기"로 표시)
 - [x] 실제 점검(톤·추출 평가, 검색·첨부 실제 확인, 사용량 확인 포함) — M5-15(2026-11-04)
 - [x] `CLAUDE.md`와 client-contract가 코드와 일치(계약 0절 상태 표·`.env.example` 점검, M5-17)
-- [x] 묶음마다 독립 서브에이전트가 diff를 리뷰하고 지적을 반영(A~F)
-- [x] 커밋·푸시(묶음 A~E)
-- [ ] 사용자 확인(폰 첨부 확인 포함) — 대기
-- [ ] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
+- [x] 묶음마다 독립 서브에이전트가 diff를 리뷰하고 지적을 반영(A~I)
+- [x] 커밋·푸시(묶음 A~I)
+- [x] 사용자 확인(폰 첨부 확인 포함, 2026-11-08)
+- [x] 대시보드·추적표 갱신, 작업 표를 한 줄 요약으로 접음
 
 ## 9. M6 보안·마무리 (대기)
 
@@ -292,21 +275,21 @@ M0에서 직접 만족하는 요구사항은 NFR-08(설정 분리)뿐이고, 나
 |---|---|---|---|---|
 | FR-01 세션 시작·인사 | M1 | | FR-15 화면 검색 P2, 제니 검색 도구 | 도구는 M1 완료, 화면 검색 P2 |
 | FR-02 VAD 자동 전송 | M3, 병합 M4 | | FR-16 Markdown 내보내기 | P2 |
-| FR-03 끼어들기 | M4 | | FR-17 설정 | M5 |
+| FR-03 끼어들기 | M4 | | FR-17 설정 | M5 완료(보이스·말 속도·맞장구는 보류) |
 | FR-04 음성 명령(도구) | M1, 쉬기·종료 클라이언트 M4 | | FR-18 주간 브리핑 | P2 |
 | FR-05 Wake Lock | M3 | | FR-19 Claude 앱 MCP(P1) · FR-26 앱 일지·노트 웹 표시 | MA |
-| FR-06 STT·문장 TTS | M3(실측 보류) | | FR-20 웹 검색·출처 | M5 |
+| FR-06 STT·문장 TTS | M3(실측 보류) | | FR-20 웹 검색·출처 | M5 완료 |
 | FR-07 페르소나 적용 | M0 로더, M1 | | FR-21 이메일(제거) | - |
-| FR-08 글 대화 | M1 | | FR-22 첨부 | M5 |
-| FR-09 브레인스토밍 | M1 | | FR-23 시작 화면 카드·상태·막대 | 최소 연결 표시 M0, 화면 M2 완료, 막대 M5 |
+| FR-08 글 대화 | M1 | | FR-22 첨부 | M5 완료 |
+| FR-09 브레인스토밍 | M1 | | FR-23 시작 화면 카드·상태·막대 | 최소 연결 표시 M0, 화면 M2 완료, 막대 M5 완료 |
 | FR-10 정리 요약 | M1 | | FR-24 마크다운 렌더링 | M2 완료 |
 | FR-11 기억 | M1~M2 완료 | | NFR-01 응답 속도 | M3 계측, M4 판정, 검색 턴은 M3-18과 함께 모든 개발 뒤(M5는 글 대화 기준선), M6 산책 |
-| FR-12 즉시 기록·음성 보관 | M1, 보관 설정은 M5(FR-17) | | NFR-02 핸즈프리 | M4 |
+| FR-12 즉시 기록·음성 보관 | M1, 보관 설정은 보류(FR-17 음성 원본 보관) | | NFR-02 핸즈프리 | M4 |
 | FR-13 자동 추출 | M2 완료 | | NFR-03/05 인식률·배터리 | M6 |
 | FR-14 일지 목록·관리 | M2 완료 | | NFR-04 통신 불안정 | M4 |
 | NFR-06 개인정보 | M1~M6 | | NFR-07 페르소나 일관성 | M1 |
 | NFR-08 설정 분리 | **M0** | | NFR-09 음성 신뢰성 | M3 |
-| NFR-10 보안 | M6 | | FR-25 외부 MCP | M5 |
+| NFR-10 보안 | M6 | | FR-25 외부 MCP | M5 완료(가짜 서버 E2E) |
 
 ## 13. 이월·결정
 

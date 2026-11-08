@@ -47,9 +47,11 @@ docs/     문서
 
 1. 폰에도 Tailscale을 켜고 이 Mac과 같은 계정으로 로그인한다. Tailscale 관리 콘솔에서 MagicDNS와 HTTPS 인증서가 켜져 있어야 한다.
 2. `./run.sh --phone`으로 실행한다. 개발 서버가 이 Mac의 tailnet 호스트 이름을 받도록 열리고, 아래 3·4번의 명령과 주소가 터미널에 나온다(Tailscale 설정은 바꾸지 않는다).
-3. 다른 터미널에서 안내된 명령을 한 번 실행한다. 예: `tailscale serve --bg --https=8443 http://127.0.0.1:5173`(터미널에 나온 명령을 그대로 따른다. Tailscale 앱 번들만 있으면 명령 경로가 다르고, `WEB_PORT`를 바꿨다면 포트도 다르다). 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 8443을 쓴다(8443 Serve와 443 Funnel이 함께 되는지는 MA-12 전에 확인할 항목이다). 실행하기 전에 `tailscale serve status`로 8443이 이미 쓰이고 있는지 보고, 쓰이고 있으면 기존 설정을 덮어쓰지 않도록 `PHONE_HTTPS_PORT=10000 ./run.sh --phone`처럼 다른 포트를 고른다.
+3. 다른 터미널에서 안내된 명령을 한 번 실행한다. 예: `tailscale serve --bg --https=8443 http://127.0.0.1:5173`(터미널에 나온 명령을 그대로 따른다. Tailscale 앱 번들만 있으면 명령 경로가 다르고, `WEB_PORT`를 바꿨다면 포트도 다르다). 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 8443을 쓴다(8443 Serve와 443 Funnel이 함께 동작하는 것을 2026-11-08에 확인했다). 실행하기 전에 `tailscale serve status`로 8443이 이미 쓰이고 있는지 보고, 쓰이고 있으면 기존 설정을 덮어쓰지 않도록 `PHONE_HTTPS_PORT=10000 ./run.sh --phone`처럼 다른 포트를 고른다.
 4. 폰 브라우저에서 `https://<이 Mac의 기기 이름>.<tailnet>.ts.net:8443`을 열고 마이크를 허용한다.
 5. 끝나면 `tailscale serve --https=8443 off`로 끈다.
+
+**폰에서 "사이트에 연결할 수 없습니다"가 나오면**: ① 443(포트 없는) 주소는 외부 MCP용 Funnel이라 브라우저로 열 주소가 아니다(404). 반드시 `:8443`을 붙인다. ② `run.sh`가 꺼져 있으면 Serve 뒤쪽이 비어 502가 난다. ③ Funnel이 켜져 있으면 이 호스트 이름이 공개 DNS에도 공개 IP로 등록되므로, 폰이 Tailscale DNS를 거치지 않고(Chrome "보안 DNS", Android "비공개 DNS"가 켜진 경우 등) 공개 IP로 풀면 8443에 닿지 못할 수 있다. 이때는 그 설정을 끄고 Tailscale 앱의 "Use Tailscale DNS settings"를 켠다. `https://<Tailscale IP>:8443`이 인증서 경고와 함께 열리면 경로는 정상이고 이름 해석 문제다. 이 Mac은 2026-11-08에 ①·②를 거쳐 폰에서 첨부와 대화가 정상 동작함을 확인했다(③은 가능성이며 어느 설정이 원인이었는지는 확인하지 않았다).
 
 Tailscale이 없거나 로그인되어 있지 않거나 MagicDNS·HTTPS 인증서가 꺼져 있으면 `./run.sh --phone`이 이유를 알려 주고 멈춘다. 접속 주소 규약은 [client-contract.md](docs/client-contract.md) 1.2에 있다.
 
