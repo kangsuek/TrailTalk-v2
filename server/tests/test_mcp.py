@@ -434,7 +434,7 @@ def test_client_config_shape(mcp):
     assert server["headers"]["X-TrailTalk-Session"] == mcp.session_id
 
 
-# 검색 API 도구(search_USA, docs/tavily-search-plan.md)
+# 검색 도구용 가짜 어댑터(search_USA·Tavily는 2026-11-02에 제거했다)
 class _FakeSearch:
     """어댑터를 대신해 호출 인자를 기록하고 정해 둔 결과(또는 오류)를 돌려준다."""
 
