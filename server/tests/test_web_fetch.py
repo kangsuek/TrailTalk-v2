@@ -400,6 +400,31 @@ async def test_streams_only_up_to_the_limit():
     assert result.bytes == 5000 and result.truncated and read < 20
 
 
+@pytest.mark.parametrize(
+    ("raised", "code"),
+    [
+        (httpx2.ReadError("reset"), "read_failed"),
+        (httpx2.RemoteProtocolError("closed early"), "read_failed"),
+        (httpx2.DecodingError("bad gzip"), "read_failed"),
+        (httpx2.ReadTimeout("slow body"), "timeout"),
+    ],
+)
+async def test_errors_while_reading_the_body_become_fetch_errors(raised, code):
+    """헤더는 받았는데 본문을 읽다 끊기거나 느리거나 해제에 실패해도 FetchError 코드로 올린다."""
+
+    class Broken(httpx2.AsyncByteStream):
+        async def __aiter__(self):
+            yield "<p>앞부분</p>".encode()
+            raise raised
+
+    def handler(request):
+        return httpx2.Response(200, headers={"content-type": "text/html"}, stream=Broken())
+
+    with pytest.raises(FetchError) as exc:
+        await make(handler).fetch("http://example.test/")
+    assert exc.value.code == code
+
+
 async def test_char_limit_truncates():
     result = await make(lambda r: html("<p>" + "가" * 500 + "</p>"), max_chars=100).fetch(
         "http://example.test/"
