@@ -92,7 +92,36 @@ _SAVE_WORDS = (
     "잊지마",
     "잊지말",
     "노트에",
+    "노트로",
+    "저장할",
+    "저장요",
+    "저장으로",
+    "저장ㄱ",
+    "기억좀",
+    "기억부탁",
+    "기억하",
+    "기억할",
+    "기록할",
+    "메모할",
+    "기록부탁",
+    "메모부탁",
+    "남겨요",
+    "남겨봐",
+    "남겨줄",
+    "적어요",
+    "적어봐",
+    "적어줄",
+    "할일로",
+    "할일에",
+    "추가해",
 )
+
+
+def _asks_to_save(said: str) -> bool:
+    """공백을 없앤 사용자 발화가 저장을 시키는 말인지. 문장 끝의 '저장'("이거 저장!")도 포함한다."""
+    return any(word in said for word in _SAVE_WORDS) or said.rstrip("!.?~").endswith("저장")
+
+
 # 지난 대화 전문 검색(search_conversations)
 _CONVO_RESULT_MAX = 4_000  # 결과 글자 수 상한(건 단위로 끊는다)
 _HIT_CHARS = 300  # 찾은 말은 낱말 주변으로 이만큼
@@ -183,7 +212,7 @@ def build_mcp_server(app) -> MCPServer:
                     turn_id = runtime.current_user_turn_id
                     turn = await db.get(Turn, turn_id) if turn_id else None
                     said = "".join(turn.text.split()) if turn is not None else ""
-                    if not any(word in said for word in _SAVE_WORDS):
+                    if not _asks_to_save(said):
                         raise ToolError(
                             "웹에서 읽은 내용으로는 저장하지 않습니다. 사용자가 이번에 저장을 "
                             "요청했을 때만 저장할 수 있습니다."

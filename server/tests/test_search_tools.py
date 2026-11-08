@@ -272,6 +272,22 @@ def test_save_note_guard_ignores_everyday_words_that_only_look_like_save_request
         "노트에 적어 줘",
         "잊지 말고 남겨 줘",
         "기억해 둬",
+        # 활용형 목록에서 빠지기 쉬운 흔한 표현(M5 diff 리뷰)
+        "이거 저장",
+        "저장!",
+        "저장할게",
+        "저장할래?",
+        "저장 요청",
+        "할 일로 추가해 줘",
+        "할 일에 넣어 줘",
+        "기억 좀 해줘",
+        "기억할게",
+        "기록 부탁",
+        "메모 부탁",
+        "남겨요",
+        "적어요",
+        "적어 봐",
+        "노트로 만들어 줘",
     ],
 )
 def test_save_note_guard_accepts_real_save_requests(mcp, client, said):
@@ -336,7 +352,7 @@ def test_web_content_flag_is_set_even_when_only_the_call_event_arrives(api, monk
     async def get(key, **kwargs):
         return NoStartEvents(await original(key, **kwargs))
 
-    manager.get = get
+    monkeypatch.setattr(manager, "get", get)
     turn(api, session_id, "uv 최신 버전 알려줘")
     assert seen == [True]
 
