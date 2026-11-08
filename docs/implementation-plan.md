@@ -227,7 +227,7 @@ M5-01~M5-17 17개 작업을 모두 완료했다(2026-11-08, 종료 시점 `main`
 
 | 기준 | 목표 | 측정값 | 결과 |
 |---|---|---|---|
-| 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과(첨부·검색·외부 MCP·사용량 시험 포함) | 서버 pytest 1193 통과, ruff check·format 통과(첨부 47·web_fetch 111·외부 MCP 121·사용량·검색·출처 시험 포함) | 통과 |
+| 서버 테스트·린트 | `uv run pytest`, `ruff check`, `ruff format --check` 통과(첨부·검색·외부 MCP·사용량 시험 포함) | 서버 pytest 1208 통과, ruff check·format 통과(첨부 47·web_fetch 111·외부 MCP 121·사용량·검색·출처 시험 포함) | 통과 |
 | 웹 | typecheck 두 종류, lint, test, build 통과 | typecheck 두 종류·lint·vitest 477·build 통과 | 통과 |
 | 타입 생성 | `npm run gen:api -- --check` 통과 | `gen:api --check` 통과 | 통과 |
 | 계약 일치 | client-contract 1.3·2.5·2.6·2.13·4.1과 CLAUDE.md·README·`.env.example`이 코드와 같음 | 계약 0절 상태 표를 코드와 대조해 고침(`GET /api/usage`·첨부 구현됨), 1.3·2.5·2.6·2.13·2.15·3.2·4.1 갱신, `.env.example`에 검색·외부 MCP 키 이름 추가, 프로필 `email`·`mail_ready` 제거 | 통과 |
