@@ -88,6 +88,30 @@ test.describe('파일 첨부', () => {
     expect(response.headers()['x-content-type-options']).toBe('nosniff')
   })
 
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`새로고침 뒤 내 말풍선의 파일 칩 글자가 읽힌다(${scheme} 모드)`, async ({ page }) => {
+      // 서버에 저장된 첨부는 링크(<a>) 칩인데, 말풍선의 링크 색 상속(.bubble a)이 칩 글자색을 덮어
+      // 흰 바탕에 흰 글씨가 되던 결함(2026-11-08 실제 브라우저에서 발견)
+      await page.emulateMedia({ colorScheme: scheme })
+      await startConversation(page)
+      await page.locator('input[type=file]').setInputFiles([TXT, PDF])
+      await page.getByRole('textbox', { name: '메시지' }).fill('이 메모를 읽어줘')
+      await page.getByRole('button', { name: '보내기' }).click()
+      await expect(page.getByRole('list', { name: '대화 내용' })).toContainText(
+        '노트에 저장해뒀어요',
+      )
+
+      await page.reload()
+      const chip = page
+        .locator('.bubble-user')
+        .last()
+        .getByRole('link', { name: /course-memo\.pdf/ })
+      await expect(chip).toBeVisible()
+      // 칩 바탕은 밝은 반투명이라 글자는 어두운 색(#16241d)이어야 한다
+      await expect(chip).toHaveCSS('color', 'rgb(22, 36, 29)')
+    })
+  }
+
   test('서버가 첨부를 거절하면 쓴 글과 첨부 목록이 입력창에 돌아온다', async ({ page }) => {
     await startConversation(page)
     // 이미지 확장자지만 내용이 이미지가 아니라서 서버가 거절한다(400 attachment_invalid)
