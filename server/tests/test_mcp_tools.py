@@ -655,7 +655,9 @@ def test_deleting_a_memo_note_changes_counts_and_citation_numbers(client):
 # --- 기억·프로필 -----------------------------------------------------------------------------
 
 
-def test_get_memory_and_set_nickname(client):
+def test_get_memory_and_set_nickname(client, monkeypatch):
+    # 시험 데이터가 NOW 기준 고정 날짜라 서버 시각도 고정한다(실제 시각이 지나면 7일 창에서 빠진다)
+    monkeypatch.setattr(tools_module, "utcnow", lambda: NOW)
     text = ok(client, "get_memory")
     assert "호칭: 아직 정하지 않음" in text and "지금(UTC)" in text and "첫 대화처럼" in text
 

@@ -2399,8 +2399,9 @@ p.closing-sub {
   white-space: nowrap;
 }
 
-/* 말풍선 안의 칩은 오른쪽 여백이 없고 초록 말풍선 위에서도 읽히는 반투명 바탕이다 */
-.att-chip-in {
+/* 말풍선 안의 칩은 오른쪽 여백이 없고 초록 말풍선 위에서도 읽히는 반투명 바탕이다.
+   링크 칩은 `.bubble a { color: inherit }`(말풍선의 밝은 글자색)보다 앞서야 해서 클래스를 겹쳐 쓴다 */
+.att-chip.att-chip-in {
   padding-right: 10px;
   border-color: rgb(127 127 127 / 40%);
   background: rgb(255 255 255 / 85%);
