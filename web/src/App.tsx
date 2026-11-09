@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { fetchHealth } from './api/health.ts'
 import ConversationScreen from './screens/ConversationScreen.tsx'
 import JournalDetailScreen from './screens/JournalDetailScreen.tsx'
@@ -6,6 +6,7 @@ import JournalListScreen from './screens/JournalListScreen.tsx'
 import SettingsScreen from './screens/SettingsScreen.tsx'
 import type { SessionReopened } from './api/conversation.ts'
 import { HEALTH_INTERVAL_MS, nextConnection, type Connection } from './core/connection.ts'
+import { nextIndexForKey } from './core/roving.ts'
 import { CHAT_ROUTE, TAB_ROUTE, tabOf, type Tab } from './core/route.ts'
 import {
   forgetRememberedSession,
@@ -73,6 +74,16 @@ export default function App() {
 function AppBody({ connection }: { connection: Connection }) {
   const [route, navigate] = useRoute()
   const tab = tabOf(route)
+  // 하단 메뉴: 현재 탭만 탭 순서에 두고 화살표·Home·End로 포커스만 옮긴다(이동은 Enter·Space, roving tabindex)
+  const tabButtons = useRef<(HTMLButtonElement | null)[]>([])
+  const onTabsKey = (event: KeyboardEvent<HTMLElement>) => {
+    const index = tabButtons.current.findIndex((node) => node === document.activeElement)
+    if (index === -1) return
+    const next = nextIndexForKey(event.key, index, tabButtons.current.length)
+    if (next === null) return
+    event.preventDefault()
+    tabButtons.current[next]?.focus()
+  }
   // 이 화면(대화 화면)이 지금 들고 있는 진행 중 대화. 일지 목록이 "대화로 돌아가기"를 정한다
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   // 새로고침 뒤에도 이 기기의 진행 중 대화를 이어 가도록 ID를 기억한다(처음 읽은 값만 복원에 쓴다)
@@ -134,12 +145,16 @@ function AppBody({ connection }: { connection: Connection }) {
         )}
         {tab === 'settings' && <SettingsScreen connection={connection} />}
       </main>
-      <nav className="tabs" aria-label="메인 메뉴">
-        {TABS.map((item) => (
+      <nav className="tabs" aria-label="메인 메뉴" onKeyDown={onTabsKey}>
+        {TABS.map((item, index) => (
           <button
             key={item.tab}
+            ref={(node) => {
+              tabButtons.current[index] = node
+            }}
             className="tab"
             aria-current={item.tab === tab ? 'page' : undefined}
+            tabIndex={item.tab === tab ? 0 : -1}
             onClick={() => navigate(TAB_ROUTE[item.tab])}
           >
             <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">

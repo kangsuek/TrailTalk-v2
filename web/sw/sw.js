@@ -13,7 +13,10 @@ const MATCH = { ignoreVary: true }
 
 self.addEventListener('install', (event) => {
   // skipWaiting을 부르지 않는다. 이미 앱을 쓰는 중이면 새 워커는 대기하고 사용자가 적용 시점을 고른다
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)))
+  // cache: 'reload' — 브라우저 HTTP 캐시의 낡은 index.html이 새 버전 캐시에 들어가 이미 사라진 해시 자산을
+  // 가리키지 않게, 사전 저장은 항상 서버에서 새로 받는다
+  const requests = PRECACHE.map((url) => new Request(url, { cache: 'reload' }))
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(requests)))
 })
 
 self.addEventListener('activate', (event) => {

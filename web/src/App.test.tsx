@@ -43,4 +43,29 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: '일지' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('button', { name: '대화' })).not.toHaveAttribute('aria-current')
   })
+
+  it('하단 메뉴는 현재 탭만 탭 순서에 있고, 화살표 키로 포커스만 옮기며 Enter로 이동한다', async () => {
+    window.history.replaceState(null, '', '/') // 앞선 시험이 이동해 둔 주소를 처음으로
+    mockHealth(async () => Response.json({ status: 'ok', db: 'ok' }))
+    render(<App />)
+    const tab = (name: string) => screen.getByRole('button', { name })
+    expect(tab('대화')).toHaveAttribute('tabindex', '0')
+    expect(tab('일지')).toHaveAttribute('tabindex', '-1')
+    expect(tab('설정')).toHaveAttribute('tabindex', '-1')
+
+    tab('대화').focus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(tab('일지')).toHaveFocus()
+    expect(tab('대화')).toHaveAttribute('aria-current', 'page') // 옮기기만 했지 이동하지 않았다
+    await userEvent.keyboard('{Enter}')
+    expect(tab('일지')).toHaveAttribute('aria-current', 'page')
+    expect(tab('일지')).toHaveAttribute('tabindex', '0')
+
+    await userEvent.keyboard('{End}')
+    expect(tab('설정')).toHaveFocus()
+    await userEvent.keyboard('{ArrowRight}') // 끝에서 한 칸 더 가면 처음으로 돈다
+    expect(tab('대화')).toHaveFocus()
+    await userEvent.keyboard('{ArrowLeft}') // 처음에서 거꾸로 가면 끝으로 돈다
+    expect(tab('설정')).toHaveFocus()
+  })
 })

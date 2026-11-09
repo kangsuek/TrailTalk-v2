@@ -37,7 +37,8 @@ export function pwa(): Plugin {
         }
         for (const path of walk(publicDir)) {
           const name = relative(publicDir, path).split('\\').join('/')
-          if (name === 'sw.js') continue
+          // sw.js 자신과 숨김 파일(.DS_Store 등)은 미리 저장하지 않는다(버전이 흔들리지 않게)
+          if (name === 'sw.js' || name.split('/').some((part) => part.startsWith('.'))) continue
           entries.set(`/${name}`, hash(readFileSync(path)))
         }
         const urls = [...entries.keys()].sort()

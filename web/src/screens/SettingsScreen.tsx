@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { ApiError } from '../api/http.ts'
 import { getProfile, updateProfile, type Profile, type ProfilePatch } from '../api/profile.ts'
 import { CONNECTION_LABEL, type Connection } from '../core/connection.ts'
+import { nextIndexForKey } from '../core/roving.ts'
 import {
   MAX_INTERESTS,
   MAX_INTEREST_LENGTH,
@@ -54,6 +55,21 @@ export default function SettingsScreen({ connection }: Props) {
   const [attempt, setAttempt] = useState(0)
   const [save, setSave] = useState<SaveState>('idle')
   const { updateReady, applyUpdate } = useAppUpdate()
+  // 선택 묶음(라디오)은 체크된 항목만 탭 순서에 두고 화살표 키로 옆 항목을 고른다(roving tabindex)
+  const modelButtons = useRef<(HTMLButtonElement | null)[]>([])
+  const themeButtons = useRef<(HTMLButtonElement | null)[]>([])
+  const onRadioKey = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    buttons: { current: (HTMLButtonElement | null)[] },
+    index: number,
+    choose: (next: number) => void,
+  ) => {
+    const next = nextIndexForKey(event.key, index, buttons.current.length)
+    if (next === null) return
+    event.preventDefault()
+    choose(next)
+    buttons.current[next]?.focus()
+  }
   const [errors, setErrors] = useState<FieldErrors>({})
   const [nickname, setNickname] = useState('')
   const [interestInput, setInterestInput] = useState('')
@@ -319,16 +335,23 @@ export default function SettingsScreen({ connection }: Props) {
               대화 모델
             </span>
             <div className="set-seg" role="radiogroup" aria-labelledby="set-model-label">
-              {MODELS.map((model) => {
+              {MODELS.map((model, index) => {
                 const on = effectiveModel(profile.chat_model, profile.default_chat_model) === model
                 return (
                   <button
                     key={model}
+                    ref={(node) => {
+                      modelButtons.current[index] = node
+                    }}
                     type="button"
                     role="radio"
                     aria-checked={on}
+                    tabIndex={on ? 0 : -1}
                     className="set-seg-btn"
                     onClick={() => chooseModel(model)}
+                    onKeyDown={(event) =>
+                      onRadioKey(event, modelButtons, index, (next) => chooseModel(MODELS[next]))
+                    }
                   >
                     <b>{model}</b>
                     <span>{modelHint(model, profile.default_chat_model)}</span>
@@ -351,14 +374,23 @@ export default function SettingsScreen({ connection }: Props) {
               화면 모드
             </span>
             <div className="set-radios" role="radiogroup" aria-labelledby="set-theme-label">
-              {THEME_CHOICES.map((choice) => (
+              {THEME_CHOICES.map((choice, index) => (
                 <button
                   key={choice.value}
+                  ref={(node) => {
+                    themeButtons.current[index] = node
+                  }}
                   type="button"
                   role="radio"
                   aria-checked={theme === choice.value}
+                  tabIndex={theme === choice.value ? 0 : -1}
                   className="set-radio"
                   onClick={() => chooseTheme(choice.value)}
+                  onKeyDown={(event) =>
+                    onRadioKey(event, themeButtons, index, (next) =>
+                      chooseTheme(THEME_CHOICES[next].value),
+                    )
+                  }
                 >
                   <span className="set-dot" aria-hidden="true" />
                   <span className="set-radio-name">{choice.label}</span>

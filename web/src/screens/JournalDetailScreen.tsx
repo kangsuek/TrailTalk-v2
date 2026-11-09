@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import FocusScope from '../components/FocusScope.tsx'
 import { InlineMarkdown } from '../components/Markdown.tsx'
 import Transcript from '../components/Transcript.tsx'
 import { endSession, reopenSession, type SessionReopened } from '../api/conversation.ts'
@@ -712,79 +713,83 @@ export default function JournalDetailScreen({
       )}
 
       {titleOpen && (
-        <div
-          className="dialog-back"
-          onKeyDown={(event) => event.key === 'Escape' && setTitleOpen(false)}
-        >
-          <div className="dialog sheet" role="dialog" aria-modal="true" aria-label="제목 수정">
-            <div className="sheet-grip" aria-hidden="true" />
-            <h2>제목 수정</h2>
-            <label className="field-label" htmlFor="journal-title">
-              대화 제목
-            </label>
-            <input
-              id="journal-title"
-              className="field"
-              value={titleDraft}
-              maxLength={TITLE_MAX}
-              autoFocus
-              onChange={(event) => setTitleDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.nativeEvent.isComposing) void saveTitle()
-              }}
-            />
-            <div className="field-foot">
-              <span>다시 정리해도 제목은 바뀌지 않아요.</span>
-              <span>
-                {titleDraft.length} / {TITLE_MAX}
-              </span>
-            </div>
-            {titleError && (
-              <p className="chat-error" role="alert">
-                {titleError}
-              </p>
-            )}
-            <div className="dialog-actions">
-              <button type="button" className="btn" onClick={() => setTitleOpen(false)}>
-                취소
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={titleSaving || !titleOf(titleDraft)}
-                onClick={() => void saveTitle()}
-              >
-                {titleSaving ? '저장하는 중…' : '저장'}
-              </button>
+        <FocusScope>
+          <div
+            className="dialog-back"
+            onKeyDown={(event) => event.key === 'Escape' && setTitleOpen(false)}
+          >
+            <div className="dialog sheet" role="dialog" aria-modal="true" aria-label="제목 수정">
+              <div className="sheet-grip" aria-hidden="true" />
+              <h2>제목 수정</h2>
+              <label className="field-label" htmlFor="journal-title">
+                대화 제목
+              </label>
+              <input
+                id="journal-title"
+                className="field"
+                value={titleDraft}
+                maxLength={TITLE_MAX}
+                autoFocus
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) void saveTitle()
+                }}
+              />
+              <div className="field-foot">
+                <span>다시 정리해도 제목은 바뀌지 않아요.</span>
+                <span>
+                  {titleDraft.length} / {TITLE_MAX}
+                </span>
+              </div>
+              {titleError && (
+                <p className="chat-error" role="alert">
+                  {titleError}
+                </p>
+              )}
+              <div className="dialog-actions">
+                <button type="button" className="btn" onClick={() => setTitleOpen(false)}>
+                  취소
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={titleSaving || !titleOf(titleDraft)}
+                  onClick={() => void saveTitle()}
+                >
+                  {titleSaving ? '저장하는 중…' : '저장'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusScope>
       )}
 
       {confirmDelete && (
-        <div
-          className="dialog-back"
-          onKeyDown={(event) => event.key === 'Escape' && setConfirmDelete(false)}
-        >
+        <FocusScope>
           <div
-            className="dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="del-title"
-            aria-describedby="del-desc"
+            className="dialog-back"
+            onKeyDown={(event) => event.key === 'Escape' && setConfirmDelete(false)}
           >
-            <h2 id="del-title">이 대화를 지울까요?</h2>
-            <p id="del-desc">대화 전문과 저장한 노트가 모두 사라지고 되돌릴 수 없어요.</p>
-            <div className="dialog-actions">
-              <button type="button" className="btn" autoFocus onClick={() => setConfirmDelete(false)}>
-                취소
-              </button>
-              <button type="button" className="btn-danger" onClick={() => void remove()}>
-                지우기
-              </button>
+            <div
+              className="dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="del-title"
+              aria-describedby="del-desc"
+            >
+              <h2 id="del-title">이 대화를 지울까요?</h2>
+              <p id="del-desc">대화 전문과 저장한 노트가 모두 사라지고 되돌릴 수 없어요.</p>
+              <div className="dialog-actions">
+                <button type="button" className="btn" autoFocus onClick={() => setConfirmDelete(false)}>
+                  취소
+                </button>
+                <button type="button" className="btn-danger" onClick={() => void remove()}>
+                  지우기
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusScope>
       )}
     </section>
   )

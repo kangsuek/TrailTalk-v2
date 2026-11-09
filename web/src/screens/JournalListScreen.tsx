@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import FocusScope from '../components/FocusScope.tsx'
 import CountPills from '../components/CountPills.tsx'
 import { ApiError } from '../api/http.ts'
 import { deleteJournal, listJournal, retryJournal } from '../api/journal.ts'
@@ -321,26 +322,28 @@ export default function JournalListScreen({ onOpen, onOpenChat, activeSessionId 
       )}
 
       {confirming && (
-        <div className="dialog-back" onKeyDown={(event) => event.key === 'Escape' && setConfirming(false)}>
-          <div
-            className="dialog"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="del-title"
-            aria-describedby="del-desc"
-          >
-            <h2 id="del-title">{count}개 대화를 지울까요?</h2>
-            <p id="del-desc">대화 전문과 저장한 노트가 모두 사라지고 되돌릴 수 없어요.</p>
-            <div className="dialog-actions">
-              <button type="button" className="btn" autoFocus onClick={() => setConfirming(false)}>
-                취소
-              </button>
-              <button type="button" className="btn-danger" onClick={() => void deleteSelected()}>
-                지우기
-              </button>
+        <FocusScope>
+          <div className="dialog-back" onKeyDown={(event) => event.key === 'Escape' && setConfirming(false)}>
+            <div
+              className="dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="del-title"
+              aria-describedby="del-desc"
+            >
+              <h2 id="del-title">{count}개 대화를 지울까요?</h2>
+              <p id="del-desc">대화 전문과 저장한 노트가 모두 사라지고 되돌릴 수 없어요.</p>
+              <div className="dialog-actions">
+                <button type="button" className="btn" autoFocus onClick={() => setConfirming(false)}>
+                  취소
+                </button>
+                <button type="button" className="btn-danger" onClick={() => void deleteSelected()}>
+                  지우기
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusScope>
       )}
     </section>
   )
