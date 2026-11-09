@@ -15,7 +15,7 @@
 |---|---|
 | `POST /api/sessions/prepare`(2.1), `POST /api/sessions/{id}/turns/audio/record`(2.14), `POST /api/sessions/{id}/turns/{turn_id}/cancel`(2.12) | 미구현(M4, 자체 음성 보류 D9) |
 | `GET /api/usage`(1.3), `POST /api/sessions/{id}/turns/files`·`GET /api/attachments/{id}`(2.13) | 구현됨(M5, 2026-11-03: 서버·웹) |
-| 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 미구현(M6) |
+| 변경성 요청의 `X-TrailTalk` 헤더·`Origin` 검사와 `csrf_rejected`(1.5) | 구현됨(M6, 2026-11-09: 서버 `app/csrf.py`, 웹 `api/http.ts`) |
 | `GET /api/journal?q=`, `GET /api/journal/{id}/export.md`(3절) | 미구현(P2) |
 | 그 밖의 `/api` 경로(세션 시작·종료·다시 열기, 글·음성 턴, 지연 보고, 일지·노트, 프로필, 보이스, 지연 요약, health) | 구현됨 |
 

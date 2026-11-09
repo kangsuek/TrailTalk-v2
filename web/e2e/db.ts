@@ -30,6 +30,12 @@ function query<T>(sql: string, ...params: string[]): T[] {
   }
 }
 
+/** 지금까지 시작한 세션 수 */
+export function sessionCount(): number {
+  const [row] = query<{ n: number }>('SELECT COUNT(*) AS n FROM conversation_session')
+  return row.n
+}
+
 /** 가장 최근에 시작한 세션 */
 export function latestSession(): SessionRow {
   const [row] = query<SessionRow>(

@@ -239,6 +239,16 @@ if [ "$FAKE" = 1 ]; then
 fi
 export VITE_API_TARGET="http://127.0.0.1:$API_PORT"  # 셸에 남은 다른 값을 쓰지 않게
 
+# CSRF 방어(계약 1.5)의 Origin 허용 목록: 이 실행의 웹·API 주소와, --phone이면 폰 접속 주소.
+# ALLOWED_ORIGINS를 직접 지정했으면 그 목록에 폰 주소만 더한다
+if [ -n "${ALLOWED_ORIGINS:-}" ]; then
+  ORIGINS="$ALLOWED_ORIGINS"
+else
+  ORIGINS="http://127.0.0.1:$API_PORT,http://localhost:$API_PORT,http://127.0.0.1:$WEB_PORT,http://localhost:$WEB_PORT"
+fi
+if [ -n "$PHONE_URL" ]; then ORIGINS="$ORIGINS,$PHONE_URL"; fi
+export ALLOWED_ORIGINS="$ORIGINS"
+
 mkdir -p "$RUN_DIR"
 # PID 파일: 1행 PID, 2행 시작 시각(stop.sh가 PID 재사용을 가려내는 데 쓴다)
 { echo "$$"; ps -p "$$" -o lstart=; } >"$PID_FILE"
