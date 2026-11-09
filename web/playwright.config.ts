@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from '@playwright/test'
 import { FAKE_SECRET, MCP_SERVERS_PATH, writeMcpServersFile } from './e2e/external-mcp.ts'
-import { API_PORT, MCP_PORT, WEB_PORT } from './e2e/ports.ts'
+import { API_PORT, MCP_PORT, PREVIEW_PORT, WEB_PORT } from './e2e/ports.ts'
 
 // E2E는 임시 폴더(web/.e2e/data)의 DB·첨부·오디오·CLI 폴더로 격리 서버(기본 8100)를 띄우고, Claude CLI는
 // 가짜(녹화 재생)로 바꾼다. 포트는 e2e/ports.ts(E2E_*_PORT 환경 변수로 바꿈).
@@ -55,7 +55,7 @@ export default defineConfig({
         // 가짜 외부 MCP 서버(M5-14): 설정 파일과 비밀 변수. 호출 기록은 데이터 폴더와 함께 지워진다
         `MCP_SERVERS_PATH="${MCP_SERVERS_PATH}" MCP_E2E_FAKE_API_KEY="${FAKE_SECRET}" ` +
         // CSRF 방어(계약 1.5): 브라우저의 Origin은 웹 서버(WEB_PORT) 주소다
-        `ALLOWED_ORIGINS="http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT}" ` +
+        `ALLOWED_ORIGINS="http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT},http://127.0.0.1:${PREVIEW_PORT}" ` +
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,
@@ -81,6 +81,14 @@ export default defineConfig({
       env: { VITE_API_TARGET: `http://127.0.0.1:${API_PORT}` },
       reuseExistingServer: false,
       timeout: 60_000,
+    },
+    {
+      // 운영 빌드(서비스 워커·매니페스트 포함)를 서빙한다. PWA 시험(e2e/pwa.spec.ts)이 쓴다
+      command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
+      url: `http://127.0.0.1:${PREVIEW_PORT}`,
+      env: { VITE_API_TARGET: `http://127.0.0.1:${API_PORT}` },
+      reuseExistingServer: false,
+      timeout: 180_000,
     },
   ],
 })

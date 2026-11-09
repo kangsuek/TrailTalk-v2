@@ -21,6 +21,7 @@ import {
   type ChatModel,
   type ThemeMode,
 } from '../core/settings.ts'
+import { useAppUpdate } from '../hooks/appUpdate.ts'
 import { applyTheme, readTheme, rememberTheme } from '../hooks/theme.ts'
 
 type Field = 'nickname' | 'interests' | 'chat_model'
@@ -52,6 +53,7 @@ export default function SettingsScreen({ connection }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [save, setSave] = useState<SaveState>('idle')
+  const { updateReady, applyUpdate } = useAppUpdate()
   const [errors, setErrors] = useState<FieldErrors>({})
   const [nickname, setNickname] = useState('')
   const [interestInput, setInterestInput] = useState('')
@@ -375,6 +377,20 @@ export default function SettingsScreen({ connection }: Props) {
 
           <Section label="앱 정보">
             <span className="set-label">앱</span>
+            {updateReady && (
+              <div className="set-update" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5" />
+                </svg>
+                <span className="set-update-text">
+                  새 버전이 있어요
+                  <small>대화가 끝난 뒤에 적용하는 게 좋아요</small>
+                </span>
+                <button type="button" onClick={applyUpdate}>
+                  적용
+                </button>
+              </div>
+            )}
             <div className="set-kv">
               <span>서버 연결</span>
               <span className="set-conn" data-state={connection}>
