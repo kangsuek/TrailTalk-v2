@@ -6,8 +6,10 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
   type KeyboardEvent,
 } from 'react'
+import FocusScope from '../components/FocusScope.tsx'
 import { BubbleAttachments, PickedChips } from '../components/Attachments.tsx'
 import CountPills from '../components/CountPills.tsx'
 import Header from '../components/Header.tsx'
@@ -187,6 +189,22 @@ export default function ConversationScreen({
   const [limits, setLimits] = useState<AttachmentLimits>(DEFAULT_ATTACHMENT_LIMITS)
   const limitsLoad = useRef<Promise<AttachmentLimits> | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  // 시작·종료로 포커스가 있던 버튼이 잠기거나 사라져 포커스가 body로 떨어지면 화면 구역으로 옮긴다
+  const rootRef = useRef<HTMLElement>(null)
+  const focusInside = useRef(false)
+  const rootFocus = {
+    ref: rootRef,
+    tabIndex: -1,
+    onFocus: () => {
+      focusInside.current = true
+    },
+    onBlur: (event: FocusEvent<HTMLElement>) => {
+      // 화면 밖의 다른 요소로 옮겨 갔을 때만 "안에 있지 않다"로 본다(잠겨서 사라진 것은 relatedTarget이 없다)
+      if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) {
+        focusInside.current = false
+      }
+    },
+  }
   const fileKey = useRef(0)
   const previews = useRef(new Map<string, string[]>()) // 말풍선 ID → 방금 고른 이미지의 임시 주소
   const aborter = useRef<AbortController | null>(null)
@@ -281,6 +299,15 @@ export default function ConversationScreen({
       })
     return () => controller.abort()
   }, [state.status, restoring])
+
+  // 대화 시작·종료로 포커스가 있던 버튼이 잠기거나 사라지면 화면 구역으로 옮겨 포커스가 사라지지 않게 한다
+  useEffect(() => {
+    if (!focusInside.current) return
+    const active = document.activeElement
+    const lost =
+      !active || active === document.body || (active as HTMLButtonElement).disabled === true
+    if (lost) rootRef.current?.focus()
+  }, [state.status, state.ending])
 
   // 끝내기 도구·서버의 무발화 종료로 끝난 대화는 끝내기 API를 불러 마무리 멘트와 저장 개수를 받는다
   // (규약 2.9). 끝내기 버튼으로 끝낸 대화는 그 응답으로 이미 마무리했다
@@ -590,7 +617,7 @@ export default function ConversationScreen({
 
   if (state.status === 'idle' || state.status === 'starting') {
     return (
-      <section className="chat chat-start" aria-label="대화 시작">
+      <section className="chat chat-start" aria-label="대화 시작" {...rootFocus}>
         <Header initial="T" name="TrailTalk" sub="대화 전" heading connection={connection} />
         <div className="chat-start-body">
           {startMode === 'voice' ? (
@@ -671,7 +698,7 @@ export default function ConversationScreen({
     summary?.sessionId === state.sessionId && summary.epoch === epochShown ? summary : null
   const initial = state.personaName?.slice(0, 1) ?? ''
   return (
-    <section className="chat" aria-label="대화">
+    <section className="chat" aria-label="대화" {...rootFocus}>
       <Header
         initial={initial}
         name={state.personaName ?? ''}
@@ -852,36 +879,38 @@ export default function ConversationScreen({
         </div>
       )}
       {(confirmEnd || voice.machine.endConfirmOpen) && (
-        <div
-          className="dialog-back dialog-back-float"
-          onKeyDown={(event) => event.key === 'Escape' && cancelEndConfirm()}
-        >
+        <FocusScope>
           <div
-            className="dialog dialog-float"
-            role="alertdialog"
-            aria-modal="true"
-            aria-label="대화 종료 확인"
-            aria-describedby="end-desc"
+            className="dialog-back dialog-back-float"
+            onKeyDown={(event) => event.key === 'Escape' && cancelEndConfirm()}
           >
-            <h2>대화를 끝낼까요?</h2>
-            <p id="end-desc">
-              지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수
-              있어요.
-            </p>
-            <div className="dialog-stack">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => (voiceActive ? voice.confirmEnd() : void end())}
-              >
-                끝내고 정리하기
-              </button>
-              <button type="button" className="btn" autoFocus onClick={cancelEndConfirm}>
-                계속 대화하기
-              </button>
+            <div
+              className="dialog dialog-float"
+              role="alertdialog"
+              aria-modal="true"
+              aria-label="대화 종료 확인"
+              aria-describedby="end-desc"
+            >
+              <h2>대화를 끝낼까요?</h2>
+              <p id="end-desc">
+                지금까지 이야기한 내용을 일지로 정리해요. 끝낸 대화는 일지에서 다시 이어서 할 수
+                있어요.
+              </p>
+              <div className="dialog-stack">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => (voiceActive ? voice.confirmEnd() : void end())}
+                >
+                  끝내고 정리하기
+                </button>
+                <button type="button" className="btn" autoFocus onClick={cancelEndConfirm}>
+                  계속 대화하기
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </FocusScope>
       )}
     </section>
   )

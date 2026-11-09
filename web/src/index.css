@@ -2318,6 +2318,11 @@ p.closing-sub {
   border-top: 1px solid var(--line);
 }
 
+/* 시작·종료로 버튼이 잠길 때 포커스를 받는 화면 구역(tabindex=-1). 키보드로 닿는 곳이 아니라 윤곽선은 없앤다 */
+.chat:focus {
+  outline: none;
+}
+
 /* 새 버전 안내(시안 설정 03). 자동으로 바꾸지 않고 "적용"을 눌렀을 때만 바꾼다 */
 .set-update {
   display: flex;

@@ -147,6 +147,46 @@ describe('SettingsScreen', () => {
     expect(screen.queryByText('저장 중…')).not.toBeInTheDocument()
   })
 
+  it('대화 모델 선택은 체크된 항목만 탭 순서에 있고, 화살표 키로 옆 항목을 고른다', async () => {
+    const puts = mockProfile(baseProfile())
+    render(<SettingsScreen connection="connected" />)
+    await screen.findByLabelText('호칭')
+    expect(model('haiku')).toHaveAttribute('tabindex', '-1')
+    expect(model('sonnet')).toHaveAttribute('tabindex', '0') // 기본값 sonnet이 체크
+    expect(model('opus')).toHaveAttribute('tabindex', '-1')
+
+    model('sonnet').focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(puts).toEqual([{ chat_model: 'opus' }]))
+    await waitFor(() => expect(model('opus')).toHaveFocus())
+    expect(model('opus')).toHaveAttribute('aria-checked', 'true')
+    expect(model('opus')).toHaveAttribute('tabindex', '0')
+
+    await userEvent.keyboard('{ArrowRight}') // 끝에서 한 칸 더 가면 처음으로 돈다
+    await waitFor(() => expect(puts[1]).toEqual({ chat_model: 'haiku' }))
+    await waitFor(() => expect(model('haiku')).toHaveFocus())
+    await userEvent.keyboard('{End}')
+    await waitFor(() => expect(puts[2]).toEqual({ chat_model: 'opus' }))
+  })
+
+  it('화면 모드 선택도 화살표 키로 옆 항목을 고르고 포커스가 따라간다', async () => {
+    mockProfile(baseProfile())
+    render(<SettingsScreen connection="connected" />)
+    await screen.findByLabelText('호칭')
+    const theme = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name}`) })
+    expect(theme('시스템')).toHaveAttribute('tabindex', '0')
+    expect(theme('라이트')).toHaveAttribute('tabindex', '-1')
+
+    theme('시스템').focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(() => expect(theme('라이트')).toHaveFocus())
+    expect(theme('라이트')).toHaveAttribute('aria-checked', 'true')
+    expect(document.documentElement.dataset.theme).toBe('light')
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}') // 라이트 → 시스템 → 다크(처음에서 거꾸로 돌아 끝으로)
+    await waitFor(() => expect(theme('다크')).toHaveFocus())
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
   it('새 버전이 없으면 안내를 보이지 않는다', async () => {
     mockProfile(baseProfile())
     render(<SettingsScreen connection="connected" />)
