@@ -10,6 +10,9 @@
 3. 본문이 있으면 `Content-Type`이 application/json·multipart/form-data·audio/* 중 하나여야 한다.
 
 면제: `/internal/*`(루프백 전용, 프록시 경유 차단은 별도 규칙). GET 등 읽기 요청은 검사하지 않는다.
+알려진 한계: 읽기(GET)는 보호하지 않는다. Host를 검증하지 않아 DNS 리바인딩 페이지가
+읽기 응답(일지·프로필·첨부)을 볼 수 있다. 이 모듈이 막는 것은 상태를 바꾸는 요청이다
+(허용 Host 검사는 후속 과제, 13절).
 거절은 403 `csrf_rejected`이고, 로그에는 이유 코드만 남긴다(헤더·본문·닉네임 등은 남기지 않는다).
 """
 
@@ -29,8 +32,13 @@ _BODY_TYPES = ("application/json", "multipart/form-data", "audio/")
 
 
 def normalize_origin(origin: str) -> str:
-    """대소문자와 끝의 '/'를 무시해 비교할 수 있게 한다."""
-    return origin.strip().rstrip("/").lower()
+    """대소문자·끝의 '/'·기본 포트를 무시해 비교하게 한다(브라우저는 :80·:443을 Origin에서 뺀다)."""
+    value = origin.strip().rstrip("/").lower()
+    if value.startswith("https://") and value.endswith(":443"):
+        return value[: -len(":443")]
+    if value.startswith("http://") and value.endswith(":80"):
+        return value[: -len(":80")]
+    return value
 
 
 class CsrfMiddleware:
@@ -43,6 +51,9 @@ class CsrfMiddleware:
             await self.app(scope, receive, send)
             return
         path = scope["path"]
+        root_path = scope.get("root_path", "")
+        if root_path and path.startswith(root_path):
+            path = path[len(root_path) :]  # 라우팅과 같은 경로로 면제를 판정한다
         if path == "/internal" or path.startswith("/internal/"):
             await self.app(scope, receive, send)
             return

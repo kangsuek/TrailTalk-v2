@@ -121,6 +121,34 @@ def test_origin_matching_ignores_case_and_a_trailing_slash(raw):
     assert response.status_code == 200
 
 
+def test_default_ports_are_equivalent_in_origin_matching(make_settings):
+    """브라우저는 기본 포트(:80, :443)를 Origin에서 생략한다. 목록에 적어도 같은 출처로 본다."""
+    settings = make_settings(allowed_origins="https://mac.tail1.ts.net:443,http://example.test:80")
+    with TestClient(create_app(settings)) as c:
+        for origin in ("https://mac.tail1.ts.net", "http://example.test"):
+            response = c.put(
+                "/api/profile", json={"nickname": "a"}, headers={**OK, "Origin": origin}
+            )
+            assert response.status_code == 200, origin
+        # 다른 scheme의 같은 호스트는 여전히 다른 출처다
+        wrong = c.put(
+            "/api/profile",
+            json={"nickname": "b"},
+            headers={**OK, "Origin": "http://mac.tail1.ts.net"},
+        )
+        assert_rejected(wrong)
+
+
+def test_internal_exemption_is_judged_after_removing_the_root_path(make_settings):
+    """root_path가 /internal인 배포에서 /internal/api/...가 면제로 새어 /api를 우회하지 못한다."""
+    app = create_app(make_settings())
+    with TestClient(app, root_path="/internal") as c:
+        response = c.put("/internal/api/profile", json={"nickname": "해커"}, headers={})
+        # 접두사를 뗀 경로(/api/profile)로 라우팅되므로 CSRF 검사를 받아 거절된다
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "csrf_rejected"
+
+
 def test_host_header_never_allows_an_origin(make_settings):
     """DNS 리바인딩: 공격자 도메인이 127.0.0.1로 풀려도 Origin=Host일 뿐 허용 목록에는 없다."""
     with TestClient(create_app(make_settings()), base_url="http://evil.example:8000") as c:
