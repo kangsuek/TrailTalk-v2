@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { pwa } from './pwaPlugin.ts'
 import { VAD_ASSETS, VAD_DIR } from './vadAssets.ts'
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -37,7 +38,7 @@ function vadAssets(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), vadAssets()],
+  plugins: [react(), vadAssets(), pwa()],
   define: { __VAD_DIR__: JSON.stringify(VAD_DIR) },
   // 음성 모듈은 나중에 불러오므로, 처음 쓸 때 개발 서버가 의존성을 다시 묶으며 페이지를 새로 고치지 않게 한다
   optimizeDeps: { include: ['@ricky0123/vad-web', 'mediabunny'] },
@@ -48,6 +49,11 @@ export default defineConfig({
     allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
     // 개발 중 /api 요청은 FastAPI(uvicorn, 기본 8000번)로 넘긴다.
     // 검증용 서버를 따로 띄울 때는 VITE_API_TARGET으로 그 주소를 준다(예: 격리 서버 8100번).
+    proxy: { '/api': process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8000' },
+  },
+  // 운영 빌드를 서빙하는 미리보기(E2E의 PWA 시험)도 같은 /api 프록시를 쓴다
+  preview: {
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
     proxy: { '/api': process.env.VITE_API_TARGET ?? 'http://127.0.0.1:8000' },
   },
   test: {

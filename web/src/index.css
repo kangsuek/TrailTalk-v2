@@ -2318,6 +2318,91 @@ p.closing-sub {
   border-top: 1px solid var(--line);
 }
 
+/* 새 버전 안내(시안 설정 03). 자동으로 바꾸지 않고 "적용"을 눌렀을 때만 바꾼다 */
+.set-update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 12px;
+  background: #f7e6c4;
+  color: #4e2a00;
+}
+
+.set-update svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: #6e3b00;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.set-update-text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.set-update-text small {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5b3300;
+}
+
+.set-update button {
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #6e3b00;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+:root[data-theme='dark'] .set-update {
+  background: #3a2e14;
+  color: #f6d58e;
+}
+
+:root[data-theme='dark'] .set-update svg {
+  stroke: #f0c26a;
+}
+
+:root[data-theme='dark'] .set-update-text small {
+  color: #e5c98c;
+}
+
+:root[data-theme='dark'] .set-update button {
+  background: #e3a23b;
+  color: #1a1000;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .set-update {
+    background: #3a2e14;
+    color: #f6d58e;
+  }
+
+  :root:not([data-theme='light']) .set-update svg {
+    stroke: #f0c26a;
+  }
+
+  :root:not([data-theme='light']) .set-update-text small {
+    color: #e5c98c;
+  }
+
+  :root:not([data-theme='light']) .set-update button {
+    background: #e3a23b;
+    color: #1a1000;
+  }
+}
+
 .set-conn {
   display: inline-flex;
   align-items: center;

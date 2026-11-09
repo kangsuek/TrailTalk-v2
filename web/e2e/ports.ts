@@ -3,3 +3,5 @@
 export const API_PORT = Number(process.env.E2E_API_PORT ?? 8100)
 export const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 5174)
 export const MCP_PORT = Number(process.env.E2E_MCP_PORT ?? 8401)
+// 운영 빌드를 서빙하는 미리보기(PWA 시험). 개발 서버 포트에 1000을 더해 동시에 도는 검증과 겹치지 않는다
+export const PREVIEW_PORT = Number(process.env.E2E_PREVIEW_PORT ?? WEB_PORT + 1000)

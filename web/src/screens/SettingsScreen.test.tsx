@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Profile } from '../api/profile.ts'
 import SettingsScreen from './SettingsScreen.tsx'
 
+// 새 버전 감지(서비스 워커)는 이 시험의 관심사가 아니라 훅만 대신한다
+const update = vi.hoisted(() => ({ ready: false, apply: vi.fn() }))
+vi.mock('../hooks/appUpdate.ts', () => ({
+  useAppUpdate: () => ({ updateReady: update.ready, applyUpdate: update.apply }),
+}))
+
 function baseProfile(patch: Partial<Profile> = {}): Profile {
   return {
     nickname: '다니엘',
@@ -53,6 +59,8 @@ afterEach(() => {
 
 beforeEach(() => {
   localStorage.clear()
+  update.ready = false
+  update.apply.mockReset()
 })
 
 const model = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name}`) })
@@ -137,6 +145,26 @@ describe('SettingsScreen', () => {
     expect(puts).toEqual([])
     expect(screen.queryByText('저장 안 됨')).not.toBeInTheDocument()
     expect(screen.queryByText('저장 중…')).not.toBeInTheDocument()
+  })
+
+  it('새 버전이 없으면 안내를 보이지 않는다', async () => {
+    mockProfile(baseProfile())
+    render(<SettingsScreen connection="connected" />)
+    await screen.findByLabelText('호칭')
+    expect(screen.queryByText('새 버전이 있어요')).not.toBeInTheDocument()
+  })
+
+  it('새 버전이 있으면 안내와 적용 버튼을 보이고, 누를 때만 적용한다', async () => {
+    update.ready = true
+    mockProfile(baseProfile())
+    render(<SettingsScreen connection="connected" />)
+    await screen.findByLabelText('호칭')
+    const notice = screen.getByRole('status')
+    expect(notice).toHaveTextContent('새 버전이 있어요')
+    expect(notice).toHaveTextContent('대화가 끝난 뒤에 적용하는 게 좋아요')
+    expect(update.apply).not.toHaveBeenCalled() // 자동으로 바꾸지 않는다
+    await userEvent.click(within(notice).getByRole('button', { name: '적용' }))
+    expect(update.apply).toHaveBeenCalledTimes(1)
   })
 
   it('관심사는 Enter로 더하고 ×로 지우며 그때마다 바로 저장한다', async () => {
