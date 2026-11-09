@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { StrictMode, useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import FocusScope from './FocusScope.tsx'
 
@@ -56,6 +56,42 @@ describe('FocusScope', () => {
     await userEvent.click(screen.getByRole('button', { name: '계속하기' }))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(opener).toHaveFocus()
+  })
+
+  it('배경을 눌러 포커스가 밖으로 나가도 다시 모달 안으로 돌아온다', async () => {
+    render(<Host />)
+    await userEvent.click(screen.getByRole('button', { name: '열기' }))
+    screen.getByRole('button', { name: '바깥 버튼' }).focus() // 모달 밖으로 나갔다
+    expect(screen.getByRole('button', { name: '끝내기' })).toHaveFocus()
+  })
+
+  it('숨은 입력(type=hidden)·tabindex=-1 요소는 Tab 순서에서 빠진다', async () => {
+    render(
+      <div>
+        <button>바깥</button>
+        <FocusScope>
+          <div role="dialog" aria-label="폼">
+            <button>처음</button>
+            <button tabIndex={-1}>건너뜀</button>
+            <button autoFocus>마지막</button>
+            <input type="hidden" defaultValue="x" />
+          </div>
+        </FocusScope>
+      </div>,
+    )
+    expect(screen.getByRole('button', { name: '마지막' })).toHaveFocus()
+    await userEvent.tab() // 마지막에서 한 칸 더 가면 처음으로(숨은 입력이 끝으로 잡히지 않는다)
+    expect(screen.getByRole('button', { name: '처음' })).toHaveFocus()
+  })
+
+  it('StrictMode(개발 서버)에서도 autoFocus한 안전 버튼에 포커스가 남는다', async () => {
+    render(
+      <StrictMode>
+        <Host />
+      </StrictMode>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: '열기' }))
+    expect(screen.getByRole('button', { name: '계속하기' })).toHaveFocus()
   })
 
   it('열었던 요소가 사라졌으면 포커스를 억지로 옮기지 않는다', async () => {

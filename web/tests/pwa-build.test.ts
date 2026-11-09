@@ -39,6 +39,17 @@ describe('서비스 워커 빌드', () => {
     expect(precache).not.toContain('/sw.js')
   })
 
+  it('사전 저장은 브라우저 HTTP 캐시를 거치지 않고 서버에서 새로 받는다', () => {
+    // 낡은 index.html이 새 버전 캐시에 들어가 이미 사라진 해시 자산을 가리키는 일을 막는다
+    expect(sw).toMatch(/new Request\(url, \{ cache: 'reload' \}\)/)
+  })
+
+  it('숨김 파일(.DS_Store 등)은 목록에 들어가지 않는다', () => {
+    expect(precache.filter((url) => url.split('/').some((part) => part.startsWith('.')))).toEqual(
+      [],
+    )
+  })
+
   it('템플릿 자리표시자가 남지 않고 버전이 채워진다', () => {
     expect(sw).not.toContain('__VERSION__')
     expect(sw).not.toContain('__PRECACHE__')
