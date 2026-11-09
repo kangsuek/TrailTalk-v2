@@ -48,7 +48,7 @@
 
 ### 1.2 폰 접속
 
-서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net:8443/`)로 접속한다. 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 앱은 8443을 쓴다. `./run.sh --phone`이 이 기기의 호스트를 개발 서버(`VITE_ALLOWED_HOSTS`)에 열고 켜는 명령을 안내한다(Tailscale 설정은 바꾸지 않는다). 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(8443)와 Funnel(443)이 한 기기에서 공존하는지는 MA-12 전에 사용자 승인 아래 확인한다(MCP/design.md 1.1). 서버의 `Origin` 허용 목록(`ALLOWED_ORIGINS`, 1.5)은 아직 구현 전이라 폰 접속에 필요한 것은 개발 서버의 호스트 허용뿐이다(MCP/design.md 1.1). 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
+서버는 집 Mac에서 돌고, 폰은 Tailscale Serve가 tailnet 안에만 여는 HTTPS 주소(`https://<Mac 기기 이름>.<tailnet>.ts.net:8443/`)로 접속한다. 이 Mac은 443을 외부 MCP의 Funnel이 이미 쓰고 있어 앱은 8443을 쓴다. `./run.sh --phone`이 이 기기의 호스트를 개발 서버(`VITE_ALLOWED_HOSTS`)에 열고 켜는 명령을 안내한다(Tailscale 설정은 바꾸지 않는다). 브라우저 마이크는 HTTPS(또는 localhost)에서만 열린다. 이 API에는 로그인이 없으므로 공개 주소(Funnel)로 열지 않는다. 외부 MCP 서버(Claude 앱 연계, 별도 포트)만 OAuth로 보호해 Funnel로 열 수 있고, `/api`·웹·`/internal`은 그 포트로 닿지 않는다. Serve(8443)와 Funnel(443)은 한 기기에서 함께 동작함을 2026-11-08에 확인했다(MCP/design.md 1.1). `./run.sh --phone`은 폰 접속 주소(`https://<기기>.<tailnet>.ts.net:8443`)를 서버의 `Origin` 허용 목록(`ALLOWED_ORIGINS`, 1.5)에도 더한다. 앱 도구 경로 `/internal/*`은 프록시를 거친 요청을 403으로 막는다.
 
 ### 1.3 Claude 남은 토큰
 
@@ -71,7 +71,7 @@ POST·PUT·PATCH·DELETE 요청은 다음을 모두 지켜야 서버가 처리�
 2. `Origin`이 있으면 허용 목록(`ALLOWED_ORIGINS`: 서버 자신의 Tailscale 주소, `127.0.0.1:8000`, 개발 중에는 `localhost:5173`)에 있어야 한다. `Origin`이 없는 요청은 1번을 만족하면 받는다.
 3. 본문이 있는 요청은 `Content-Type`이 `application/json`·`multipart/form-data`·`audio/*` 중 하나여야 한다. 서버가 지원하지 않는 오디오 형식이라도 `audio/*`면 이 검사는 통과하고 서버가 `audio_invalid`로 처리한다. 그 밖의 형식은 `csrf_rejected`다. 본문 없는 요청에는 적용하지 않는다.
 
-면제: `/internal/*`(루프백만, 프록시 경유는 403). `[MCP]` 외부 MCP 앱(별도 포트)은 `Authorization: Bearer`로만 인증하며 이 규칙의 대상이 아니다. 그 로그인 폼은 자체 CSRF 방어를 둔다. CORS는 열지 않는다. `GET` 요청과 `<img>`가 읽는 `GET /api/attachments/{id}`에는 헤더를 요구하지 않는다.
+면제: `/internal/*`(루프백만, 프록시 경유는 403). `[MCP]` 외부 MCP 앱(별도 포트)은 `Authorization: Bearer`로만 인증하며 이 규칙의 대상이 아니다. 그 로그인 폼은 자체 CSRF 방어를 둔다. CORS는 열지 않는다. `GET` 요청과 `<img>`가 읽는 `GET /api/attachments/{id}`에는 헤더를 요구하지 않는다. `Origin` 비교는 대소문자·끝의 `/`·기본 포트(`:80`·`:443`)를 무시한다. **알려진 한계**: 이 규칙은 상태를 바꾸는 요청만 막는다. Host를 검증하지 않아 DNS 리바인딩 페이지가 읽기(`GET`) 응답을 볼 수 있다(허용 Host 검사는 후속 과제).
 
 ## 2. 세션과 턴
 
