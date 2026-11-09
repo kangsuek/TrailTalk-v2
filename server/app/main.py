@@ -15,6 +15,7 @@ from app.api import health, journal, latency, profile, sessions, usage, voices
 from app.api.events import register_event_schemas
 from app.client_config import load_client_config
 from app.config import Settings, settings
+from app.csrf import CsrfMiddleware
 from app.db.migrate import upgrade_to_head
 from app.db.session import create_engine_for, create_session_factory
 from app.errors import install_error_handlers
@@ -132,6 +133,8 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app.state.runtimes = RuntimeRegistry()
     app.state.usage = UsageTracker()  # Claude 구독 사용 한도의 마지막 값(GET /api/usage)
     extract.init_state(app)  # 일지 정리 작업(app/jobs/extract.py)
+    # 나중에 더한 것이 바깥이다: 요청 ID·로그(RequestContext)가 CSRF 거절까지 감싼다
+    app.add_middleware(CsrfMiddleware, allowed_origins=app_settings.allowed_origins)
     app.add_middleware(RequestContextMiddleware)
     install_error_handlers(app)
 

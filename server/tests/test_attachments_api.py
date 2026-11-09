@@ -64,6 +64,12 @@ def api(fake_cli, home, content_log, tmp_path, monkeypatch):
 
 def send(api, session_id, text="이거 봐 줘", files=None, **kw):
     files = files if files is not None else [("files", ("a.png", PNG, "image/png"))]
+    if not files:
+        # 파일이 없어도 브라우저의 FormData처럼 multipart로 보낸다(httpx는 빈 files면 urlencoded로
+        # 보내 CSRF의 Content-Type 검사(계약 1.5)에 걸린다)
+        return api.post(
+            f"/api/sessions/{session_id}/turns/files", files=[("text", (None, text))], **kw
+        )
     return api.post(
         f"/api/sessions/{session_id}/turns/files", data={"text": text}, files=files, **kw
     )

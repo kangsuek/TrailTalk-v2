@@ -7,6 +7,23 @@ from app.db.session import create_engine_for, create_session_factory
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def _default_csrf_header(monkeypatch):
+    """변경성 요청에는 X-TrailTalk 헤더가 필요하다(계약 1.5). 시험 클라이언트가 기본으로 보낸다.
+
+    헤더 없는 요청을 직접 시험하는 tests/test_csrf.py는 같은 이름의 fixture로 이것을 끈다."""
+    original = TestClient.__init__
+
+    def init(self, *args, **kwargs):
+        headers = dict(kwargs.get("headers") or {})
+        headers.setdefault("X-TrailTalk", "1")
+        kwargs["headers"] = headers
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(TestClient, "__init__", init)
+    yield
+
+
 @pytest.fixture
 def make_settings(tmp_path):
     def _make(**overrides) -> Settings:
