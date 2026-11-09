@@ -488,7 +488,7 @@ async def _http(
     payload = json.dumps(body).encode()
     writer.write(
         f"POST {path} HTTP/1.1\r\nHost: test\r\nContent-Type: application/json\r\n"
-        f"Content-Length: {len(payload)}\r\nConnection: close\r\n\r\n".encode()
+        f"X-TrailTalk: 1\r\nContent-Length: {len(payload)}\r\nConnection: close\r\n\r\n".encode()
         + payload
     )
     await writer.drain()

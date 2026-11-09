@@ -78,6 +78,14 @@ class Settings(BaseSettings):
     internal_base_url: str = "http://127.0.0.1:8000"
     # CLI 자식 프로세스에 넘길 환경 변수 이름(끝의 *는 접두사 일치). 쉼표로 구분한다
     cli_env_passthrough: Annotated[tuple[str, ...], NoDecode] = ()
+    # CSRF 방어(계약 1.5): 변경성 요청의 Origin 허용 목록. 쉼표로 구분한다. 직접 지정하면 기본값은
+    # 쓰지 않는다. 폰 접속 주소(https://<기기>.<tailnet>.ts.net:8443)는 ./run.sh --phone이 더한다
+    allowed_origins: Annotated[tuple[str, ...], NoDecode] = (
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    )
 
     # 음성 인식·합성(OpenAI, Spec 5.2). 키가 없어도 서버는 시작하고
     # 음성 호출만 voice_unavailable이다
@@ -212,7 +220,7 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("cli_env_passthrough", mode="before")
+    @field_validator("cli_env_passthrough", "allowed_origins", mode="before")
     @classmethod
     def _split_names(cls, value: object) -> object:
         if isinstance(value, str):

@@ -11,7 +11,10 @@ const openSettings = async (page: Page) => {
 
 // 앞선 시험이 DB에 남긴 값에 기대지 않고, 끝난 뒤에도 남기지 않도록 프로필을 처음 상태로 맞춘다
 const resetProfile = (page: Page) =>
-  page.request.put('/api/profile', { data: { nickname: null, interests: [], chat_model: null } })
+  page.request.put('/api/profile', {
+    data: { nickname: null, interests: [], chat_model: null },
+    headers: { 'X-TrailTalk': '1' }, // 변경성 요청의 CSRF 헤더(계약 1.5)
+  })
 
 test.describe('설정', () => {
   test.beforeEach(async ({ page }) => {

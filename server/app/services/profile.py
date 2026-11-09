@@ -3,11 +3,14 @@
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.util import identity_key
 
 from app.config import Settings
 from app.db.models import Persona, UserProfile
+from app.db.types import utcnow
 from app.persona.loader import LoadedPersona, load_persona
 
 PROFILE_ID = 1
@@ -31,14 +34,27 @@ async def get_or_create_profile(db: AsyncSession) -> UserProfile:
 
 
 async def _upsert_persona_row(db: AsyncSession, loaded: LoadedPersona) -> None:
-    """persona 행(FK 대상)을 YAML 파일 기준으로 만들거나 갱신한다."""
-    persona_id = loaded.persona.id
-    row = await db.get(Persona, persona_id)
-    if row is None:
-        db.add(Persona(id=persona_id, yaml_path=str(loaded.path), version=loaded.version))
-    else:
-        row.yaml_path = str(loaded.path)
-        row.version = loaded.version
+    """persona 행(FK 대상)을 YAML 파일 기준으로 만들거나 갱신한다.
+
+    읽고 나서 넣는 방식은 빈 DB에서 두 세션이 동시에 처음 시작될 때 둘 다 INSERT를 시도해
+    UNIQUE constraint failed: persona.id가 난다. DB가 원자적으로 처리하는 upsert를 쓴다."""
+    statement = sqlite_insert(Persona).values(
+        id=loaded.persona.id, yaml_path=str(loaded.path), version=loaded.version
+    )
+    await db.execute(
+        statement.on_conflict_do_update(
+            index_elements=[Persona.id],
+            set_={
+                "yaml_path": statement.excluded.yaml_path,
+                "version": statement.excluded.version,
+                "updated_at": utcnow(),  # ON CONFLICT에는 모델의 onupdate가 적용되지 않는다
+            },
+        )
+    )
+    # 이 세션이 이미 들고 있던 행 객체는 DB 값과 다를 수 있어 다시 읽게 한다
+    row = db.identity_map.get(identity_key(Persona, loaded.persona.id))
+    if row is not None:
+        await db.refresh(row)
 
 
 async def _ensure_persona_row(db: AsyncSession, persona_dir: Path, persona_id: str) -> None:

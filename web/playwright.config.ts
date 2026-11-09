@@ -54,6 +54,8 @@ export default defineConfig({
         `VOICE_BACKEND=fake ` +
         // 가짜 외부 MCP 서버(M5-14): 설정 파일과 비밀 변수. 호출 기록은 데이터 폴더와 함께 지워진다
         `MCP_SERVERS_PATH="${MCP_SERVERS_PATH}" MCP_E2E_FAKE_API_KEY="${FAKE_SECRET}" ` +
+        // CSRF 방어(계약 1.5): 브라우저의 Origin은 웹 서버(WEB_PORT) 주소다
+        `ALLOWED_ORIGINS="http://127.0.0.1:${WEB_PORT},http://localhost:${WEB_PORT}" ` +
         `INTERNAL_BASE_URL="http://127.0.0.1:${API_PORT}" CLI_TURN_TIMEOUT_S=5 ` +
         `uv run uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/api/health`,

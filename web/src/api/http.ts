@@ -30,7 +30,7 @@ const GATEWAY_STATUSES = new Set([502, 503, 504])
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 /** 서버 API 요청(본문은 JSON, RawBody면 바이트 그대로, FormData면 multipart). 응답이 실패면 ApiError를 던진다.
- * 변경성 요청(POST·PUT·PATCH·DELETE)에는 규약 1.5의 X-TrailTalk 헤더를 붙인다(서버 검사는 M6). */
+ * 변경성 요청(POST·PUT·PATCH·DELETE)에는 규약 1.5의 X-TrailTalk 헤더를 붙인다(서버가 M6부터 검사한다, 서버 app/csrf.py). */
 export async function request(
   path: string,
   method: Method,
