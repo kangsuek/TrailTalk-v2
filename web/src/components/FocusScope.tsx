@@ -13,12 +13,21 @@ const FOCUSABLE = [
   '[tabindex]',
 ].join(',')
 
-/** Tab으로 닿는 요소(tabindex=-1·숨김 제외) */
+/** 지금 열려 있는 모달들(나중에 열린 것이 뒤). 포커스를 되돌리는 일은 맨 위 모달만 맡는다 */
+const openScopes: HTMLElement[] = []
+
+/** 포커스를 옮길 때는 페이지가 튀지 않게 스크롤하지 않는다 */
+const focusQuietly = (element: HTMLElement | null | undefined) =>
+  element?.focus({ preventScroll: true })
+
+/** Tab으로 닿는 요소(tabindex=-1·[hidden]·CSS로 숨긴 요소 제외) */
 function focusablesIn(root: HTMLElement | null): HTMLElement[] {
   if (!root) return []
-  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (element) => element.tabIndex >= 0 && !element.closest('[hidden]'),
-  )
+  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((element) => {
+    if (element.tabIndex < 0 || element.closest('[hidden]')) return false
+    const style = getComputedStyle(element)
+    return style.display !== 'none' && style.visibility !== 'hidden'
+  })
 }
 
 export default function FocusScope({ children }: { children: ReactNode }) {
@@ -37,23 +46,28 @@ export default function FocusScope({ children }: { children: ReactNode }) {
   useEffect(() => {
     const scope = ref.current
     const active = document.activeElement
+    if (scope) openScopes.push(scope)
     if (scope?.contains(active)) {
       initial.current = active as HTMLElement
     } else if (initial.current?.isConnected) {
-      initial.current.focus()
+      focusQuietly(initial.current)
     } else {
-      focusablesIn(scope)[0]?.focus()
+      focusQuietly(focusablesIn(scope)[0])
     }
-    // 배경을 눌러 포커스가 모달 밖으로 나가면 안으로 돌려보낸다
+    // 배경을 눌러 포커스가 모달 밖으로 나가면 안으로 돌려보낸다(맨 위 모달만. 모달이 둘이면 서로 되돌리다
+    // 끝나지 않는 일을 막는다)
     const onFocusIn = (event: FocusEvent) => {
-      if (scope && event.target instanceof Node && !scope.contains(event.target)) {
-        focusablesIn(scope)[0]?.focus()
+      if (!scope || openScopes[openScopes.length - 1] !== scope) return
+      if (event.target instanceof Node && !scope.contains(event.target)) {
+        focusQuietly(focusablesIn(scope)[0])
       }
     }
     document.addEventListener('focusin', onFocusIn)
     return () => {
       document.removeEventListener('focusin', onFocusIn)
-      if (opener && opener.isConnected && opener !== document.body) opener.focus()
+      const at = scope ? openScopes.lastIndexOf(scope) : -1
+      if (at !== -1) openScopes.splice(at, 1)
+      if (opener && opener.isConnected && opener !== document.body) focusQuietly(opener)
     }
   }, [opener])
 
@@ -69,10 +83,10 @@ export default function FocusScope({ children }: { children: ReactNode }) {
     const active = document.activeElement
     if (event.shiftKey && (active === first || !ref.current?.contains(active))) {
       event.preventDefault()
-      last.focus()
+      focusQuietly(last)
     } else if (!event.shiftKey && (active === last || !ref.current?.contains(active))) {
       event.preventDefault()
-      first.focus()
+      focusQuietly(first)
     }
   }
 

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode, useState } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import FocusScope from './FocusScope.tsx'
 
 afterEach(cleanup)
@@ -92,6 +92,57 @@ describe('FocusScope', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: '열기' }))
     expect(screen.getByRole('button', { name: '계속하기' })).toHaveFocus()
+  })
+
+  it('CSS로 숨긴(display:none·visibility:hidden) 요소는 Tab 순서에서 빠진다', async () => {
+    render(
+      <FocusScope>
+        <div role="dialog" aria-label="폼">
+          <button autoFocus>처음</button>
+          <button>마지막</button>
+          <button style={{ display: 'none' }}>숨김1</button>
+          <button style={{ visibility: 'hidden' }}>숨김2</button>
+        </div>
+      </FocusScope>,
+    )
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: '마지막' })).toHaveFocus()
+    await userEvent.tab() // 숨은 버튼이 끝으로 잡히면 여기서 새 버린다
+    expect(screen.getByRole('button', { name: '처음' })).toHaveFocus()
+  })
+
+  it('모달 둘이 동시에 마운트돼도 포커스 되돌림이 서로 싸우지 않고 맨 위 모달이 맡는다', async () => {
+    render(
+      <div>
+        <button>바깥</button>
+        <FocusScope>
+          <div role="dialog" aria-label="아래">
+            <button>아래 버튼</button>
+          </div>
+        </FocusScope>
+        <FocusScope>
+          <div role="dialog" aria-label="위">
+            <button>위 버튼</button>
+          </div>
+        </FocusScope>
+      </div>,
+    )
+    const calls = vi.spyOn(HTMLElement.prototype, 'focus')
+    screen.getByRole('button', { name: '바깥' }).focus() // 둘 다의 바깥
+    expect(screen.getByRole('button', { name: '위 버튼' })).toHaveFocus()
+    expect(calls.mock.calls.length).toBeLessThan(10) // 무한 루프가 아니다
+    calls.mockRestore()
+  })
+
+  it('포커스를 되돌릴 때 페이지를 스크롤하지 않는다', async () => {
+    render(<Host />)
+    await userEvent.click(screen.getByRole('button', { name: '열기' }))
+    const calls = vi.spyOn(HTMLElement.prototype, 'focus')
+    screen.getByRole('button', { name: '바깥 버튼' }).focus()
+    const forced = calls.mock.calls.slice(1) // 첫 호출은 이 시험이 한 것
+    expect(forced.length).toBeGreaterThan(0)
+    for (const args of forced) expect(args[0]).toEqual({ preventScroll: true })
+    calls.mockRestore()
   })
 
   it('열었던 요소가 사라졌으면 포커스를 억지로 옮기지 않는다', async () => {
