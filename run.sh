@@ -11,11 +11,17 @@
 #                       --mcp로 명시했는데 설정이 없거나 포트가 사용 중이면 안내하고 멈춘다.
 #   ./run.sh --no-mcp   설정이 있어도 외부 MCP 서버를 띄우지 않는다
 #   ./run.sh --mcp-revoke-all  발급된 MCP 토큰을 모두 폐기한다
-#   ./run.sh --phone    폰에서 접속한다. 폰 마이크는 HTTPS가 필요하므로 이 기기의 Tailscale 주소를 허용하고
-#                       tailnet 안에서만 여는 HTTPS 주소(기본 포트 8443, PHONE_HTTPS_PORT로 변경)와 켜는
-#                       명령을 안내한다. Tailscale 설정은 바꾸지 않는다(이미 쓰는 serve·Funnel을 건드리지 않음)
+#   ./run.sh --phone    폰에서 접속한다. 폰은 HTTPS(Tailscale)로 접속해야 하므로 이 기기의 Tailscale 주소를 개발
+#                       서버 호스트 허용과 서버의 Origin 허용 목록(ALLOWED_ORIGINS)에 더하고, tailnet 안에서만
+#                       여는 HTTPS 주소(기본 포트 8443, PHONE_HTTPS_PORT로 변경)와 켜는 명령을 안내한다.
+#                       Tailscale 설정은 바꾸지 않는다(이미 쓰는 serve·Funnel을 건드리지 않음)
+#   ./run.sh --build    웹을 운영 빌드한다. 서버(API_PORT)가 그 빌드를 함께 서빙해 서비스 워커(PWA: 오프라인
+#                       앱 껍데기·새 버전 적용)를 http://127.0.0.1:<API_PORT>에서 쓸 수 있다. 개발 서버(WEB_PORT,
+#                       HMR)는 서비스 워커를 등록하지 않는다
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
+# 변경성 요청(POST·PUT·PATCH·DELETE)은 Origin이 허용 목록에 있어야 한다(CSRF 방어, 계약 1.5). 기본은 이 실행의
+# 서버·웹 주소(127.0.0.1·localhost)이고, 직접 지정한 ALLOWED_ORIGINS(쉼표 구분)에는 폰 주소만 더한다.
 # Ctrl+C로 둘 다 종료한다. 다른 터미널에서 끄려면 ./stop.sh
 set -euo pipefail
 
@@ -33,6 +39,7 @@ MCP_AUTO=0
 NO_MCP=0
 MCP_REVOKE=0
 PHONE=0
+BUILD=0
 MCP_PORT_ENV="${MCP_PORT:-}"
 
 for arg in "$@"; do
@@ -44,8 +51,9 @@ for arg in "$@"; do
     --no-mcp) NO_MCP=1 ;;
     --mcp-revoke-all) MCP_REVOKE=1 ;;
     --phone) PHONE=1 ;;
+    --build) BUILD=1 ;;
     -h | --help)
-      sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+      awk 'NR > 1 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0" # 머리말 주석 전체
       exit 0
       ;;
     *)
@@ -129,14 +137,27 @@ if [ "$PHONE" = 1 ]; then
   export VITE_ALLOWED_HOSTS="${VITE_ALLOWED_HOSTS:+$VITE_ALLOWED_HOSTS,}$PHONE_HOST" # 미리 지정한 값에 덧붙인다
   echo "폰 접속 모드: 개발 서버가 $PHONE_HOST 를 받도록 합니다."
 fi
+# CSRF 방어(계약 1.5)의 Origin 허용 목록: 이 실행의 웹·API 주소와, --phone이면 폰 접속 주소.
+# ALLOWED_ORIGINS를 직접 지정했으면 그 목록에 폰 주소만 더한다
+if [ -n "${ALLOWED_ORIGINS:-}" ]; then
+  ORIGINS="$ALLOWED_ORIGINS"
+else
+  ORIGINS="http://127.0.0.1:$API_PORT,http://localhost:$API_PORT,http://127.0.0.1:$WEB_PORT,http://localhost:$WEB_PORT"
+fi
+if [ -n "$PHONE_URL" ]; then ORIGINS="$ORIGINS,$PHONE_URL"; fi
 phone_guide() {
   echo
   echo "폰에서 열려면(폰에도 Tailscale을 켜고 같은 계정으로 로그인):"
   echo "  1) 다른 터미널에서 한 번 실행 — tailnet 안에서만 여는 HTTPS 연결입니다(Funnel이 아님)"
   echo "       $TS_BIN serve --bg --https=$PHONE_HTTPS_PORT http://127.0.0.1:$WEB_PORT"
-  echo "  2) 폰 브라우저에서 $PHONE_URL 을 열고 마이크를 허용"
-  echo "  끄려면: $TS_BIN serve --https=$PHONE_HTTPS_PORT off"
+  echo "  2) 폰 브라우저에서 $PHONE_URL 을 연다(첨부·대화. 음성은 보류라 마이크는 아직 쓰지 않는다)"
+  echo "  끄려면: $TS_BIN serve --https=$PHONE_HTTPS_PORT off  (./run.sh를 꺼도 이 연결은 남는다)"
   echo "  이미 $PHONE_HTTPS_PORT 번을 쓰고 있으면 PHONE_HTTPS_PORT=10000 ./run.sh --phone (443은 외부 MCP Funnel이 쓸 수 있어 피한다)"
+  echo "  접속이 안 되면: 포트 없는 주소(443)는 외부 MCP용이라 앱이 열리지 않는다(반드시 포트를 붙인다). ./run.sh가"
+  echo "    켜져 있어야 하고, 폰의 비공개 DNS·크롬 보안 DNS가 Tailscale 이름 풀이를 막는지도 본다(README의 폰 접속 문제 해결)"
+  echo "  서비스 워커(오프라인·새 버전 안내)를 폰에서 쓰려면 ./run.sh --build --phone 으로 띄우고 위 1)의 연결 대상 포트를"
+  echo "    서버 포트($API_PORT)로 바꾼다: $TS_BIN serve --bg --https=$PHONE_HTTPS_PORT http://127.0.0.1:$API_PORT"
+  echo "ALLOWED_ORIGINS=$ORIGINS"
 }
 if [ "$PHONE" = 1 ] && [ "${TRAILTALK_TEST_PHONE_GUIDE_ONLY:-0}" = 1 ]; then # 시험용: 안내만 내고 끝낸다
   phone_guide
@@ -224,6 +245,12 @@ if [ ! -f "$ROOT/web/node_modules/.package-lock.json" ] ||
   (cd "$ROOT/web" && npm ci)
 fi
 
+if [ "$BUILD" = 1 ]; then
+  # 서버(API_PORT)는 web/dist가 있으면 그 빌드를 함께 서빙한다. 서비스 워커(PWA)는 이 빌드에서만 등록된다
+  echo "웹을 운영 빌드합니다(web/dist)…"
+  (cd "$ROOT/web" && npm run build >/dev/null)
+fi
+
 if [ "$TMP" = 1 ]; then
   TMP_DIR="$RUN_DIR/tmp"
   rm -rf "$TMP_DIR" && mkdir -p "$TMP_DIR"
@@ -239,19 +266,17 @@ if [ "$FAKE" = 1 ]; then
 fi
 export VITE_API_TARGET="http://127.0.0.1:$API_PORT"  # 셸에 남은 다른 값을 쓰지 않게
 
-# CSRF 방어(계약 1.5)의 Origin 허용 목록: 이 실행의 웹·API 주소와, --phone이면 폰 접속 주소.
-# ALLOWED_ORIGINS를 직접 지정했으면 그 목록에 폰 주소만 더한다
-if [ -n "${ALLOWED_ORIGINS:-}" ]; then
-  ORIGINS="$ALLOWED_ORIGINS"
-else
-  ORIGINS="http://127.0.0.1:$API_PORT,http://localhost:$API_PORT,http://127.0.0.1:$WEB_PORT,http://localhost:$WEB_PORT"
-fi
-if [ -n "$PHONE_URL" ]; then ORIGINS="$ORIGINS,$PHONE_URL"; fi
-export ALLOWED_ORIGINS="$ORIGINS"
+export ALLOWED_ORIGINS="$ORIGINS" # 위에서 정한 CSRF 허용 Origin을 서버에 넘긴다
 
 mkdir -p "$RUN_DIR"
 # PID 파일: 1행 PID, 2행 시작 시각(stop.sh가 PID 재사용을 가려내는 데 쓴다)
 { echo "$$"; ps -p "$$" -o lstart=; } >"$PID_FILE"
+# 폰 접속(--phone)으로 연 Tailscale 연결은 run.sh를 꺼도 남으므로, ./stop.sh가 끄는 방법을 알리도록 적어 둔다
+if [ "$PHONE" = 1 ]; then
+  echo "$TS_BIN serve --https=$PHONE_HTTPS_PORT off" >"$RUN_DIR/phone"
+else
+  rm -f "$RUN_DIR/phone"
+fi
 
 PIDS=()
 MCP_PID="" # 자동으로 띄운 MCP 서버. 실패해도 서버·웹은 계속 띄우므로 PIDS 밖에서 따로 관리한다
@@ -260,6 +285,9 @@ stop_all() {
   for pid in ${PIDS[@]+"${PIDS[@]}"} ${MCP_PID:+"$MCP_PID"}; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   rm -f "$PID_FILE" "$MCP_PID_FILE"
+  if [ "$PHONE" = 1 ]; then # tailscale serve는 우리가 띄운 프로세스가 아니라 run.sh를 꺼도 남는다
+    echo "폰 접속용 Tailscale 연결(포트 $PHONE_HTTPS_PORT)은 그대로 남아 있습니다. 끄려면: $TS_BIN serve --https=$PHONE_HTTPS_PORT off"
+  fi
 }
 on_exit() {
   trap - INT TERM HUP EXIT
@@ -332,6 +360,10 @@ fi
 URL="http://127.0.0.1:$WEB_PORT"
 echo
 echo "TrailTalk 실행 중: $URL  (서버 http://127.0.0.1:$API_PORT, 종료: Ctrl+C 또는 ./stop.sh)"
+echo "허용 Origin(변경성 요청, CSRF 방어): $ORIGINS"
+if [ "$BUILD" = 1 ]; then
+  echo "운영 빌드: http://127.0.0.1:$API_PORT 에서 서비스 워커(PWA)가 동작합니다(개발 서버 $URL 은 등록하지 않음)"
+fi
 [ "$PHONE" = 1 ] && phone_guide
 # 브라우저 열기에 실패해도 서버는 계속 띄워 둔다
 if [ "$OPEN" = 1 ] && command -v open >/dev/null; then open "$URL" || true; fi
