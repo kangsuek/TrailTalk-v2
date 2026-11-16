@@ -19,7 +19,7 @@ shared/   서버와 웹이 함께 읽는 값(client-defaults.json)
 scripts/  verify.sh 검증 게이트, verify-bg.sh 커밋 뒤 백그라운드 전체 검증과 push 허가 확인(.githooks의 post-commit·post-merge·pre-push가 쓴다. .claude/hooks/gate-git.py는 그 훅이 꺼지거나 우회되지 않게 지킨다). GitHub Actions CI는 두지 않는다
 ```
 
-- 실행·종료: `./run.sh`(`--tmp` 임시 데이터, `--phone` 폰 접속 안내: Tailscale 호스트 허용과 tailnet 전용 HTTPS 8443 켜는 명령), `./stop.sh`. Claude 앱 연계 외부 MCP 서버는 `.env`(또는 셸 환경 변수)에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄운다(포트 8400, `--tmp`는 제외, `--no-mcp`로 끔, `--mcp`는 명시 실행이라 설정이 없으면 멈춘다), MCP만 끄기는 `./stop.sh --mcp`, 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
+- 실행·종료: `./run.sh`(`--tmp` 임시 데이터, `--phone` 폰 접속 안내: Tailscale 호스트 허용과 tailnet 전용 HTTPS 8443 켜는 명령, 폰 주소를 `ALLOWED_ORIGINS`(변경성 요청 Origin 허용 목록, 기본은 로컬 8000·5173)에 자동 추가, `--build` 웹 운영 빌드 후 서버가 `web/dist`를 서빙해 PWA·서비스 워커 확인), `./stop.sh`(`--phone`으로 켠 Tailscale serve는 남으니 끄는 명령을 안내). Claude 앱 연계 외부 MCP 서버는 `.env`(또는 셸 환경 변수)에 `MCP_PUBLIC_URL`·`MCP_OWNER_PASSWORD`가 있으면 `./run.sh`가 자동으로 함께 띄운다(포트 8400, `--tmp`는 제외, `--no-mcp`로 끔, `--mcp`는 명시 실행이라 설정이 없으면 멈춘다), MCP만 끄기는 `./stop.sh --mcp`, 토큰 전체 폐기는 `./run.sh --mcp-revoke-all`
 - 검증: `scripts/verify.sh [--quick]`. 문서(`docs/`, `CLAUDE.md`, `README.md`)를 뺀 트리가 같으면 통과한 단계(quick, full)를 공용 `.git/verify-cache/` 기록으로 건너뛴다. 서버·웹 검사는 병렬이고 서버 pytest는 xdist 6 워커다(`VERIFY_PYTEST_WORKERS`로 조정, CPU 수만큼 늘리면 시간에 민감한 테스트가 흔들린다). `VERIFY_NO_CACHE=1`로 기록을 끄고 `VERIFY_SERIAL=1`로 순차 실행한다.
 - 서버 API를 바꾸면 `cd web && npm run gen:api`로 `src/api/schema.d.ts`를 다시 만들어 함께 커밋한다.
 - 프롬프트를 바꾸면 `cd server && UPDATE_SNAPSHOTS=1 uv run pytest tests/test_prompt.py`로 스냅샷을 갱신하고 차이를 검토한다.
