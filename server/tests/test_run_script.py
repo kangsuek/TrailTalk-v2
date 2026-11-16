@@ -43,7 +43,9 @@ def _fake_tailscale(tmp_path: Path, status_json: str) -> tuple[Path, Path]:
 
 
 def _run(args: list[str], env_extra: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    env = {k: v for k, v in os.environ.items() if k not in {"PHONE_HTTPS_PORT", "WEB_PORT"}}
+    # 호출자 셸의 포트·허용 Origin 설정이 기대값에 새지 않게 함께 걸러낸다
+    skipped = {"PHONE_HTTPS_PORT", "WEB_PORT", "API_PORT", "ALLOWED_ORIGINS"}
+    env = {k: v for k, v in os.environ.items() if k not in skipped}
     env |= env_extra
     return subprocess.run(
         [str(RUN_SH), *args], capture_output=True, text=True, env=env, timeout=60, check=False
@@ -93,3 +95,83 @@ def test_phone_without_login_stops_with_guidance(tmp_path):
     result = _run(["--phone"], {"TAILSCALE_BIN": str(fake)} | GUIDE_ONLY)
     assert result.returncode == 1
     assert "Tailscale 주소를 알아내지 못했습니다" in result.stderr
+
+
+# CSRF 방어(M6, 계약 1.5)의 Origin 허용 목록, 운영 빌드(PWA) 옵션, 종료 안내
+
+
+def test_help_lists_build_option_and_origin_allow_list():
+    out = _run(["--help"], {}).stdout
+    assert "--build" in out
+    assert "ALLOWED_ORIGINS" in out
+    assert "./stop.sh" in out  # 늘어난 안내에도 도움말이 끝까지 나온다
+
+
+def test_phone_adds_its_address_to_the_origin_allow_list(tmp_path):
+    fake, _ = _fake_tailscale(tmp_path, STATUS)
+    out = _run(["--phone"], {"TAILSCALE_BIN": str(fake), "ALLOWED_ORIGINS": ""} | GUIDE_ONLY).stdout
+    origins = next(line for line in out.splitlines() if line.startswith("ALLOWED_ORIGINS=")).split(
+        "=", 1
+    )[1]
+    assert origins.split(",") == [
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "https://mac.tail1234.ts.net:8443",
+    ]
+
+
+def test_origin_allow_list_follows_ports_and_user_setting(tmp_path):
+    fake, _ = _fake_tailscale(tmp_path, STATUS)
+    env = {
+        "TAILSCALE_BIN": str(fake),
+        "ALLOWED_ORIGINS": "",
+        "API_PORT": "8100",
+        "WEB_PORT": "5174",
+    }
+    out = _run(["--phone"], env | GUIDE_ONLY).stdout
+    assert "http://127.0.0.1:8100,http://localhost:8100,http://127.0.0.1:5174" in out
+    # 직접 지정한 목록은 그대로 두고 폰 주소만 더한다
+    mine = "https://custom.example:9000"
+    out = _run(
+        ["--phone"], {"TAILSCALE_BIN": str(fake), "ALLOWED_ORIGINS": mine} | GUIDE_ONLY
+    ).stdout
+    assert f"ALLOWED_ORIGINS={mine},https://mac.tail1234.ts.net:8443" in out
+
+
+def test_phone_guide_explains_how_to_fix_connection_problems(tmp_path):
+    fake, _ = _fake_tailscale(tmp_path, STATUS)
+    out = _run(["--phone"], {"TAILSCALE_BIN": str(fake)} | GUIDE_ONLY).stdout
+    assert "https://mac.tail1234.ts.net:8443" in out
+    assert "포트 없는" in out and "README" in out  # 443 주소는 MCP용이라는 안내와 문제 해결 위치
+
+
+def _stop_copy(tmp_path: Path) -> Path:
+    """stop.sh는 자기 위치를 저장소 루트로 삼으므로, 복사본을 임시 폴더에 두고 실행한다."""
+    root = tmp_path / "repo"
+    (root / ".run").mkdir(parents=True)
+    script = root / "stop.sh"
+    shutil.copy(RUN_SH.with_name("stop.sh"), script)
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return root
+
+
+def test_stop_reminds_that_the_phone_connection_is_still_open(tmp_path):
+    root = _stop_copy(tmp_path)
+    (root / ".run" / "phone").write_text("tailscale serve --https=8443 off\n")
+    result = subprocess.run(
+        [str(root / "stop.sh")], capture_output=True, text=True, timeout=30, check=False
+    )
+    assert result.returncode == 0
+    assert "tailscale serve --https=8443 off" in result.stdout
+    assert not (root / ".run" / "phone").exists()  # 한 번 알리면 지운다
+
+
+def test_stop_stays_quiet_when_phone_mode_was_not_used(tmp_path):
+    root = _stop_copy(tmp_path)
+    result = subprocess.run(
+        [str(root / "stop.sh")], capture_output=True, text=True, timeout=30, check=False
+    )
+    assert result.returncode == 0
+    assert "tailscale" not in result.stdout
