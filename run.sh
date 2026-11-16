@@ -17,7 +17,9 @@
 #                       Tailscale 설정은 바꾸지 않는다(이미 쓰는 serve·Funnel을 건드리지 않음)
 #   ./run.sh --build    웹을 운영 빌드한다. 서버(API_PORT)가 그 빌드를 함께 서빙해 서비스 워커(PWA: 오프라인
 #                       앱 껍데기·새 버전 적용)를 http://127.0.0.1:<API_PORT>에서 쓸 수 있다. 개발 서버(WEB_PORT,
-#                       HMR)는 서비스 워커를 등록하지 않는다
+#                       HMR)는 서비스 워커를 등록하지 않는다. web/dist는 한 번 만들면 --build 없이도 서버가 계속
+#                       서빙하므로, 코드를 고친 뒤 개발할 때는 WEB_PORT 주소를 쓰고 API_PORT 주소는 마지막
+#                       --build 시점의 화면(낡았을 수 있음)임을 기억한다
 #
 # 포트는 API_PORT·WEB_PORT 환경 변수로 바꿀 수 있다(예: API_PORT=8100 WEB_PORT=5174 ./run.sh --tmp).
 # 변경성 요청(POST·PUT·PATCH·DELETE)은 Origin이 허용 목록에 있어야 한다(CSRF 방어, 계약 1.5). 기본은 이 실행의
@@ -248,7 +250,11 @@ fi
 if [ "$BUILD" = 1 ]; then
   # 서버(API_PORT)는 web/dist가 있으면 그 빌드를 함께 서빙한다. 서비스 워커(PWA)는 이 빌드에서만 등록된다
   echo "웹을 운영 빌드합니다(web/dist)…"
-  (cd "$ROOT/web" && npm run build >/dev/null)
+  if ! build_out="$(cd "$ROOT/web" && npm run build 2>&1)"; then
+    echo "$build_out" >&2 # tsc·vite의 오류를 숨기지 않는다
+    echo "웹 운영 빌드에 실패했습니다. 위 오류를 고친 뒤 다시 실행하세요." >&2
+    exit 1
+  fi
 fi
 
 if [ "$TMP" = 1 ]; then

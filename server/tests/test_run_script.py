@@ -43,7 +43,9 @@ def _fake_tailscale(tmp_path: Path, status_json: str) -> tuple[Path, Path]:
 
 
 def _run(args: list[str], env_extra: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    env = {k: v for k, v in os.environ.items() if k not in {"PHONE_HTTPS_PORT", "WEB_PORT"}}
+    # 호출자 셸의 포트·허용 Origin 설정이 기대값에 새지 않게 함께 걸러낸다
+    skipped = {"PHONE_HTTPS_PORT", "WEB_PORT", "API_PORT", "ALLOWED_ORIGINS"}
+    env = {k: v for k, v in os.environ.items() if k not in skipped}
     env |= env_extra
     return subprocess.run(
         [str(RUN_SH), *args], capture_output=True, text=True, env=env, timeout=60, check=False
